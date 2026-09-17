@@ -10,13 +10,9 @@
 // factual statements about where money moved.
 
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
-import { getSpendingChanges, type SpendingChangesResult } from "@/lib/actions/insights";
-import { daysBetweenISO, getPreviousComparableRange, type DateRange } from "@/lib/date-utils";
+import type { SpendingChangesResult } from "@/lib/actions/insights";
+import { daysBetweenISO, getPreviousComparableRange, getMonthRange, getPreviousMonthRange, type DateRange } from "@/lib/date-utils";
 import { percentChange } from "@/lib/utils";
-import type { Database } from "@/types/database";
-
-type MerchantBreakdownRow = Database["public"]["Functions"]["get_merchant_breakdown"]["Returns"][number];
-type ItemAnalyticsRow = Database["public"]["Functions"]["get_item_analytics"]["Returns"][number];
 
 const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -99,66 +95,96 @@ function diffBreakdowns(
     .map(({ name, current, previous, changePct }) => ({ name, current, previous, changePct }));
 }
 
+function computeCategoryChanges(
+  currentRows: { category_id: string; category_name: string; total: number }[],
+  previousRows: { category_id: string; category_name: string; total: number }[]
+): SpendingChangesResult | null {
+  const previousTotal = previousRows.reduce((sum, r) => sum + Number(r.total), 0);
+  if (previousTotal <= 0) return null;
+
+  const byCategory = new Map<string, { name: string; current: number; previous: number }>();
+  for (const row of currentRows) {
+    byCategory.set(row.category_id, { name: row.category_name, current: Number(row.total), previous: 0 });
+  }
+  for (const row of previousRows) {
+    const existing = byCategory.get(row.category_id);
+    if (existing) existing.previous = Number(row.total);
+    else byCategory.set(row.category_id, { name: row.category_name, current: 0, previous: Number(row.total) });
+  }
+
+  const merged = Array.from(byCategory.entries()).map(([category_id, v]) => ({
+    category_id,
+    category_name: v.name,
+    current: v.current,
+    previous: v.previous,
+    diff: v.current - v.previous,
+    changePct: percentChange(v.current, v.previous),
+  }));
+
+  merged.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+  const top5 = merged.slice(0, 5);
+  if (top5.every((c) => c.diff === 0)) return null;
+
+  const changes = top5.map(({ category_id, category_name, current: c, previous: p, changePct }) => ({
+    category_id,
+    category_name,
+    current: c,
+    previous: p,
+    changePct,
+  }));
+
+  const topMover = top5[0];
+  const sameDirection = (top5.some((c) => c.diff !== 0) ? top5 : []).filter(
+    (c) => Math.sign(c.diff) === Math.sign(topMover.diff) && c.diff !== 0
+  );
+  const names = sameDirection.slice(0, 2).map((c) => c.category_name);
+  const namesLabel = names.length === 2 ? `${names[0]} and ${names[1]}` : names[0];
+  const summary =
+    topMover.diff > 0
+      ? `Spending in ${namesLabel} ran higher this month than last.`
+      : `Spending in ${namesLabel} dropped compared to last month.`;
+
+  return { changes, summary };
+}
+
 export async function getSpendingIntelligence(range: DateRange) {
   return runAction(async (): Promise<SpendingIntelligenceData> => {
-    const { supabase, householdId, userId } = await requireHouseholdContext();
+    const { supabase, householdId } = await requireHouseholdContext();
     const previousRange = getPreviousComparableRange(range);
+    const month = getMonthRange(0);
+    const prevMonth = getPreviousMonthRange();
 
-    const [
-      summaryRes,
-      weekdayRes,
-      dailyRes,
-      expenseTypeRes,
-      personRes,
-      recurringRes,
-      membersRes,
-      profilesRes,
-      merchantCurrentRes,
-      merchantPreviousRes,
-      itemCurrentRes,
-      itemPreviousRes,
-      categoryChangesResult,
-    ] = await Promise.all([
-      supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_paid_by: null }),
-      supabase.rpc("get_spending_by_weekday", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
-      supabase.rpc("get_daily_spending", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_paid_by: null }),
-      supabase.rpc("get_expense_type_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
-      supabase.rpc("get_person_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
-      supabase.rpc("get_recurring_vs_oneoff", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
-      supabase.from("household_members").select("user_id").eq("household_id", householdId),
-      supabase.from("profiles").select("id, display_name"),
-      supabase.rpc("get_merchant_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_limit: 50 }),
-      supabase.rpc("get_merchant_breakdown", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_limit: 50 }),
-      supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_limit: 50 }),
-      supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_limit: 50 }),
-      getSpendingChanges(),
-    ]);
+    // Single consolidated master RPC executing all aggregations in 1 database round-trip
+    const { data: bundle, error } = await supabase.rpc("get_spending_intelligence_bundle", {
+      p_household_id: householdId,
+      p_start: range.start,
+      p_end: range.end,
+      p_prev_start: previousRange.start,
+      p_prev_end: previousRange.end,
+      p_month_start: month.start,
+      p_month_end: month.end,
+      p_prev_month_start: prevMonth.start,
+      p_prev_month_end: prevMonth.end,
+    });
 
-    if (summaryRes.error) throw new ActionError(summaryRes.error.message);
-    if (weekdayRes.error) throw new ActionError(weekdayRes.error.message);
-    if (dailyRes.error) throw new ActionError(dailyRes.error.message);
-    if (expenseTypeRes.error) throw new ActionError(expenseTypeRes.error.message);
-    if (personRes.error) throw new ActionError(personRes.error.message);
-    if (recurringRes.error) throw new ActionError(recurringRes.error.message);
-    if (merchantCurrentRes.error) throw new ActionError(merchantCurrentRes.error.message);
-    if (merchantPreviousRes.error) throw new ActionError(merchantPreviousRes.error.message);
-    if (itemCurrentRes.error) throw new ActionError(itemCurrentRes.error.message);
-    if (itemPreviousRes.error) throw new ActionError(itemPreviousRes.error.message);
+    if (error) throw new ActionError(error.message);
+    if (!bundle) throw new ActionError("No data returned from database");
 
-    const txnCount = summaryRes.data?.[0]?.txn_count ?? 0;
+    const summary = bundle.summary;
+    const txnCount = summary.txn_count ?? 0;
     const days = daysBetweenISO(range.start, range.end);
     const weeks = days / 7;
-    const total = Number(summaryRes.data?.[0]?.total ?? 0);
+    const total = Number(summary.total ?? 0);
 
-    // Weekday peak — only meaningful with enough transactions to not be one outlier.
-    const weekdayRows = weekdayRes.data ?? [];
+    // Weekday peak
+    const weekdayRows = bundle.weekday_rows ?? [];
     const weekdayPeak: WeekdayPeak | null =
       txnCount >= MIN_TXN_FOR_PEAK_GUARDS && weekdayRows.length > 0
         ? { weekdayName: WEEKDAY_NAMES[weekdayRows[0].weekday_num] ?? "Unknown", total: Number(weekdayRows[0].total) }
         : null;
 
-    // Highest single date — reuses the existing daily-spending series rather than a new function.
-    const dailyRows = dailyRes.data ?? [];
+    // Highest single date
+    const dailyRows = bundle.daily_rows ?? [];
     const highestDay = dailyRows.length > 0 ? dailyRows.reduce((a, b) => (Number(b.total) > Number(a.total) ? b : a)) : null;
     const datePeak: DatePeak | null =
       txnCount >= MIN_TXN_FOR_PEAK_GUARDS && highestDay ? { date: highestDay.expense_date, total: Number(highestDay.total) } : null;
@@ -166,27 +192,23 @@ export async function getSpendingIntelligence(range: DateRange) {
     const avgDailySpend = days > 0 ? total / days : 0;
     const avgWeeklySpend = weeks > 0 ? total / weeks : 0;
 
-    const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.display_name]));
-    void membersRes;
-
     const personSplit: PersonSplit = {
-      byExpenseType: (expenseTypeRes.data ?? []).map((row) => ({
+      byExpenseType: (bundle.expense_type_rows ?? []).map((row) => ({
         expenseType: row.expense_type,
         total: Number(row.total),
         txnCount: row.txn_count,
         sharePct: Number(row.share_pct),
       })),
-      byPayer: (personRes.data ?? []).map((row) => ({
+      byPayer: (bundle.person_rows ?? []).map((row) => ({
         userId: row.paid_by,
-        name: profileMap.get(row.paid_by) ?? "Someone",
+        name: row.name,
         total: Number(row.total),
         txnCount: row.txn_count,
         avgTransaction: Number(row.avg_transaction),
       })),
     };
-    void userId;
 
-    const recurringRow = recurringRes.data?.[0];
+    const recurringRow = bundle.recurring_row;
     const recurringVsOneoff: RecurringVsOneoff = {
       recurringTotal: Number(recurringRow?.recurring_total ?? 0),
       recurringCount: recurringRow?.recurring_count ?? 0,
@@ -194,25 +216,32 @@ export async function getSpendingIntelligence(range: DateRange) {
       oneoffCount: recurringRow?.oneoff_count ?? 0,
     };
 
-    const previousMerchantTotal = (merchantPreviousRes.data ?? []).reduce((sum: number, r: MerchantBreakdownRow) => sum + Number(r.total), 0);
+    const merchantPrevRows = bundle.merchant_prev_rows ?? [];
+    const previousMerchantTotal = merchantPrevRows.reduce((sum, r) => sum + Number(r.total), 0);
     const topMerchantChanges =
       previousMerchantTotal > MIN_PREVIOUS_TOTAL_FOR_COMPARISON
         ? diffBreakdowns(
-            (merchantCurrentRes.data ?? []).map((r: MerchantBreakdownRow) => ({ key: r.merchant_id, name: r.merchant_name, total: Number(r.total) })),
-            (merchantPreviousRes.data ?? []).map((r: MerchantBreakdownRow) => ({ key: r.merchant_id, name: r.merchant_name, total: Number(r.total) })),
+            (bundle.merchant_current_rows ?? []).map((r) => ({ key: r.merchant_id, name: r.merchant_name, total: Number(r.total) })),
+            merchantPrevRows.map((r) => ({ key: r.merchant_id, name: r.merchant_name, total: Number(r.total) })),
             5
           )
         : [];
 
-    const previousItemTotal = (itemPreviousRes.data ?? []).reduce((sum: number, r: ItemAnalyticsRow) => sum + Number(r.total), 0);
+    const itemPrevRows = bundle.item_prev_rows ?? [];
+    const previousItemTotal = itemPrevRows.reduce((sum, r) => sum + Number(r.total), 0);
     const topItemChanges =
       previousItemTotal > MIN_PREVIOUS_TOTAL_FOR_COMPARISON
         ? diffBreakdowns(
-            (itemCurrentRes.data ?? []).map((r: ItemAnalyticsRow) => ({ key: r.item_name, name: r.item_name, total: Number(r.total) })),
-            (itemPreviousRes.data ?? []).map((r: ItemAnalyticsRow) => ({ key: r.item_name, name: r.item_name, total: Number(r.total) })),
+            (bundle.item_current_rows ?? []).map((r) => ({ key: r.item_name, name: r.item_name, total: Number(r.total) })),
+            itemPrevRows.map((r) => ({ key: r.item_name, name: r.item_name, total: Number(r.total) })),
             5
           )
         : [];
+
+    const categoryChanges = computeCategoryChanges(
+      (bundle.category_month_rows ?? []).map((r) => ({ category_id: r.category_id, category_name: r.category_name, total: Number(r.total) })),
+      (bundle.category_prev_month_rows ?? []).map((r) => ({ category_id: r.category_id, category_name: r.category_name, total: Number(r.total) }))
+    );
 
     return {
       range,
@@ -223,7 +252,7 @@ export async function getSpendingIntelligence(range: DateRange) {
       avgWeeklySpend,
       personSplit,
       recurringVsOneoff,
-      categoryChanges: categoryChangesResult.error === null ? categoryChangesResult.data : null,
+      categoryChanges,
       topMerchantChanges,
       topItemChanges,
     };

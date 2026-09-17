@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn, formatINR } from "@/lib/utils";
 import { parseISODate, getTodayISO, getMonthRange, type DateRange } from "@/lib/date-utils";
@@ -57,6 +57,7 @@ export function SpendingCalendar() {
   const [dayExpenses, setDayExpenses] = useState<EnrichedExpense[]>([]);
   const [dayLoading, setDayLoading] = useState(false);
   const [editTarget, setEditTarget] = useState<EnrichedExpense | null>(null);
+  const dayExpensesCache = useRef<Map<string, EnrichedExpense[]>>(new Map());
 
   const load = useCallback(async (offset: number, forceFresh = false) => {
     const cacheKey = `calendar_month_${offset}`;
@@ -93,6 +94,7 @@ export function SpendingCalendar() {
 
   useOnExpenseSaved(
     useCallback(() => {
+      dayExpensesCache.current.clear();
       invalidateClientCache("calendar_month_");
       load(monthsAgo, true);
     }, [load, monthsAgo])
@@ -104,18 +106,35 @@ export function SpendingCalendar() {
 
   async function openDay(iso: string) {
     setSelectedDate(iso);
-    setDayLoading(true);
+    const cell = days.find((d) => d.iso === iso);
+    if (cell && cell.txnCount === 0) {
+      setDayExpenses([]);
+      setDayLoading(false);
+      dayExpensesCache.current.set(iso, []);
+      return;
+    }
+
+    const cached = dayExpensesCache.current.get(iso);
+    if (cached) {
+      setDayExpenses(cached);
+      setDayLoading(false);
+    } else {
+      setDayLoading(true);
+    }
+
     const result = await getExpenses({ start: iso, end: iso, sort: "newest", limit: 50 });
     setDayLoading(false);
     if (result.error !== null) {
       toast.error(result.error);
       return;
     }
+    dayExpensesCache.current.set(iso, result.data);
     setDayExpenses(result.data);
   }
 
   async function refreshDay() {
     if (!selectedDate) return;
+    dayExpensesCache.current.delete(selectedDate);
     openDay(selectedDate);
     load(monthsAgo);
   }
@@ -210,16 +229,32 @@ export function SpendingCalendar() {
       )}
 
       <Drawer open={!!selectedDate} onOpenChange={(open) => !open && setSelectedDate(null)}>
-        <DrawerContent className="max-h-[80vh]">
-          <DrawerHeader>
-            <DrawerTitle>{selectedDate ? parseISODate(selectedDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : ""}</DrawerTitle>
+        <DrawerContent className="max-h-[85vh] max-w-lg sm:max-w-xl mx-auto rounded-t-3xl shadow-2xl" showClose={false}>
+          <DrawerHeader className="relative pb-2">
+            <DrawerTitle className="text-base font-semibold text-foreground">
+              {selectedDate
+                ? parseISODate(selectedDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
+                : ""}
+            </DrawerTitle>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(null)}
+              className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pb-6">
             {dayLoading ? (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 pt-2">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="h-14 animate-pulse rounded-xl bg-muted" />
                 ))}
+              </div>
+            ) : dayExpenses.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No expenses logged for this day.
               </div>
             ) : (
               <ExpenseList expenses={dayExpenses} onEdit={setEditTarget} onDuplicate={handleDuplicate} onDelete={handleDelete} />

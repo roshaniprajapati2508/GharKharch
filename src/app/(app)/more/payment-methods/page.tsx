@@ -26,7 +26,9 @@ import {
   updateBankAccount,
   deactivateBankAccount,
   listCardCatalogue,
+  type EnrichedUserCard,
 } from "@/lib/actions/payment-instruments";
+import { formatCardLabel } from "@/lib/utils";
 import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
 import type { Tables } from "@/types/database";
 
@@ -206,8 +208,8 @@ function MethodsTab() {
 const EMPTY_CARD_FORM = { custom_name: "", issuer_id: "", last4: "", card_type: "credit" as "credit" | "debit" | "prepaid" };
 
 function CardsTab() {
-  const [cards, setCards] = useState<Tables<"user_cards">[]>(() => {
-    return getClientCachedData<Tables<"user_cards">[]>("user_cards_list") ?? [];
+  const [cards, setCards] = useState<EnrichedUserCard[]>(() => {
+    return getClientCachedData<EnrichedUserCard[]>("user_cards_list") ?? [];
   });
   const [issuers, setIssuers] = useState<Tables<"card_issuers">[]>(() => {
     return getClientCachedData<Tables<"card_issuers">[]>("card_issuers_list") ?? [];
@@ -281,8 +283,7 @@ function CardsTab() {
           <motion.div key={c.id} {...ROW_MOTION} className="flex items-center gap-3 overflow-hidden px-3 py-2.5">
             <CreditCard className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">
-              {c.custom_name}
-              {c.last4 ? ` •••• ${c.last4}` : ""}
+              {formatCardLabel(c)}
             </span>
             <div className="ml-auto flex items-center gap-0.5">
               <button onClick={() => openEdit(c)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-primary" aria-label="Edit">

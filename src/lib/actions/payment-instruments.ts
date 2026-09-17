@@ -32,21 +32,114 @@ export async function listCardCatalogue() {
   });
 }
 
-// ---------------------------------------------------------------------------
-// User cards - identification only, never a card number/CVV/PIN (spec addendum section 15)
-// ---------------------------------------------------------------------------
+export type EnrichedUserCard = Tables<"user_cards"> & {
+  issuer_name?: string | null;
+};
+
+export const DEFAULT_HOUSEHOLD_CARDS: {
+  custom_name: string;
+  issuer_name: string;
+  card_type: "credit" | "debit" | "prepaid";
+}[] = [
+  { custom_name: "Axis Amex", issuer_name: "Axis Bank", card_type: "credit" },
+  { custom_name: "Axis Flipkart", issuer_name: "Axis Bank", card_type: "credit" },
+  { custom_name: "Axis MyZone", issuer_name: "Axis Bank", card_type: "credit" },
+  { custom_name: "Flipkart SBI", issuer_name: "State Bank of India", card_type: "credit" },
+  { custom_name: "HDFC Millennia", issuer_name: "HDFC Bank", card_type: "credit" },
+  { custom_name: "HDFC Swiggy", issuer_name: "HDFC Bank", card_type: "credit" },
+  { custom_name: "HDFC Tata Neu Card", issuer_name: "HDFC Bank", card_type: "credit" },
+  { custom_name: "ICICI Coral Rupay", issuer_name: "ICICI Bank", card_type: "credit" },
+  { custom_name: "ICICI Platinum", issuer_name: "ICICI Bank", card_type: "credit" },
+  { custom_name: "Kotak Card", issuer_name: "Kotak Mahindra Bank", card_type: "credit" },
+  { custom_name: "SBI Cashback", issuer_name: "State Bank of India", card_type: "credit" },
+  { custom_name: "SBI Simply Click", issuer_name: "State Bank of India", card_type: "credit" },
+  { custom_name: "SBI Simply Click [Roshni]", issuer_name: "State Bank of India", card_type: "credit" },
+  { custom_name: "Scapia BOB Credit Card", issuer_name: "Scapia", card_type: "credit" },
+];
 
 export async function listUserCards() {
-  return runAction(async () => {
-    const { supabase, householdId } = await requireHouseholdContext();
-    const { data, error } = await supabase
-      .from("user_cards")
-      .select("*")
-      .eq("household_id", householdId)
-      .eq("is_active", true)
-      .order("created_at", { ascending: true });
-    if (error) throw new ActionError(error.message);
-    return (data ?? []) as Tables<"user_cards">[];
+  return runAction(async (): Promise<EnrichedUserCard[]> => {
+    const { supabase, householdId, userId } = await requireHouseholdContext();
+    const [{ data: initialCards, error: cardsError }, { data: rawIssuers }] = await Promise.all([
+      supabase
+        .from("user_cards")
+        .select("*")
+        .eq("household_id", householdId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: true }),
+      supabase.from("card_issuers").select("id, name"),
+    ]);
+    if (cardsError) throw new ActionError(cardsError.message);
+
+    let issuers = rawIssuers ?? [];
+    const issuerMap = new Map(issuers.map((i) => [i.name.toLowerCase(), i.id]));
+    let cards = initialCards ?? [];
+
+    const targetNames = new Set(DEFAULT_HOUSEHOLD_CARDS.map((c) => c.custom_name.toLowerCase()));
+
+    // Deactivate other cards not in the requested 14 list
+    const toDeactivate = cards.filter((c) => !targetNames.has(c.custom_name.toLowerCase()));
+    if (toDeactivate.length > 0) {
+      await supabase
+        .from("user_cards")
+        .update({ is_active: false })
+        .in("id", toDeactivate.map((c) => c.id));
+      cards = cards.filter((c) => targetNames.has(c.custom_name.toLowerCase()));
+    }
+
+    // Ensure all 14 requested cards exist in the database
+    const activeExistingNames = new Set(cards.map((c) => c.custom_name.toLowerCase()));
+    const missingCards = DEFAULT_HOUSEHOLD_CARDS.filter((c) => !activeExistingNames.has(c.custom_name.toLowerCase()));
+
+    if (missingCards.length > 0) {
+      if (!issuerMap.has("scapia") && missingCards.some((m) => m.issuer_name === "Scapia")) {
+        const { data: scapiaIssuer } = await supabase.from("card_issuers").insert({ name: "Scapia" }).select().single();
+        if (scapiaIssuer) {
+          issuerMap.set("scapia", scapiaIssuer.id);
+          issuers = [...issuers, scapiaIssuer];
+        }
+      }
+
+      const inserts = missingCards.map((c) => {
+        let issuerId = issuerMap.get(c.issuer_name.toLowerCase()) ?? null;
+        if (!issuerId) {
+          for (const [name, id] of issuerMap.entries()) {
+            if (c.issuer_name.toLowerCase().includes(name) || name.includes(c.issuer_name.toLowerCase())) {
+              issuerId = id;
+              break;
+            }
+          }
+        }
+        return {
+          household_id: householdId,
+          user_id: userId,
+          custom_name: c.custom_name,
+          issuer_id: issuerId,
+          card_type: c.card_type,
+          is_active: true,
+        };
+      });
+
+      await supabase.from("user_cards").insert(inserts);
+
+      const { data: refreshedCards } = await supabase
+        .from("user_cards")
+        .select("*")
+        .eq("household_id", householdId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: true });
+
+      if (refreshedCards) {
+        cards = refreshedCards;
+      }
+    }
+
+    const idToNameMap = new Map(issuers.map((i) => [i.id, i.name]));
+    const enriched = cards.map((c) => ({
+      ...c,
+      issuer_name: c.issuer_id ? idToNameMap.get(c.issuer_id) ?? null : null,
+    }));
+    return enriched;
   });
 }
 

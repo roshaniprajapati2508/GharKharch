@@ -45,7 +45,7 @@ import { createExpense, updateExpense, type EnrichedExpense } from "@/lib/action
 import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/actions/categories";
 import { listMerchantsForHousehold } from "@/lib/actions/merchants";
 import { listPaymentMethodsForHousehold } from "@/lib/actions/payment-methods";
-import { listUserCards, listUpiProfiles, listBankAccounts } from "@/lib/actions/payment-instruments";
+import { listUserCards, listUpiProfiles, listBankAccounts, DEFAULT_HOUSEHOLD_CARDS, type EnrichedUserCard } from "@/lib/actions/payment-instruments";
 import { getQuickAddChips, type QuickAddChip } from "@/lib/actions/quick-add";
 import { getCategorySuggestion } from "@/lib/actions/intelligence";
 import { getItemPriceMemory, type ItemPriceMemory } from "@/lib/actions/insights";
@@ -136,6 +136,26 @@ const DEFAULT_TOP_CATEGORIES: CategoryWithChildren[] = [
   { id: "seed-personal", name: "Personal", icon: "user", color: "teal", sort_order: 80, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
 ];
 
+const DEFAULT_PRESEEDED_CARDS: EnrichedUserCard[] = DEFAULT_HOUSEHOLD_CARDS.map((c, idx) => ({
+  id: `preseeded-${idx}`,
+  household_id: "",
+  user_id: "",
+  custom_name: c.custom_name,
+  issuer_id: null,
+  issuer_name: c.issuer_name,
+  card_product_id: null,
+  last4: null,
+  network: null,
+  card_type: c.card_type,
+  credit_limit: null,
+  statement_day: null,
+  due_day: null,
+  color: null,
+  is_active: true,
+  created_at: "",
+  updated_at: "",
+}));
+
 export function AddExpenseSheet({
   open,
   onOpenChange,
@@ -179,8 +199,8 @@ export function AddExpenseSheet({
   const [paymentMethods, setPaymentMethods] = useState<Tables<"payment_methods">[]>(
     () => getClientCachedData<Tables<"payment_methods">[]>("payment_methods_active") ?? []
   );
-  const [cards, setCards] = useState<Tables<"user_cards">[]>(
-    () => getClientCachedData<Tables<"user_cards">[]>("user_cards_list") ?? []
+  const [cards, setCards] = useState<EnrichedUserCard[]>(
+    () => getClientCachedData<EnrichedUserCard[]>("user_cards_list") ?? DEFAULT_PRESEEDED_CARDS
   );
   const [upiProfiles, setUpiProfiles] = useState<Tables<"upi_profiles">[]>(
     () => getClientCachedData<Tables<"upi_profiles">[]>("upi_profiles_list") ?? []

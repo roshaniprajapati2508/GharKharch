@@ -1,8 +1,9 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn, formatCardLabel } from "@/lib/utils";
 import { getIcon } from "@/lib/icon-map";
 import type { Tables } from "@/types/database";
+import { type EnrichedUserCard } from "@/lib/actions/payment-instruments";
 
 /** Horizontal chip row of the household's active payment methods (spec section 9, 61). Optional - can stay unset. */
 export function PaymentMethodSelect({
@@ -43,15 +44,28 @@ export function CardQuickPicker({
   cards,
   value,
   onChange,
+  onAddCard,
 }: {
-  cards: Tables<"user_cards">[];
+  cards: (Tables<"user_cards"> | EnrichedUserCard)[];
   value: string | null;
   onChange: (cardId: string | null) => void;
+  onAddCard?: () => void;
 }) {
-  if (cards.length === 0) return null;
+  if (cards.length === 0 && !onAddCard) return null;
   return (
     <div>
-      <p className="mb-1.5 text-xs font-medium text-muted-foreground">Which card?</p>
+      <div className="mb-1.5 flex items-center justify-between">
+        <p className="text-xs font-medium text-muted-foreground">Which card?</p>
+        {onAddCard && (
+          <button
+            type="button"
+            onClick={onAddCard}
+            className="text-xs font-medium text-brand-primary hover:underline"
+          >
+            + Add card
+          </button>
+        )}
+      </div>
       <div className="flex flex-wrap gap-2">
         {cards.map((c) => {
           const active = value === c.id;
@@ -65,8 +79,7 @@ export function CardQuickPicker({
                 active ? "border-primary bg-secondary text-secondary-foreground" : "border-border bg-surface text-muted-foreground hover:bg-muted"
               )}
             >
-              {c.custom_name}
-              {c.last4 ? ` •••• ${c.last4}` : ""}
+              {formatCardLabel(c as EnrichedUserCard)}
             </button>
           );
         })}

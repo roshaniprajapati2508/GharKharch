@@ -612,6 +612,33 @@ export interface Database {
         Args: { p_merchant_id: string; p_household_id: string };
         Returns: void;
       };
+      get_spending_intelligence_bundle: {
+        Args: {
+          p_household_id: string;
+          p_start: string;
+          p_end: string;
+          p_prev_start: string;
+          p_prev_end: string;
+          p_month_start: string;
+          p_month_end: string;
+          p_prev_month_start: string;
+          p_prev_month_end: string;
+        };
+        Returns: {
+          summary: { total: number; txn_count: number; avg_transaction: number };
+          weekday_rows: { weekday_num: number; total: number; txn_count: number }[];
+          daily_rows: { expense_date: string; total: number; txn_count: number }[];
+          expense_type_rows: { expense_type: string; total: number; txn_count: number; share_pct: number }[];
+          person_rows: { paid_by: string; name: string; total: number; txn_count: number; avg_transaction: number }[];
+          recurring_row: { recurring_total: number; recurring_count: number; oneoff_total: number; oneoff_count: number };
+          merchant_current_rows: { merchant_id: string; merchant_name: string; total: number }[];
+          merchant_prev_rows: { merchant_id: string; merchant_name: string; total: number }[];
+          item_current_rows: { item_name: string; total: number }[];
+          item_prev_rows: { item_name: string; total: number }[];
+          category_month_rows: { category_id: string; category_name: string; total: number }[];
+          category_prev_month_rows: { category_id: string; category_name: string; total: number }[];
+        };
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

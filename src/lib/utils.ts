@@ -22,3 +22,41 @@ export function percentChange(current: number, previous: number): number | null 
   if (previous === 0) return current === 0 ? 0 : null;
   return ((current - previous) / previous) * 100;
 }
+
+export function getShortBankName(name?: string | null): string {
+  if (!name) return "";
+  const clean = name.trim();
+  const map: Record<string, string> = {
+    "HDFC Bank": "HDFC",
+    "ICICI Bank": "ICICI",
+    "State Bank of India": "SBI",
+    "Axis Bank": "Axis",
+    "Kotak Mahindra Bank": "Kotak",
+    "IDFC FIRST Bank": "IDFC",
+    "American Express": "Amex",
+    "Bank of Baroda": "BOB",
+    "Punjab National Bank": "PNB",
+    "Federal Bank": "Federal",
+    "IndusInd Bank": "IndusInd",
+    "Standard Chartered": "StanC",
+    "RBL Bank": "RBL",
+    "Yes Bank": "Yes",
+    "Scapia": "Scapia",
+  };
+  return map[clean] ?? clean.replace(/ Bank$/i, "");
+}
+
+export function formatCardLabel(card: { custom_name: string; issuer_name?: string | null; last4?: string | null }): string {
+  const bank = getShortBankName(card.issuer_name);
+  const name = card.custom_name.trim();
+  const last4 = card.last4 ? ` •••• ${card.last4}` : "";
+
+  if (bank) {
+    if (name.toLowerCase().includes(`(${bank.toLowerCase()})`)) {
+      return `${name}${last4}`;
+    }
+    return `${name} (${bank})${last4}`;
+  }
+  return `${name}${last4}`;
+}
+

@@ -18,7 +18,17 @@ type MerchantBreakdownRow = Database["public"]["Functions"]["get_merchant_breakd
 type MerchantMonthlyTrendRow = Database["public"]["Functions"]["get_merchant_monthly_trend"]["Returns"][number];
 type ItemAnalyticsRow = Database["public"]["Functions"]["get_item_analytics"]["Returns"][number];
 type DailySpendingRow = Database["public"]["Functions"]["get_daily_spending"]["Returns"][number];
-type TopExpenseRow = Database["public"]["Functions"]["get_top_expenses"]["Returns"][number];
+export type TopExpenseRow = {
+  id: string;
+  item_name: string;
+  amount: string;
+  expense_date: string;
+  expense_time?: string | null;
+  created_at?: string | null;
+  category_id: string;
+  merchant_id: string | null;
+  paid_by: string;
+};
 type PaymentMethodBreakdownRow = Database["public"]["Functions"]["get_payment_method_breakdown"]["Returns"][number];
 
 export type PersonFilter = "household" | "me" | "partner";
@@ -75,6 +85,20 @@ export async function getDashboardData(filters: AnalyticsFilters) {
     const paidBy = resolvePaidBy(filters, userId, partnerId);
     const previousRange = getPreviousComparableRange(filters.range);
 
+    let topExpensesQuery = supabase
+      .from("expenses")
+      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by")
+      .eq("household_id", householdId)
+      .is("deleted_at", null)
+      .gte("expense_date", filters.range.start)
+      .lte("expense_date", filters.range.end)
+      .order("amount", { ascending: false })
+      .limit(5);
+
+    if (paidBy) {
+      topExpensesQuery = topExpensesQuery.eq("paid_by", paidBy);
+    }
+
     const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, personRes, merchantRes, itemRes, dailyRes, topRes, recentRes] = await Promise.all([
       supabase.rpc("get_expense_summary", {
         p_household_id: householdId,
@@ -123,12 +147,7 @@ export async function getDashboardData(filters: AnalyticsFilters) {
         p_end: filters.range.end,
         p_paid_by: paidBy,
       }),
-      supabase.rpc("get_top_expenses", {
-        p_household_id: householdId,
-        p_start: filters.range.start,
-        p_end: filters.range.end,
-        p_limit: 5,
-      }),
+      topExpensesQuery,
       getExpenses({ start: filters.range.start, end: filters.range.end, paidBy: paidBy ?? "all", sort: "newest", limit: 8 }),
     ]);
 
@@ -150,7 +169,17 @@ export async function getDashboardData(filters: AnalyticsFilters) {
       topMerchants: merchantRes.data ?? [],
       itemAnalytics: itemRes.data ?? [],
       dailySpending: dailyRes.data ?? [],
-      topExpenses: topRes.data ?? [],
+      topExpenses: (topRes.data ?? []).map((e) => ({
+        id: e.id,
+        item_name: e.item_name,
+        amount: String(e.amount),
+        expense_date: e.expense_date,
+        expense_time: e.expense_time ?? null,
+        created_at: e.created_at ?? null,
+        category_id: e.category_id,
+        merchant_id: e.merchant_id ?? null,
+        paid_by: e.paid_by,
+      })),
       recentExpenses: recentRes.data ?? [],
       range: filters.range,
       previousRange,
@@ -190,6 +219,20 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
     const paidBy = resolvePaidBy(filters, userId, partnerId);
     const previousRange = getPreviousComparableRange(filters.range);
 
+    let topExpensesQuery = supabase
+      .from("expenses")
+      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by")
+      .eq("household_id", householdId)
+      .is("deleted_at", null)
+      .gte("expense_date", filters.range.start)
+      .lte("expense_date", filters.range.end)
+      .order("amount", { ascending: false })
+      .limit(10);
+
+    if (paidBy) {
+      topExpensesQuery = topExpensesQuery.eq("paid_by", paidBy);
+    }
+
     const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, merchantRes, prevMerchantRes, itemRes, prevItemRes, dailyRes, topRes, personRes, paymentMethodRes] =
       await Promise.all([
         supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy }),
@@ -201,7 +244,7 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
         supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_limit: 30 }),
         supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_limit: 30 }),
         supabase.rpc("get_daily_spending", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy }),
-        supabase.rpc("get_top_expenses", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_limit: 10 }),
+        topExpensesQuery,
         supabase.rpc("get_person_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end }),
         supabase.rpc("get_payment_method_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end }),
       ]);
@@ -223,7 +266,17 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
       itemAnalytics: itemRes.data ?? [],
       previousItemAnalytics: prevItemRes.data ?? [],
       dailySpending: dailyRes.data ?? [],
-      topExpenses: topRes.data ?? [],
+      topExpenses: (topRes.data ?? []).map((e) => ({
+        id: e.id,
+        item_name: e.item_name,
+        amount: String(e.amount),
+        expense_date: e.expense_date,
+        expense_time: e.expense_time ?? null,
+        created_at: e.created_at ?? null,
+        category_id: e.category_id,
+        merchant_id: e.merchant_id ?? null,
+        paid_by: e.paid_by,
+      })),
       summary: summaryRes.data?.[0] ?? EMPTY_SUMMARY,
       previousSummary: prevSummaryRes.data?.[0] ?? EMPTY_SUMMARY,
       personBreakdown: personRes.data ?? [],

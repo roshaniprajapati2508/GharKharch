@@ -8,6 +8,7 @@ import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/a
 import { getExpenses, createExpense as createExpenseAction, type EnrichedExpense } from "@/lib/actions/expenses";
 import { getPreviousComparableRange, type DateRange } from "@/lib/date-utils";
 import type { Database, Tables } from "@/types/database";
+import type { TopExpenseRow } from "@/lib/actions/analytics";
 
 type ExpenseSummaryRow = Database["public"]["Functions"]["get_expense_summary"]["Returns"][number];
 type CategoryBreakdownRow = Database["public"]["Functions"]["get_category_breakdown"]["Returns"][number];
@@ -15,7 +16,6 @@ type PersonBreakdownRow = Database["public"]["Functions"]["get_person_breakdown"
 type MerchantBreakdownRow = Database["public"]["Functions"]["get_merchant_breakdown"]["Returns"][number];
 type ItemAnalyticsRow = Database["public"]["Functions"]["get_item_analytics"]["Returns"][number];
 type DailySpendingRow = Database["public"]["Functions"]["get_daily_spending"]["Returns"][number];
-type TopExpenseRow = Database["public"]["Functions"]["get_top_expenses"]["Returns"][number];
 
 const EMPTY_SUMMARY: ExpenseSummaryRow = {
   total: "0",
@@ -45,6 +45,16 @@ export async function getReportData(range: DateRange) {
     const { supabase, householdId } = await requireHouseholdContext();
     const previousRange = getPreviousComparableRange(range);
 
+    const topExpensesQuery = supabase
+      .from("expenses")
+      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by")
+      .eq("household_id", householdId)
+      .is("deleted_at", null)
+      .gte("expense_date", range.start)
+      .lte("expense_date", range.end)
+      .order("amount", { ascending: false })
+      .limit(10);
+
     const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, personRes, merchantRes, itemRes, dailyRes, topRes] = await Promise.all([
       supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
       supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end }),
@@ -54,7 +64,7 @@ export async function getReportData(range: DateRange) {
       supabase.rpc("get_merchant_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_limit: 10 }),
       supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_limit: 10 }),
       supabase.rpc("get_daily_spending", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
-      supabase.rpc("get_top_expenses", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_limit: 10 }),
+      topExpensesQuery,
     ]);
 
     if (summaryRes.error) throw new ActionError(summaryRes.error.message);
@@ -76,7 +86,17 @@ export async function getReportData(range: DateRange) {
       merchantBreakdown: merchantRes.data ?? [],
       itemAnalytics: itemRes.data ?? [],
       dailySpending: dailyRes.data ?? [],
-      topExpenses: topRes.data ?? [],
+      topExpenses: (topRes.data ?? []).map((e) => ({
+        id: e.id,
+        item_name: e.item_name,
+        amount: String(e.amount),
+        expense_date: e.expense_date,
+        expense_time: e.expense_time ?? null,
+        created_at: e.created_at ?? null,
+        category_id: e.category_id,
+        merchant_id: e.merchant_id ?? null,
+        paid_by: e.paid_by,
+      })),
     };
   });
 }

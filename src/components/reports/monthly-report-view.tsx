@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { CategoryIcon } from "@/lib/icon-map";
 import { cn, formatINR, percentChange } from "@/lib/utils";
-import { dayGroupLabel } from "@/lib/date-utils";
+import { dayGroupLabel, formatExpenseTime } from "@/lib/date-utils";
 import { generateInsights } from "@/lib/expense-intelligence/spending-analyzer";
 import { useHousehold } from "@/lib/context/household-context";
 import type { ReportData } from "@/lib/actions/reports";
@@ -93,14 +93,21 @@ export function MonthlyReportView({ data }: { data: ReportData }) {
         <section className="mt-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Top purchases</h2>
           <div className="mt-3 flex flex-col gap-2">
-            {data.topExpenses.slice(0, 5).map((e, i) => (
-              <div key={e.id} className="flex items-center justify-between text-sm">
-                <p className="truncate text-foreground">
-                  {i + 1}. {e.item_name} <span className="text-muted-foreground">· {dayGroupLabel(e.expense_date)}</span>
-                </p>
-                <p className="shrink-0 font-semibold text-foreground">{formatINR(e.amount)}</p>
-              </div>
-            ))}
+            {data.topExpenses.slice(0, 5).map((e, i) => {
+              const timeLabel = formatExpenseTime(e.expense_time, e.created_at);
+              return (
+                <div key={e.id} className="flex items-center justify-between text-sm">
+                  <p className="truncate text-foreground">
+                    {i + 1}. <span className="capitalize font-medium">{e.item_name}</span>{" "}
+                    <span className="text-muted-foreground">
+                      · {dayGroupLabel(e.expense_date)}
+                      {timeLabel ? ` · ${timeLabel}` : ""}
+                    </span>
+                  </p>
+                  <p className="shrink-0 font-semibold text-foreground">{formatINR(e.amount)}</p>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
