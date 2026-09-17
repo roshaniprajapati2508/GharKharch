@@ -17,9 +17,9 @@ import {
   Layers,
   Plus,
   Trash2,
-  Receipt,
   ShoppingCart,
   Zap,
+  Check,
 } from "lucide-react";
 import {
   Drawer,
@@ -38,7 +38,7 @@ import { MerchantPicker } from "@/components/expenses/merchant-picker";
 import { PaidBySelector, ExpenseTypeSelector } from "@/components/expenses/person-selector";
 import { CardQuickPicker, UpiQuickPicker, BankQuickPicker } from "@/components/expenses/payment-method-select";
 import { QuickAddBar } from "@/components/shared/quick-add-bar";
-import { CategoryIcon } from "@/lib/icon-map";
+import { getIcon, colorSwatch } from "@/lib/icon-map";
 import { useHousehold } from "@/lib/context/household-context";
 import { getTodayISO, addDaysISO } from "@/lib/date-utils";
 import { createExpense, updateExpense, type EnrichedExpense } from "@/lib/actions/expenses";
@@ -619,11 +619,11 @@ export function AddExpenseSheet({
   return (
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[92vh] flex flex-col focus:outline-none">
+        <DrawerContent showClose={false} className="max-w-lg sm:max-w-xl mx-auto max-h-[92vh] flex flex-col focus:outline-none rounded-t-2xl sm:rounded-t-3xl border-t border-border shadow-2xl bg-card">
           {/* Header */}
-          <DrawerHeader className="px-5 pt-3 pb-2 border-b border-border/50">
+          <DrawerHeader className="px-5 pt-4 pb-2.5 border-b border-border/40">
             <div className="flex items-center justify-between">
-              <DrawerTitle className="text-lg font-bold tracking-tight">
+              <DrawerTitle className="text-lg font-bold tracking-tight text-foreground">
                 {isEditing ? "Edit Expense" : "Add Expense"}
               </DrawerTitle>
 
@@ -633,36 +633,35 @@ export function AddExpenseSheet({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-8 px-2.5 text-xs gap-1 text-primary hover:bg-brand-mint/50"
+                    className="h-8 px-2.5 text-xs gap-1.5 text-brand-primary hover:bg-brand-mint/50 font-medium rounded-full"
                     onClick={() => receiptScanInputRef.current?.click()}
                     disabled={scanning}
                   >
                     {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
-                    <span>{scanning ? "Scanning…" : "Scan"}</span>
+                    <span>{scanning ? "Scanning…" : "Scan receipt"}</span>
                   </Button>
                 )}
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   onClick={() => onOpenChange(false)}
+                  aria-label="Close"
                 >
                   <X className="h-4 w-4" />
-                </Button>
+                </button>
               </div>
             </div>
 
             {/* Mode Switcher Tabs */}
             {isNewExpense && (
-              <div className="mt-2.5 grid grid-cols-2 p-1 bg-muted/70 rounded-xl">
+              <div className="mt-3 grid grid-cols-2 p-1 bg-muted/80 rounded-xl border border-border/40">
                 <button
                   type="button"
                   onClick={() => setEntryMode("single")}
                   className={cn(
-                    "flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                    "flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all",
                     entryMode === "single"
-                      ? "bg-surface text-foreground shadow-sm font-bold"
+                      ? "bg-card text-foreground shadow-sm font-bold scale-[1.01]"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -673,9 +672,9 @@ export function AddExpenseSheet({
                   type="button"
                   onClick={() => setEntryMode("shopping")}
                   className={cn(
-                    "flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                    "flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all",
                     entryMode === "shopping"
-                      ? "bg-surface text-foreground shadow-sm font-bold"
+                      ? "bg-card text-foreground shadow-sm font-bold scale-[1.01]"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -690,14 +689,14 @@ export function AddExpenseSheet({
 
           {/* Quick Add Chips (for new single expense) */}
           {!isEditing && entryMode === "single" && quickAddChips.length > 0 && (
-            <div className="pt-2 pb-1 bg-surface-subtle/50">
+            <div className="pt-2 pb-1.5 px-5 bg-surface-subtle/40 border-b border-border/30">
               <QuickAddBar chips={quickAddChips} onPick={handleQuickAdd} disabled={savingChip !== null} />
             </div>
           )}
 
           {/* SINGLE EXPENSE MODE BODY */}
           {entryMode === "single" ? (
-            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               {/* Hero Amount Input */}
               <div>
                 <AmountInput
@@ -709,14 +708,14 @@ export function AddExpenseSheet({
                 />
 
                 {priceMemory && (
-                  <div className="mt-1 flex items-center justify-between gap-2 rounded-lg bg-brand-mint/70 px-3 py-1.5 text-xs text-brand-primary">
+                  <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-brand-mint/60 border border-brand-primary/15 px-3 py-2 text-xs text-brand-primary">
                     <span>
                       Last: {formatINR(priceMemory.last)} · Typical: {formatINR(priceMemory.typicalLow)}–{formatINR(priceMemory.typicalHigh)}
                     </span>
                     <button
                       type="button"
                       onClick={applyPriceMemory}
-                      className="font-semibold underline hover:opacity-80"
+                      className="font-bold underline hover:opacity-80 shrink-0"
                     >
                       Use {formatINR(priceMemory.last)}
                     </button>
@@ -724,39 +723,55 @@ export function AddExpenseSheet({
                 )}
               </div>
 
-              {/* 1-Tap Category Quick Chips */}
+              {/* 1-Tap Category Quick Chips with Rich Pastel Colors */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                     Category
                   </Label>
                   <button
                     type="button"
                     onClick={() => setCategoryPickerOpen(true)}
-                    className="text-xs font-medium text-brand-primary flex items-center gap-0.5 hover:underline"
+                    className="text-xs font-semibold text-brand-primary flex items-center gap-0.5 hover:underline"
                   >
-                    {form.category ? "Change" : "All categories"} <ChevronRight className="h-3 w-3" />
+                    {form.category ? "Browse full list" : "All categories"} <ChevronRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
                 {/* Quick Select Chips */}
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {topCategories.map((cat) => {
                     const isSelected = form.category?.categoryId === cat.id && !form.category.subcategoryId;
+                    const swatch = colorSwatch(cat.color);
+                    const Icon = getIcon(cat.icon);
+
                     return (
                       <button
                         key={cat.id}
                         type="button"
                         onClick={() => selectQuickCategory(cat)}
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                        style={
                           isSelected
-                            ? "bg-brand-primary text-white shadow-sm ring-2 ring-brand-primary/20 scale-[1.02]"
-                            : "bg-muted/70 text-foreground hover:bg-muted"
+                            ? { backgroundColor: swatch.fg, color: "#ffffff", borderColor: swatch.fg }
+                            : { backgroundColor: swatch.bg, color: swatch.fg, borderColor: swatch.bg }
+                        }
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 shadow-sm",
+                          isSelected
+                            ? "ring-2 ring-brand-primary/30 ring-offset-1 scale-[1.04] shadow"
+                            : "hover:opacity-90 hover:scale-[1.02]"
                         )}
                       >
-                        <CategoryIcon icon={cat.icon} className="h-3.5 w-3.5 shrink-0" />
+                        <span
+                          className={cn(
+                            "flex h-4 w-4 items-center justify-center rounded-full",
+                            isSelected ? "bg-white/20 text-white" : ""
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0" />
+                        </span>
                         <span>{cat.name}</span>
+                        {isSelected && <Check className="h-3 w-3 ml-0.5" />}
                       </button>
                     );
                   })}
@@ -765,10 +780,10 @@ export function AddExpenseSheet({
                     type="button"
                     onClick={() => setCategoryPickerOpen(true)}
                     className={cn(
-                      "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border border-dashed transition-all",
+                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-dashed transition-all",
                       form.category && !topCategories.some((c) => c.id === form.category?.categoryId && !form.category?.subcategoryId)
-                        ? "bg-brand-primary text-white border-brand-primary font-semibold"
-                        : "border-muted-foreground/30 text-muted-foreground hover:bg-muted/50"
+                        ? "bg-brand-primary text-white border-brand-primary shadow-sm font-bold"
+                        : "border-muted-foreground/40 text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
                     <Layers className="h-3.5 w-3.5" />
@@ -783,20 +798,20 @@ export function AddExpenseSheet({
                 </div>
               </div>
 
-              {/* Item / Merchant Input */}
+              {/* Item / Description Input */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <Label htmlFor="item-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <Label htmlFor="item-name" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                     Item / Description
                   </Label>
                   {!isEditing && (
                     <button
                       type="button"
                       onClick={() => setNlEntryOpen(!nlEntryOpen)}
-                      className="text-xs text-primary flex items-center gap-1 hover:underline font-medium"
+                      className="text-xs text-brand-primary flex items-center gap-1 hover:underline font-semibold"
                     >
                       <Sparkles className="h-3 w-3" />
-                      {nlEntryOpen ? "Normal entry" : "Smart parse text"}
+                      {nlEntryOpen ? "Normal input" : "Smart parse text"}
                     </button>
                   )}
                 </div>
@@ -809,9 +824,9 @@ export function AddExpenseSheet({
                       onChange={(e) => setNlText(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && applyNaturalLanguageEntry()}
                       placeholder='e.g. "Milk 60" or "Zudio 1500 card"'
-                      className="flex-1 text-sm"
+                      className="flex-1 text-sm h-11"
                     />
-                    <Button type="button" size="sm" onClick={applyNaturalLanguageEntry} disabled={!nlText.trim()}>
+                    <Button type="button" size="sm" onClick={applyNaturalLanguageEntry} disabled={!nlText.trim()} className="h-11 px-4 font-semibold">
                       Parse
                     </Button>
                   </div>
@@ -822,7 +837,7 @@ export function AddExpenseSheet({
                       value={form.itemName}
                       onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value, merchant: null }))}
                       placeholder="e.g. Milk, Groceries, Petrol, Dinner"
-                      className="flex-1 text-sm h-11"
+                      className="flex-1 text-sm h-11 bg-background"
                     />
                     <Button
                       type="button"
@@ -842,7 +857,7 @@ export function AddExpenseSheet({
                   <button
                     type="button"
                     onClick={() => applyMerchant(merchantHint)}
-                    className="mt-2 flex w-full items-center justify-between rounded-lg bg-muted/80 px-3 py-2 text-left text-xs text-foreground hover:bg-muted"
+                    className="mt-2 flex w-full items-center justify-between rounded-xl bg-muted px-3 py-2 text-left text-xs text-foreground hover:bg-muted/80"
                   >
                     <span>Did you mean <strong>{merchantHint.name}</strong>?</span>
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
@@ -854,12 +869,12 @@ export function AddExpenseSheet({
                   <button
                     type="button"
                     onClick={applySuggestion}
-                    className="mt-2 flex w-full items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-xs text-brand-primary hover:opacity-90"
+                    className="mt-2 flex w-full items-center justify-between gap-2 rounded-xl bg-brand-mint border border-brand-primary/20 px-3 py-2 text-left text-xs text-brand-primary hover:opacity-95"
                   >
                     <span>
-                      Suggested: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> ({suggestion.reason})
+                      Suggested category: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> ({suggestion.reason})
                     </span>
-                    <span className="font-semibold underline shrink-0">Apply</span>
+                    <span className="font-bold underline shrink-0">Apply</span>
                   </button>
                 )}
               </div>
@@ -867,14 +882,14 @@ export function AddExpenseSheet({
               {/* Paid By & Expense Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                     Paid By
                   </Label>
                   <PaidBySelector value={form.paidBy} onChange={(v) => setForm((f) => ({ ...f, paidBy: v }))} />
                 </div>
 
                 <div>
-                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                     Type
                   </Label>
                   <ExpenseTypeSelector value={form.expenseType} onChange={(v) => setForm((f) => ({ ...f, expenseType: v }))} />
@@ -883,10 +898,10 @@ export function AddExpenseSheet({
 
               {/* Payment Method Quick Pills */}
               <div>
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                   Payment Method
                 </Label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {COMMON_PAYMENT_METHODS.map((m) => {
                     const isSelected = form.paymentMethod === m.id;
                     const Icon = m.icon;
@@ -904,10 +919,10 @@ export function AddExpenseSheet({
                           }))
                         }
                         className={cn(
-                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                          "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
                           isSelected
-                            ? "bg-brand-primary text-white shadow-sm ring-2 ring-brand-primary/20"
-                            : "bg-muted text-foreground hover:bg-muted/80"
+                            ? "bg-brand-primary text-white border-brand-primary shadow-sm ring-2 ring-brand-primary/20 scale-[1.02]"
+                            : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
                         )}
                       >
                         <Icon className="h-3.5 w-3.5" />
@@ -919,17 +934,17 @@ export function AddExpenseSheet({
 
                 {/* Specific Instrument Quick Pickers */}
                 {(form.paymentMethod === "Credit Card" || form.paymentMethod === "Debit Card") && cards.length > 0 && (
-                  <div className="mt-2">
+                  <div className="mt-2.5">
                     <CardQuickPicker cards={cards} value={form.cardId} onChange={(v) => setForm((f) => ({ ...f, cardId: v }))} />
                   </div>
                 )}
                 {form.paymentMethod === "UPI" && upiProfiles.length > 0 && (
-                  <div className="mt-2">
+                  <div className="mt-2.5">
                     <UpiQuickPicker profiles={upiProfiles} value={form.upiProfileId} onChange={(v) => setForm((f) => ({ ...f, upiProfileId: v }))} />
                   </div>
                 )}
                 {form.paymentMethod === "Bank Transfer" && bankAccounts.length > 0 && (
-                  <div className="mt-2">
+                  <div className="mt-2.5">
                     <BankQuickPicker accounts={bankAccounts} value={form.bankAccountId} onChange={(v) => setForm((f) => ({ ...f, bankAccountId: v }))} />
                   </div>
                 )}
@@ -938,7 +953,7 @@ export function AddExpenseSheet({
               {/* Date & Optional Notes Inline */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                     Date
                   </Label>
                   <div className="flex gap-1.5 items-center">
@@ -946,8 +961,10 @@ export function AddExpenseSheet({
                       type="button"
                       onClick={() => setForm((f) => ({ ...f, date: todayIso }))}
                       className={cn(
-                        "px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
-                        form.date === todayIso ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-foreground hover:bg-muted/80"
+                        "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                        form.date === todayIso
+                          ? "bg-brand-primary text-white border-brand-primary"
+                          : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
                       )}
                     >
                       Today
@@ -956,8 +973,10 @@ export function AddExpenseSheet({
                       type="button"
                       onClick={() => setForm((f) => ({ ...f, date: yesterdayIso }))}
                       className={cn(
-                        "px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
-                        form.date === yesterdayIso ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-foreground hover:bg-muted/80"
+                        "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                        form.date === yesterdayIso
+                          ? "bg-brand-primary text-white border-brand-primary"
+                          : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
                       )}
                     >
                       Yesterday
@@ -966,13 +985,13 @@ export function AddExpenseSheet({
                       type="date"
                       value={form.date}
                       onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                      className="h-8 text-xs flex-1"
+                      className="h-9 text-xs flex-1 bg-background"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="notes" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  <Label htmlFor="notes" className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                     Notes (Optional)
                   </Label>
                   <Input
@@ -980,22 +999,22 @@ export function AddExpenseSheet({
                     value={form.notes}
                     onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                     placeholder="e.g. Split with friends, monthly bill"
-                    className="h-8 text-xs"
+                    className="h-9 text-xs bg-background"
                   />
                 </div>
               </div>
 
               {/* Receipt Attachment Status */}
               {receiptFile && (
-                <div className="flex items-center justify-between rounded-lg bg-brand-mint/50 px-3 py-2 text-xs text-brand-primary">
-                  <span className="flex items-center gap-1.5 font-medium truncate">
+                <div className="flex items-center justify-between rounded-xl bg-brand-mint/60 border border-brand-primary/20 px-3.5 py-2 text-xs text-brand-primary">
+                  <span className="flex items-center gap-2 font-semibold truncate">
                     <Paperclip className="h-3.5 w-3.5 shrink-0" />
                     {receiptFile.name}
                   </span>
                   <button
                     type="button"
                     onClick={() => setReceiptFile(null)}
-                    className="text-muted-foreground hover:text-destructive p-1"
+                    className="text-muted-foreground hover:text-destructive p-1 rounded-md"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -1004,32 +1023,30 @@ export function AddExpenseSheet({
             </div>
           ) : (
             /* SHOPPING / MULTI-ITEM MODE BODY */
-            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  Add multiple items from a grocery or mart run in one go. Each item becomes its own expense.
-                </p>
-              </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Add multiple items from a grocery or mart run in one go. Each item becomes its own individually tracked expense.
+              </p>
 
               <div className="flex flex-col gap-2.5">
                 {shoppingRows.map((row, i) => (
                   <div
                     key={row.key}
-                    className="flex items-center gap-2 rounded-xl border border-input/60 bg-surface p-2.5 shadow-sm"
+                    className="flex items-center gap-2 rounded-xl border border-border/70 bg-surface p-2.5 shadow-sm"
                   >
                     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                       <Input
                         value={row.itemName}
                         onChange={(e) => updateShoppingRow(row.key, { itemName: e.target.value })}
                         placeholder={`Item ${i + 1}, e.g. Milk, Apples`}
-                        className="h-9 text-sm"
+                        className="h-9 text-sm bg-background"
                       />
                       <button
                         type="button"
                         onClick={() => setShoppingCategoryRowKey(row.key)}
                         className="flex h-8 items-center justify-between rounded-md bg-muted px-2.5 text-left text-xs text-foreground hover:bg-muted/80"
                       >
-                        <span className="truncate">
+                        <span className="truncate font-medium">
                           {row.category
                             ? `${row.category.categoryName}${row.category.subcategoryName ? ` · ${row.category.subcategoryName}` : ""}`
                             : "Choose category"}
@@ -1043,7 +1060,7 @@ export function AddExpenseSheet({
                       onChange={(e) => updateShoppingRow(row.key, { amount: e.target.value.replace(/[^0-9.]/g, "") })}
                       inputMode="decimal"
                       placeholder="₹0"
-                      className="h-9 w-24 text-right font-semibold text-sm"
+                      className="h-9 w-24 text-right font-bold text-sm bg-background"
                     />
 
                     <Button
@@ -1064,7 +1081,7 @@ export function AddExpenseSheet({
                   type="button"
                   variant="outline"
                   onClick={addShoppingRow}
-                  className="w-full h-10 border-dashed gap-1.5 text-xs font-semibold"
+                  className="w-full h-10 border-dashed gap-1.5 text-xs font-bold"
                 >
                   <Plus className="h-4 w-4" /> Add another item
                 </Button>
@@ -1073,25 +1090,25 @@ export function AddExpenseSheet({
           )}
 
           {/* Footer Action */}
-          <DrawerFooter className="px-5 py-3 border-t border-border/50 bg-surface">
+          <DrawerFooter className="px-5 py-3.5 border-t border-border/40 bg-card">
             {entryMode === "single" ? (
               <Button
                 size="lg"
-                className="w-full h-12 text-base font-bold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-md"
+                className="w-full h-12 text-base font-bold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-md rounded-xl"
                 onClick={handleSubmitSingle}
                 loading={submitting}
               >
                 {isEditing ? "Save changes" : "Save Expense"}
               </Button>
             ) : (
-              <div className="flex flex-col gap-2 w-full">
+              <div className="flex flex-col gap-2.5 w-full">
                 <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
                   <span>{validShoppingRows.length} item{validShoppingRows.length === 1 ? "" : "s"} ready</span>
                   <span className="text-sm font-bold text-foreground">Total: {formatINR(shoppingTotal)}</span>
                 </div>
                 <Button
                   size="lg"
-                  className="w-full h-12 text-base font-bold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-md"
+                  className="w-full h-12 text-base font-bold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-md rounded-xl"
                   onClick={handleSaveShopping}
                   disabled={submitting || validShoppingRows.length === 0}
                   loading={submitting}
