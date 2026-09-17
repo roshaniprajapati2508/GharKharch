@@ -25,6 +25,11 @@ export function getTodayISO(): string {
   return toKolkataISODate(new Date());
 }
 
+/** Normalizes any Date to the 1st of its month in YYYY-MM-01 format. */
+export function toPeriodMonth(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
 /** Parses a YYYY-MM-DD string into a UTC-midnight Date (safe for date-fns arithmetic on the calendar date only). */
 export function parseISODate(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);

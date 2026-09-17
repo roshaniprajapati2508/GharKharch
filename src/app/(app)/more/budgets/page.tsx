@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CategoryIcon } from "@/lib/icon-map";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
-import { listBudgetsForMonth, upsertBudget, deleteBudget, toPeriodMonth, type BudgetWithProgress } from "@/lib/actions/budgets";
+import { listBudgetsForMonth, upsertBudget, deleteBudget, type BudgetWithProgress } from "@/lib/actions/budgets";
 import { listCategoriesForHousehold } from "@/lib/actions/categories";
+import { toPeriodMonth } from "@/lib/date-utils";
 import { formatINR } from "@/lib/utils";
 import type { Tables } from "@/types/database";
 
