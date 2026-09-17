@@ -140,7 +140,7 @@ as $$
       else null
     end as avg_gap_days,
     round(
-      sum(e.amount) / greatest(extract(day from (max(e.expense_date) - min(e.expense_date)))::numeric / 30.0, 1),
+      sum(e.amount) / greatest((max(e.expense_date) - min(e.expense_date))::numeric / 30.0, 1),
       2
     ) as estimated_monthly_spend
   from expenses e
