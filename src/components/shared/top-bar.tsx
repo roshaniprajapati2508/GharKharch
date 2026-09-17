@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -11,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Logo } from "@/components/shared/logo";
+import { FullLogo } from "@/components/shared/logo";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useHousehold } from "@/lib/context/household-context";
@@ -19,8 +20,10 @@ import { useHousehold } from "@/lib/context/household-context";
 export function TopBar() {
   const router = useRouter();
   const { displayName, householdName } = useHousehold();
+  const [signingOut, setSigningOut] = useState(false);
 
   async function signOut() {
+    setSigningOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
     router.replace("/login");
@@ -36,10 +39,10 @@ export function TopBar() {
 
   return (
     <header className="safe-top sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
-      <div className="md:hidden">
-        <Logo />
+      <div className="sm:hidden">
+        <FullLogo width={60} className="h-auto w-auto" />
       </div>
-      <div className="hidden text-sm text-muted-foreground md:block">{householdName}</div>
+      <div className="hidden text-sm text-muted-foreground sm:block">{householdName}</div>
 
       <div className="flex items-center gap-1">
         <Link
@@ -62,8 +65,9 @@ export function TopBar() {
             <DropdownMenuItem asChild>
               <Link href="/more">Settings</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={signOut} className="text-destructive">
-              Sign out
+            <DropdownMenuItem onClick={signOut} disabled={signingOut} className="text-destructive">
+              {signingOut && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {signingOut ? "Signing out…" : "Sign out"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

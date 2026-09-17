@@ -28,7 +28,13 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           <div className="no-print contents">
             <TopBar />
           </div>
-          <main className="flex-1 px-4 pb-28 pt-4 md:px-6 md:pb-8 md:pt-6 print:px-0 print:pb-0 print:pt-0">
+          {/* Bottom padding on phones must clear the bottom nav bar *and* the
+              floating Add button, which is raised half outside the bar
+              (see bottom-nav.tsx) — 5rem covers both with a small buffer,
+              plus the device's own safe-area inset on top of that. From
+              `sm` up there's no bottom nav (SidebarNav takes over), so it
+              drops back to ordinary page padding. */}
+          <main className="flex-1 px-4 pt-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-8 sm:pt-6 print:px-0 print:pb-0 print:pt-0">
             <div className="mx-auto w-full max-w-5xl">
               <PageTransition>{children}</PageTransition>
             </div>

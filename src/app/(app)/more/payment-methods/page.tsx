@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, Plus, Pencil, Trash2, CreditCard, Landmark, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -27,6 +28,18 @@ import {
   listCardCatalogue,
 } from "@/lib/actions/payment-instruments";
 import type { Tables } from "@/types/database";
+
+// Shared enter/exit for every list row below (add/edit/remove should read as
+// a visible change, not an instant re-render) — framer-motion's global
+// `MotionConfig reducedMotion="user"` in app-shell.tsx already collapses
+// this to an instant snap under prefers-reduced-motion.
+const ROW_MOTION = {
+  layout: true as const,
+  initial: { opacity: 0, height: 0 },
+  animate: { opacity: 1, height: "auto" },
+  exit: { opacity: 0, height: 0 },
+  transition: { duration: 0.18, ease: "easeOut" as const },
+};
 
 export default function PaymentMethodsSettingsPage() {
   return (
@@ -125,10 +138,11 @@ function MethodsTab() {
         </Button>
       </div>
       <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
+        <AnimatePresence initial={false}>
         {methods.map((m) => {
           const Icon = getIcon(m.icon);
           return (
-            <div key={m.id} className="flex items-center gap-3 px-3 py-2.5">
+            <motion.div key={m.id} {...ROW_MOTION} className="flex items-center gap-3 overflow-hidden px-3 py-2.5">
               <Icon className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground">{m.name}</span>
               {m.is_default && <span className="ml-2 text-[11px] text-muted-foreground">Default</span>}
@@ -149,9 +163,10 @@ function MethodsTab() {
                   </button>
                 )}
               </div>
-            </div>
+            </motion.div>
           );
         })}
+        </AnimatePresence>
       </div>
 
       <ConfirmationDialog
@@ -245,8 +260,9 @@ function CardsTab() {
         GharKharch only stores the card name, issuer, network, and last 4 digits for spend tracking — never a full card number, CVV, or PIN.
       </p>
       <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
+        <AnimatePresence initial={false}>
         {cards.map((c) => (
-          <div key={c.id} className="flex items-center gap-3 px-3 py-2.5">
+          <motion.div key={c.id} {...ROW_MOTION} className="flex items-center gap-3 overflow-hidden px-3 py-2.5">
             <CreditCard className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">
               {c.custom_name}
@@ -260,8 +276,9 @@ function CardsTab() {
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
         {cards.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">No cards added yet.</p>}
       </div>
 
@@ -395,8 +412,9 @@ function UpiTab() {
         </Button>
       </div>
       <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
+        <AnimatePresence initial={false}>
         {profiles.map((p) => (
-          <div key={p.id} className="flex items-center gap-3 px-3 py-2.5">
+          <motion.div key={p.id} {...ROW_MOTION} className="flex items-center gap-3 overflow-hidden px-3 py-2.5">
             <QrCode className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">{p.label}</span>
             <div className="ml-auto flex items-center gap-0.5">
@@ -414,8 +432,9 @@ function UpiTab() {
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
         {profiles.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">No UPI profiles added yet.</p>}
       </div>
 
@@ -516,8 +535,9 @@ function BanksTab() {
         <Plus className="h-4 w-4" /> Add bank account
       </Button>
       <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
+        <AnimatePresence initial={false}>
         {accounts.map((a) => (
-          <div key={a.id} className="flex items-center gap-3 px-3 py-2.5">
+          <motion.div key={a.id} {...ROW_MOTION} className="flex items-center gap-3 overflow-hidden px-3 py-2.5">
             <Landmark className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">
               {a.bank_name}
@@ -539,8 +559,9 @@ function BanksTab() {
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
         {accounts.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">No bank accounts added yet.</p>}
       </div>
 

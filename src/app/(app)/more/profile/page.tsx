@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useHousehold } from "@/lib/context/household-context";
 import { getMyProfile, updateMyProfile, setMyAvatarUrl } from "@/lib/actions/profile";
 import { ProfileIllustration } from "@/components/shared/illustrations";
+import { PhotoCropDialog } from "@/components/shared/photo-crop-dialog";
 import { cn } from "@/lib/utils";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB, matches the storage bucket's file_size_limit (migration 012)
@@ -28,6 +29,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingCropFile, setPendingCropFile] = useState<File | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -57,7 +59,7 @@ export default function ProfilePage() {
     toast.success("Profile updated");
   }
 
-  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -71,17 +73,24 @@ export default function ProfilePage() {
       return;
     }
 
+    // Don't upload yet — let the person choose which part of the photo
+    // lands inside the circular avatar first (see PhotoCropDialog).
+    setPendingCropFile(file);
+  }
+
+  async function handleCropped(blob: Blob) {
     setUploading(true);
     const previousUrl = avatarUrl;
     try {
       const supabase = createClient();
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `${userId}/avatar.${ext}`;
+      // Cropped output is always a JPEG (see getCroppedImageBlob), regardless
+      // of the source file's original format.
+      const path = `${userId}/avatar.jpg`;
 
-      const { error: uploadError } = await supabase.storage.from("profile-images").upload(path, file, {
+      const { error: uploadError } = await supabase.storage.from("profile-images").upload(path, blob, {
         upsert: true,
         cacheControl: "3600",
-        contentType: file.type,
+        contentType: "image/jpeg",
       });
       if (uploadError) throw uploadError;
 
@@ -93,12 +102,14 @@ export default function ProfilePage() {
       if (result.error !== null) throw new Error(result.error);
 
       setAvatarUrl(bustedUrl);
+      setPendingCropFile(null);
       toast.success("Photo updated");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't upload that photo", {
         action: { label: "Retry", onClick: () => fileInputRef.current?.click() },
       });
       setAvatarUrl(previousUrl);
+      setPendingCropFile(null);
     } finally {
       setUploading(false);
     }
@@ -159,6 +170,7 @@ export default function ProfilePage() {
                 {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
               </button>
               <input ref={fileInputRef} type="file" accept={ALLOWED_TYPES.join(",")} className="hidden" onChange={handleFileSelected} />
+              <PhotoCropDialog file={pendingCropFile} onCancel={() => setPendingCropFile(null)} onCropped={handleCropped} />
             </div>
             {avatarUrl && !uploading && (
               <button onClick={handleRemovePhoto} className="flex items-center gap-1 text-xs font-medium text-destructive">

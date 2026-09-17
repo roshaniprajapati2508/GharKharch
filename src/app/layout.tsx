@@ -1,10 +1,25 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource/inter/400.css";
-import "@fontsource/inter/500.css";
-import "@fontsource/inter/600.css";
-import "@fontsource/inter/700.css";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
+
+// Typography system: Plus Jakarta Sans for headings/titles, Inter for body/UI
+// text — both self-hosted at build time via next/font (zero layout shift,
+// no external request at runtime) and exposed as CSS variables that
+// globals.css's `@theme` block turns into the `font-sans`/`font-body` and
+// `font-heading`/`font-headings` Tailwind utilities.
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
+});
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-jakarta",
+  weight: ["500", "600", "700", "800"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -37,7 +52,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-IN">
+    <html lang="en-IN" className={`${inter.variable} ${plusJakartaSans.variable}`}>
       <body className="antialiased">
         {children}
         <Toaster />

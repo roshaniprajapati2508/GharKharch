@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, Plus, Pencil, Store, Trash2, Search, X, Tags } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -201,8 +202,17 @@ export default function MerchantsSettingsPage() {
         </div>
       ) : (
         <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
+          <AnimatePresence initial={false}>
           {filtered.map((m) => (
-            <div key={m.id} className="flex w-full items-center gap-3 px-3 py-2.5 text-left">
+            <motion.div
+              key={m.id}
+              layout
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="flex w-full items-center gap-3 overflow-hidden px-3 py-2.5 text-left"
+            >
               <button
                 onClick={() => {
                   if (m.household_id) {
@@ -256,8 +266,9 @@ export default function MerchantsSettingsPage() {
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
-            </div>
+            </motion.div>
           ))}
+          </AnimatePresence>
           {filtered.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">No merchants match.</p>}
         </div>
       )}

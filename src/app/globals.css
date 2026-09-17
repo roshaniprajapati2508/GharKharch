@@ -154,7 +154,17 @@
   --radius-xl: var(--radius-card-lg);
   --radius-sheet: var(--radius-sheet);
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Typography (spec: headings & titles use Plus Jakarta Sans, body & UI text
+     uses Inter, timers/codes/tokens use the native monospace stack). The
+     --font-inter/--font-jakarta variables are injected by next/font in
+     layout.tsx; declaring the Tailwind-facing tokens under different names
+     avoids a self-referencing CSS variable. Each generates a Tailwind
+     utility: font-sans/font-body, font-heading/font-headings, font-mono. */
+  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: var(--font-jakarta), "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-headings: var(--font-jakarta), "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 body {
@@ -163,11 +173,41 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Headings default to Plus Jakarta Sans; body copy stays on Inter via `body`
+   above. `.font-heading`/`.font-headings` (generated from the @theme tokens
+   above) let any element opt into the same face explicitly. */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading), "Plus Jakarta Sans", sans-serif;
+}
+
+/* Timers, codes, and other fixed-width tokens: pair `font-mono` (the
+   @theme token above) with Tailwind's built-in `tabular-nums` utility so
+   digits don't shift width as they change, e.g. className="font-mono
+   tabular-nums". */
+
 /* Comfortable minimum touch targets on hand-held devices */
 @media (pointer: coarse) {
   button, a[role="button"] {
     min-height: 44px;
   }
+}
+
+/* Baseline hover/press feedback for every interactive control. Individual
+   components (Button, etc.) already declare their own hover/active states,
+   but a great many small icon-only controls across the app (row actions,
+   dropdown items, tabs) only set a `hover:bg-*` class with no transition —
+   the color change was correct but happened as an instant snap rather than
+   a smooth fade, which read as "nothing is interactive" even though hover
+   states existed. This applies a short, universal fade to color/background/
+   border/shadow changes on every button, link, and menu item, site-wide,
+   without having to touch each of those call sites individually. Movement
+   (transform/scale) is deliberately left out here — that's still opted into
+   per-component (see Button) so it can be disabled under prefers-reduced-
+   motion at the source; a color fade alone is not a vestibular concern. */
+button, a, [role="button"], [role="menuitem"], [role="tab"] {
+  transition-property: background-color, color, border-color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 /* Respect device safe areas (spec item: accessibility — safe-area insets) for
