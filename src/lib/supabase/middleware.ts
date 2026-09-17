@@ -34,7 +34,17 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthRoute = path.startsWith("/login") || path.startsWith("/signup") || path.startsWith("/auth");
-  const isProtectedRoute = !isAuthRoute && path !== "/";
+  // Public marketing/SEO surface (spec: "SEO & Discoverability Layer" section 1/12) -
+  // must stay reachable by anonymous visitors and crawlers, since they never carry
+  // a Supabase session cookie. Keep this list in sync with lib/seo/site.ts's
+  // PUBLIC_PATHS plus the Next.js metadata-route conventions it doesn't cover.
+  const isPublicSeoRoute =
+    path === "/privacy" ||
+    path === "/terms" ||
+    path === "/opengraph-image" ||
+    path === "/robots.txt" ||
+    path === "/sitemap.xml";
+  const isProtectedRoute = !isAuthRoute && !isPublicSeoRoute && path !== "/";
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
