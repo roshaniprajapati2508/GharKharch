@@ -78,7 +78,7 @@ export function ItemAnalyticsTab({
 
       {view === "growing" ? (
         growing.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Nothing is trending up yet - check back after a couple of months.</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">Nothing is trending up yet — check back after a couple of months.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {growing.slice(0, 15).map((item) => (
@@ -105,7 +105,9 @@ export function ItemAnalyticsTab({
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-sm font-semibold text-foreground">{formatINR(item.total)}</p>
-                <p className="text-[11px] text-muted-foreground">last {dayGroupLabel(item.last_date)}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  ~{formatINR(item.estimated_monthly_spend)}/mo · last {dayGroupLabel(item.last_date)}
+                </p>
               </div>
             </div>
           ))}

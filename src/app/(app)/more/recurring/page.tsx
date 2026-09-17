@@ -13,11 +13,13 @@ import { CategoryIcon } from "@/lib/icon-map";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
 import {
   listRecurringExpenses,
+  getRecurringSummary,
   createRecurringExpense,
   updateRecurringExpense,
   setRecurringActive,
   deleteRecurringExpense,
   type RecurringWithCategory,
+  type RecurringSummary,
 } from "@/lib/actions/recurring";
 import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/actions/categories";
 import { formatINR } from "@/lib/utils";
@@ -54,6 +56,7 @@ function emptyForm(): FormState {
 
 export default function RecurringExpensesPage() {
   const [rules, setRules] = useState<RecurringWithCategory[]>([]);
+  const [summary, setSummary] = useState<RecurringSummary | null>(null);
   const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<FormState | null>(null);
@@ -63,8 +66,13 @@ export default function RecurringExpensesPage() {
 
   async function load() {
     setLoading(true);
-    const [rulesResult, categoriesResult] = await Promise.all([listRecurringExpenses(), listCategoriesForHousehold()]);
+    const [rulesResult, summaryResult, categoriesResult] = await Promise.all([
+      listRecurringExpenses(),
+      getRecurringSummary(),
+      listCategoriesForHousehold(),
+    ]);
     if (rulesResult.data) setRules(rulesResult.data);
+    if (summaryResult.data) setSummary(summaryResult.data);
     if (categoriesResult.data) setCategoryTree(categoriesResult.data.tree);
     setLoading(false);
   }
@@ -157,8 +165,40 @@ export default function RecurringExpensesPage() {
         <h1 className="text-xl font-bold tracking-tight text-foreground">Recurring expenses</h1>
       </div>
       <p className="-mt-3 text-xs text-muted-foreground">
-        Track rent, subscriptions, EMIs and other bills that repeat. GharKharch will never log an expense on its own from these - they&apos;re just bookkeeping for what to expect.
+        Track rent, subscriptions, EMIs and other bills that repeat. GharKharch will never log an expense on its own from these — they&apos;re just bookkeeping for what to expect.
       </p>
+
+      {!loading && summary && summary.upcoming.length > 0 && (
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <div className="flex items-baseline justify-between">
+            <p className="text-sm font-medium text-foreground">Total monthly recurring</p>
+            <p className="text-lg font-bold text-foreground">{formatINR(summary.monthlyTotal)}</p>
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">Every active rule, normalized to a monthly amount</p>
+        </div>
+      )}
+
+      {!loading && summary && summary.upcoming.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium text-muted-foreground">Upcoming</p>
+          <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
+            {summary.upcoming.slice(0, 5).map((r) => (
+              <div key={r.id} className="flex items-center gap-3 px-3 py-2.5">
+                <CategoryIcon icon={r.category_icon} color={r.category_color} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">{r.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {r.next_due_date
+                      ? `Due ${new Date(r.next_due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+                      : "No due date set"}
+                  </p>
+                </div>
+                <p className="shrink-0 text-sm font-semibold text-foreground">{formatINR(r.amount)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-col gap-2">
@@ -256,7 +296,7 @@ export default function RecurringExpensesPage() {
                       <option value={top.id}>{top.name}</option>
                       {top.children.map((child) => (
                         <option key={child.id} value={child.id}>
-                          {"- " + child.name}
+                          {"— " + child.name}
                         </option>
                       ))}
                     </Fragment>
@@ -309,7 +349,7 @@ export default function RecurringExpensesPage() {
         open={!!removeTarget}
         onOpenChange={(open) => !open && setRemoveTarget(null)}
         title={`Remove "${removeTarget?.name}"?`}
-        description="Past expenses already logged from this rule keep their amount and category - they just won't be tagged as recurring anymore."
+        description="Past expenses already logged from this rule keep their amount and category — they just won't be tagged as recurring anymore."
         confirmLabel="Remove"
         destructive
         onConfirm={handleDelete}

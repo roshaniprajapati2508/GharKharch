@@ -171,7 +171,7 @@ export interface Database {
           item_name: string;
           category_id: string;
           subcategory_id: string | null;
-          payment_method: string | null; // free text, matches a payment_methods.name (see migration 005) - not a fixed enum
+          payment_method: string | null; // free text, matches a payment_methods.name (see migration 005) — not a fixed enum
           card_id: string | null;
           upi_profile_id: string | null;
           bank_account_id: string | null;
@@ -476,8 +476,14 @@ export interface Database {
           txn_count: number;
           avg_transaction: string;
           highest_transaction: string;
+          lowest_transaction: string;
           last_expense_date: string;
+          share_pct: string;
         }[];
+      };
+      get_merchant_monthly_trend: {
+        Args: { p_household_id: string; p_merchant_id: string; p_months?: number };
+        Returns: { month: string; total: string }[];
       };
       get_item_analytics: {
         Args: { p_household_id: string; p_start: string; p_end: string; p_limit?: number };
@@ -489,7 +495,12 @@ export interface Database {
           first_date: string;
           last_date: string;
           avg_gap_days: string | null;
+          estimated_monthly_spend: string;
         }[];
+      };
+      get_payment_method_breakdown: {
+        Args: { p_household_id: string; p_start: string; p_end: string };
+        Returns: { payment_method: string; total: string; txn_count: number; share_pct: string }[];
       };
       get_daily_spending: {
         Args: { p_household_id: string; p_start: string; p_end: string; p_paid_by?: string | null };

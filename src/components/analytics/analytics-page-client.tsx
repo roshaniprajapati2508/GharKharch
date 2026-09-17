@@ -9,6 +9,7 @@ import { SpendingTrendChart } from "@/components/dashboard/spending-trend-chart"
 import { CategoryAnalyticsTab } from "@/components/analytics/category-analytics-tab";
 import { MerchantAnalyticsTab } from "@/components/analytics/merchant-analytics-tab";
 import { ItemAnalyticsTab } from "@/components/analytics/item-analytics-tab";
+import { PaymentMethodAnalyticsTab } from "@/components/analytics/payment-method-analytics-tab";
 import { SpendingCalendar } from "@/components/analytics/spending-calendar";
 import { MonthlyComparisonCard } from "@/components/analytics/monthly-comparison-card";
 import { TopExpensesList } from "@/components/analytics/top-expenses-list";
@@ -61,6 +62,7 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
 
   useEffect(() => {
     if (!initialData && !data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount when no SSR/cached data is available
       load(range, person);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,6 +116,7 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
               <TabsTrigger value="categories">Categories</TabsTrigger>
               <TabsTrigger value="merchants">Merchants</TabsTrigger>
               <TabsTrigger value="items">Items</TabsTrigger>
+              <TabsTrigger value="payments">Payments</TabsTrigger>
               <TabsTrigger value="calendar">Calendar</TabsTrigger>
             </TabsList>
           </div>
@@ -147,6 +150,10 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
 
           <TabsContent value="items">
             <ItemAnalyticsTab items={data.itemAnalytics} previousItems={data.previousItemAnalytics} />
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <PaymentMethodAnalyticsTab methods={data.paymentMethodBreakdown} />
           </TabsContent>
 
           <TabsContent value="calendar">

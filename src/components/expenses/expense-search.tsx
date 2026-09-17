@@ -26,8 +26,17 @@ function saveRecent(query: string) {
   window.localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
 }
 
-/** Parses a small set of operators from spec section 20's examples: ">5000", "wife", "september", or a plain text search. */
-function parseSearchIntent(query: string, partnerName?: string) {
+type CategoryLite = { id: string; name: string; parent_id: string | null };
+type MerchantLite = { id: string; name: string };
+
+/**
+ * Parses a small set of operators from spec section 20's examples: ">5000",
+ * "wife", "september", a category/subcategory name, a merchant name, or a
+ * plain text search. Category/merchant matching is partial and case
+ * insensitive against the already-fetched lists (no extra round trip) — a
+ * parent category match also pulls in all of its subcategory ids.
+ */
+function parseSearchIntent(query: string, partnerName: string | undefined, categories: CategoryLite[], merchants: MerchantLite[]) {
   const trimmed = query.trim();
   const amountMatch = trimmed.match(/^([<>]=?)\s*(\d+(\.\d+)?)$/);
   if (amountMatch) {
@@ -44,6 +53,20 @@ function parseSearchIntent(query: string, partnerName?: string) {
   ];
   const monthIndex = months.indexOf(lower);
   if (monthIndex >= 0) return { type: "month" as const, monthIndex };
+
+  if (lower.length >= 2) {
+    const matchedCategory = categories.find((c) => c.name.toLowerCase().includes(lower));
+    if (matchedCategory) {
+      const categoryIds = [matchedCategory.id, ...categories.filter((c) => c.parent_id === matchedCategory.id).map((c) => c.id)];
+      return { type: "category" as const, categoryIds };
+    }
+
+    const matchedMerchants = merchants.filter((m) => m.name.toLowerCase().includes(lower));
+    if (matchedMerchants.length > 0) {
+      return { type: "merchant" as const, merchantIds: matchedMerchants.map((m) => m.id), text: trimmed };
+    }
+  }
+
   return { type: "text" as const, text: trimmed };
 }
 
@@ -53,13 +76,29 @@ export function ExpenseSearch({ open, onOpenChange }: { open: boolean; onOpenCha
   const [results, setResults] = useState<EnrichedExpense[]>([]);
   const [loading, setLoading] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string; icon: string | null; color: string | null; parent_id: string | null }[]>([]);
+  const [merchants, setMerchants] = useState<MerchantLite[]>([]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing recent searches when the sheet opens
     if (open) setRecent(loadRecent());
   }, [open]);
 
-  const intent = useMemo(() => parseSearchIntent(query, partner?.displayName), [query, partner]);
+  // Categories/merchants are fetched once (up front, not per-keystroke) and reused both for
+  // parsing the search intent (category/merchant name matching) and for result enrichment below.
+  useEffect(() => {
+    if (!open || !householdId) return;
+    const supabase = createClient();
+    Promise.all([
+      supabase.from("categories").select("id, name, icon, color, parent_id"),
+      supabase.from("merchants").select("id, name"),
+    ]).then(([{ data: cats }, { data: merch }]) => {
+      setCategories(cats ?? []);
+      setMerchants(merch ?? []);
+    });
+  }, [open, householdId]);
+
+  const intent = useMemo(() => parseSearchIntent(query, partner?.displayName, categories, merchants), [query, partner, categories, merchants]);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -83,6 +122,13 @@ export function ExpenseSearch({ open, onOpenChange }: { open: boolean; onOpenCha
         const start = `${year}-${String(intent.monthIndex + 1).padStart(2, "0")}-01`;
         const end = new Date(year, intent.monthIndex + 1, 0).toISOString().slice(0, 10);
         q = q.gte("expense_date", start).lte("expense_date", end);
+      } else if (intent.type === "category") {
+        q = q.in("category_id", intent.categoryIds);
+      } else if (intent.type === "merchant") {
+        // Merchant id match, OR'd with the existing text fallback so "Zomato" still finds
+        // expenses at that merchant even when item_name/notes don't literally contain it.
+        const merchantFilter = intent.merchantIds.map((id) => `merchant_id.eq.${id}`).join(",");
+        q = q.or(`${merchantFilter},item_name.ilike.%${intent.text}%,notes.ilike.%${intent.text}%`);
       } else {
         q = q.or(`item_name.ilike.%${intent.text}%,notes.ilike.%${intent.text}%`);
       }
@@ -90,13 +136,9 @@ export function ExpenseSearch({ open, onOpenChange }: { open: boolean; onOpenCha
       const { data } = await q.order("expense_date", { ascending: false }).limit(50);
       if (cancelled) return;
 
-      const [{ data: categories }, { data: merchants }, { data: profiles }] = await Promise.all([
-        supabase.from("categories").select("id, name, icon, color"),
-        supabase.from("merchants").select("id, name"),
-        supabase.from("profiles").select("id, display_name"),
-      ]);
-      const categoryMap = new Map((categories ?? []).map((c) => [c.id, c]));
-      const merchantMap = new Map((merchants ?? []).map((m) => [m.id, m.name]));
+      const { data: profiles } = await supabase.from("profiles").select("id, display_name");
+      const categoryMap = new Map(categories.map((c) => [c.id, c]));
+      const merchantMap = new Map(merchants.map((m) => [m.id, m.name]));
       const profileMap = new Map((profiles ?? []).map((p) => [p.id, p.display_name]));
 
       const enriched: EnrichedExpense[] = (data ?? []).map((e) => {
@@ -124,7 +166,7 @@ export function ExpenseSearch({ open, onOpenChange }: { open: boolean; onOpenCha
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [query, intent, householdId, userId, partner]);
+  }, [query, intent, householdId, userId, partner, categories, merchants]);
 
   function handleSubmit() {
     if (query.trim()) saveRecent(query.trim());
@@ -141,7 +183,7 @@ export function ExpenseSearch({ open, onOpenChange }: { open: boolean; onOpenCha
           <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
           <Input
             autoFocus
-            placeholder="Search item, merchant, >5000, wife, September…"
+            placeholder="Search item, merchant, category, >5000, wife, September…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}

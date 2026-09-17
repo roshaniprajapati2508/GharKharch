@@ -1,7 +1,7 @@
 "use server";
 
 // Report generation (spec sections 31, 32, 62): reuses the same Phase 4
-// aggregate functions as the Analytics screen - a report is just a curated,
+// aggregate functions as the Analytics screen — a report is just a curated,
 // presentation-focused view over the same server-aggregated numbers.
 
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
@@ -111,5 +111,29 @@ export async function exportExpensesCsv(range: DateRange) {
 
     const csv = [header, ...rows].map((row) => row.map((cell) => csvEscape(String(cell))).join(",")).join("\n");
     return csv;
+  });
+}
+
+/** Builds JSON text for every expense in `range` (spec section 31, 62), mirroring exportExpensesCsv's filtering/enrichment (category/subcategory/merchant names, not just ids) but as a JSON array. Kept server-side for the same server-truth/RLS reasons as the CSV export. */
+export async function exportExpensesJson(range: DateRange) {
+  return runAction(async () => {
+    const result = await getExpenses({ start: range.start, end: range.end, sort: "oldest", limit: 5000 });
+    if (result.error !== null) throw new ActionError(result.error);
+
+    const rows = (result.data as EnrichedExpense[]).map((e) => ({
+      date: e.expense_date,
+      time: e.expense_time ?? null,
+      item: e.item_name,
+      merchant: e.merchant_name ?? null,
+      category: e.category_name ?? null,
+      subcategory: e.subcategory_name ?? null,
+      paidBy: e.payer_name,
+      paymentMethod: e.payment_method ?? null,
+      amount: e.amount,
+      type: e.expense_type,
+      notes: e.notes ?? null,
+    }));
+
+    return JSON.stringify(rows, null, 2);
   });
 }

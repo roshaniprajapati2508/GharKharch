@@ -3,15 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
+import { getTodayISO, parseISODate } from "@/lib/date-utils";
 import type { Tables } from "@/types/database";
 
 // The `budgets` table (migration 001) and its RLS policy (migration 002) have
-// existed since the very first migration - comment on the table literally
-// says "architecture prepared now; UI can come later" - but no action or
+// existed since the very first migration — comment on the table literally
+// says "architecture prepared now; UI can come later" — but no action or
 // screen was ever built against it. This is that UI: monthly spending caps,
 // per category or for the whole household, with progress against what's
 // actually been spent (reusing the same `get_category_breakdown` RPC the
-// Dashboard/Analytics screens already use - never a fresh raw query).
+// Dashboard/Analytics screens already use — never a fresh raw query).
 
 const budgetInputSchema = z.object({
   category_id: z.string().uuid().nullable(),
@@ -24,6 +25,8 @@ export type BudgetWithProgress = Tables<"budgets"> & {
   category_icon: string | null;
   category_color: string | null;
   spent: number;
+  /** Projected end-of-month spend (spent-so-far / days-elapsed * days-in-month), only set for the CURRENT month — a past month is already final and has nothing to project. */
+  projectedSpend: number | null;
 };
 
 function monthBounds(periodMonth: string) {
@@ -31,6 +34,11 @@ function monthBounds(periodMonth: string) {
   const start = periodMonth;
   const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); // last day of that month
   return { start, end };
+}
+
+/** Normalizes any date/date-string to the 1st of its month, e.g. for the month picker. */
+export function toPeriodMonth(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 export async function listBudgetsForMonth(periodMonth: string) {
@@ -42,7 +50,7 @@ export async function listBudgetsForMonth(periodMonth: string) {
       .select("*")
       .eq("household_id", householdId)
       .eq("period_month", periodMonth)
-      .is("person_id", null) // person-level budgets aren't exposed in this first pass - see upsertBudget
+      .is("person_id", null) // person-level budgets aren't exposed in this first pass — see upsertBudget
       .order("created_at", { ascending: true });
     if (error) throw new ActionError(error.message);
 
@@ -58,14 +66,28 @@ export async function listBudgetsForMonth(periodMonth: string) {
     const categoryMap = new Map((categories ?? []).map((c) => [c.id, c]));
     const overallSpent = rows.reduce((sum, b) => sum + Number(b.total), 0);
 
+    // Only project for the CURRENT month — a past month is already final, and a future
+    // month has no "spent so far" to extrapolate from.
+    const todayISO = getTodayISO(); // Asia/Kolkata "today", same convention as the rest of the app (spec section 38, 68)
+    const isCurrentMonth = periodMonth === toPeriodMonth(parseISODate(todayISO));
+    const daysInMonth = Number(end.split("-")[2]); // `end` is already the last calendar day of periodMonth (monthBounds)
+    const daysElapsed = isCurrentMonth ? Number(todayISO.split("-")[2]) : 0;
+
+    function projectSpend(spent: number): number | null {
+      if (!isCurrentMonth || daysElapsed <= 0) return null;
+      return (spent / daysElapsed) * daysInMonth;
+    }
+
     const enriched: BudgetWithProgress[] = (budgets ?? []).map((b) => {
       const cat = b.category_id ? categoryMap.get(b.category_id) : null;
+      const spent = b.category_id ? spentMap.get(b.category_id) ?? 0 : overallSpent;
       return {
         ...b,
         category_name: b.category_id ? cat?.name ?? "Deleted category" : "Overall household",
         category_icon: cat?.icon ?? null,
         category_color: cat?.color ?? null,
-        spent: b.category_id ? spentMap.get(b.category_id) ?? 0 : overallSpent,
+        spent,
+        projectedSpend: projectSpend(spent),
       };
     });
 
@@ -78,7 +100,7 @@ export async function listBudgetsForMonth(periodMonth: string) {
  * `category_id` is null) for a given month. Deliberately does its own
  * find-then-write instead of `.upsert(..., { onConflict })`: the table's
  * unique constraint is `(household_id, category_id, person_id, period_month)`,
- * and Postgres never treats two NULLs as equal for uniqueness purposes - so
+ * and Postgres never treats two NULLs as equal for uniqueness purposes — so
  * an `ON CONFLICT` on that constraint silently never fires while `person_id`
  * is NULL (our only supported case so far) and would insert duplicate rows
  * instead of updating the existing one.

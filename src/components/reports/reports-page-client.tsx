@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Download, Printer } from "lucide-react";
+import { Download, FileJson, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { MonthlyReportView } from "@/components/reports/monthly-report-view";
 import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-context";
-import { getReportData, exportExpensesCsv, type ReportData } from "@/lib/actions/reports";
+import { getReportData, exportExpensesCsv, exportExpensesJson, type ReportData } from "@/lib/actions/reports";
 import {
   getTodayRange,
   getWeekRange,
@@ -47,6 +47,7 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
 
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingJson, setExportingJson] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -75,6 +76,7 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
 
   useEffect(() => {
     if (!initialData && !data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount when no SSR/cached data is available
       load(range);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,6 +119,24 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
     toast.success("CSV downloaded");
   }
 
+  async function handleExportJson() {
+    setExportingJson(true);
+    const result = await exportExpensesJson(range);
+    setExportingJson(false);
+    if (result.error !== null) {
+      toast.error(result.error);
+      return;
+    }
+    const blob = new Blob([result.data], { type: "application/json;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `gharkharch-${range.start}-to-${range.end}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("JSON downloaded");
+  }
+
   const hasActivity = data ? data.summary.txn_count > 0 : false;
 
   return (
@@ -127,6 +147,9 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={exporting}>
               <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportJson} disabled={exportingJson}>
+              <FileJson className="h-4 w-4" /> JSON
             </Button>
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> PDF

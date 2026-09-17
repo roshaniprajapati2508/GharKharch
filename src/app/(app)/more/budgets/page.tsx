@@ -10,9 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CategoryIcon } from "@/lib/icon-map";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
-import { listBudgetsForMonth, upsertBudget, deleteBudget, type BudgetWithProgress } from "@/lib/actions/budgets";
+import { listBudgetsForMonth, upsertBudget, deleteBudget, toPeriodMonth, type BudgetWithProgress } from "@/lib/actions/budgets";
 import { listCategoriesForHousehold } from "@/lib/actions/categories";
-import { toPeriodMonth } from "@/lib/date-utils";
 import { formatINR } from "@/lib/utils";
 import type { Tables } from "@/types/database";
 
@@ -65,6 +64,7 @@ export default function BudgetsPage() {
     load(periodMonth);
   }, [periodMonth]);
 
+  const isCurrentMonth = periodMonth === toPeriodMonth(new Date());
   const usedCategoryIds = useMemo(() => new Set(budgets.filter((b) => b.category_id).map((b) => b.category_id)), [budgets]);
   const hasOverall = budgets.some((b) => b.category_id === null);
   const availableCategories = categories.filter((c) => !usedCategoryIds.has(c.id) || c.id === form?.categoryId);
@@ -198,11 +198,18 @@ export default function BudgetsPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-muted">
+                  <div className="relative mt-2.5 h-2 overflow-hidden rounded-full bg-muted">
                     <div
                       className={`h-full rounded-full transition-[width] duration-500 ease-out motion-reduce:transition-none ${progressColor(pct)}`}
                       style={{ width: `${Math.min(100, pct)}%` }}
                     />
+                    {isCurrentMonth && b.projectedSpend !== null && amount > 0 && (
+                      <div
+                        className="absolute top-0 h-full border-r-2 border-dashed border-muted-foreground/50"
+                        style={{ left: `${Math.min(100, (b.projectedSpend / amount) * 100)}%` }}
+                        title={`Projected: ${formatINR(b.projectedSpend)} by month end`}
+                      />
+                    )}
                   </div>
                   <div className="mt-1.5 flex items-center justify-between">
                     <p className="text-[11px] text-muted-foreground">{pct.toFixed(0)}% used</p>
@@ -212,6 +219,11 @@ export default function BudgetsPage() {
                       </p>
                     )}
                   </div>
+                  {isCurrentMonth && b.projectedSpend !== null && (
+                    <p className={`mt-0.5 text-[11px] ${b.projectedSpend > amount ? "font-medium text-warning" : "text-muted-foreground"}`}>
+                      Projected: {formatINR(b.projectedSpend)} by month end
+                    </p>
+                  )}
                 </motion.div>
               );
             })}

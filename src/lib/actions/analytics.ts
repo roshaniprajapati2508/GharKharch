@@ -1,7 +1,7 @@
 "use server";
 
 // Thin wrappers around the SQL analytics functions from migration 006. Every
-// aggregation happens in Postgres - this file never pulls raw transactions
+// aggregation happens in Postgres — this file never pulls raw transactions
 // into JS to sum them (spec section 48-50, 88: "do NOT fetch all expenses and
 // calculate everything in React").
 
@@ -14,9 +14,11 @@ type ExpenseSummaryRow = Database["public"]["Functions"]["get_expense_summary"][
 type CategoryBreakdownRow = Database["public"]["Functions"]["get_category_breakdown"]["Returns"][number];
 type PersonBreakdownRow = Database["public"]["Functions"]["get_person_breakdown"]["Returns"][number];
 type MerchantBreakdownRow = Database["public"]["Functions"]["get_merchant_breakdown"]["Returns"][number];
+type MerchantMonthlyTrendRow = Database["public"]["Functions"]["get_merchant_monthly_trend"]["Returns"][number];
 type ItemAnalyticsRow = Database["public"]["Functions"]["get_item_analytics"]["Returns"][number];
 type DailySpendingRow = Database["public"]["Functions"]["get_daily_spending"]["Returns"][number];
 type TopExpenseRow = Database["public"]["Functions"]["get_top_expenses"]["Returns"][number];
+type PaymentMethodBreakdownRow = Database["public"]["Functions"]["get_payment_method_breakdown"]["Returns"][number];
 
 export type PersonFilter = "household" | "me" | "partner";
 
@@ -28,7 +30,7 @@ export interface AnalyticsFilters {
 function resolvePaidBy(filters: AnalyticsFilters, userId: string, partnerId: string | null): string | null {
   if (filters.person === "me") return userId;
   if (filters.person === "partner") return partnerId ?? userId;
-  return null; // household - no filter
+  return null; // household — no filter
 }
 
 const EMPTY_SUMMARY: ExpenseSummaryRow = {
@@ -167,6 +169,7 @@ export interface AnalyticsPageData {
   summary: ExpenseSummaryRow;
   previousSummary: ExpenseSummaryRow;
   personBreakdown: PersonBreakdownRow[];
+  paymentMethodBreakdown: PaymentMethodBreakdownRow[];
   range: DateRange;
   previousRange: DateRange;
 }
@@ -186,7 +189,7 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
     const paidBy = resolvePaidBy(filters, userId, partnerId);
     const previousRange = getPreviousComparableRange(filters.range);
 
-    const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, merchantRes, prevMerchantRes, itemRes, prevItemRes, dailyRes, topRes, personRes] =
+    const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, merchantRes, prevMerchantRes, itemRes, prevItemRes, dailyRes, topRes, personRes, paymentMethodRes] =
       await Promise.all([
         supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy }),
         supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_paid_by: paidBy }),
@@ -199,6 +202,7 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
         supabase.rpc("get_daily_spending", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy }),
         supabase.rpc("get_top_expenses", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_limit: 10 }),
         supabase.rpc("get_person_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end }),
+        supabase.rpc("get_payment_method_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end }),
       ]);
 
     if (summaryRes.error) throw new ActionError(summaryRes.error.message);
@@ -208,6 +212,7 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
     if (dailyRes.error) throw new ActionError(dailyRes.error.message);
     if (topRes.error) throw new ActionError(topRes.error.message);
     if (personRes.error) throw new ActionError(personRes.error.message);
+    if (paymentMethodRes.error) throw new ActionError(paymentMethodRes.error.message);
 
     return {
       categoryBreakdown: categoryRes.data ?? [],
@@ -221,13 +226,28 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
       summary: summaryRes.data?.[0] ?? EMPTY_SUMMARY,
       previousSummary: prevSummaryRes.data?.[0] ?? EMPTY_SUMMARY,
       personBreakdown: personRes.data ?? [],
+      paymentMethodBreakdown: paymentMethodRes.data ?? [],
       range: filters.range,
       previousRange,
     };
   });
 }
 
-/** Daily totals for the spending calendar heatmap (spec section 8F, 33) - independent of the page's own period filter, driven by `monthsAgo`. */
+/** Per-merchant monthly trend for the small sparkline on the Merchants tab (spec section 25). */
+export async function getMerchantMonthlyTrend(merchantId: string, months = 6) {
+  return runAction(async (): Promise<MerchantMonthlyTrendRow[]> => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { data, error } = await supabase.rpc("get_merchant_monthly_trend", {
+      p_household_id: householdId,
+      p_merchant_id: merchantId,
+      p_months: months,
+    });
+    if (error) throw new ActionError(error.message);
+    return data ?? [];
+  });
+}
+
+/** Daily totals for the spending calendar heatmap (spec section 8F, 33) — independent of the page's own period filter, driven by `monthsAgo`. */
 export async function getCalendarMonthData(monthsAgo: number) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();
