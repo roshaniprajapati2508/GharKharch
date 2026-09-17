@@ -26,18 +26,16 @@ export interface CategorySelection {
   subcategoryName: string | null;
 }
 
-export function CategoryPicker({
-  open,
-  onOpenChange,
+export function CategoryPickerView({
   tree,
   onSelect,
   onCategoryCreated,
+  onBack,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   tree: CategoryWithChildren[];
   onSelect: (selection: CategorySelection) => void;
   onCategoryCreated: (category: CategoryWithChildren) => void;
+  onBack?: () => void;
 }) {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -52,7 +50,6 @@ export function CategoryPicker({
       categoryName: cat.name,
       subcategoryName: sub?.name ?? null,
     });
-    onOpenChange(false);
   }
 
   async function handleCreate() {
@@ -72,91 +69,118 @@ export function CategoryPicker({
   }
 
   return (
+    <div className="flex h-full max-h-[80vh] flex-col">
+      {!creating ? (
+        <Command className="flex flex-1 flex-col overflow-hidden" shouldFilter={true}>
+          <CommandInput placeholder="Search categories…" autoFocus />
+          <CommandList className="flex-1 overflow-y-auto">
+            <CommandEmpty>No categories match.</CommandEmpty>
+            {tree.map((cat) => (
+              <CommandGroup key={cat.id} heading={cat.name}>
+                <CommandItem value={cat.name} onSelect={() => pick(cat)}>
+                  <CategoryIcon icon={cat.icon} color={cat.color} />
+                  <span className="font-medium">{cat.name} (general)</span>
+                </CommandItem>
+                {cat.children.map((sub) => (
+                  <CommandItem key={sub.id} value={`${cat.name} ${sub.name}`} onSelect={() => pick(cat, sub)}>
+                    <CategoryIcon icon={sub.icon} color={cat.color} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" />
+                    {sub.name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
+          </CommandList>
+          <div className="border-t border-border p-3">
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => setCreating(true)}>
+              <Plus className="h-4 w-4" />
+              Add a new category
+            </Button>
+          </div>
+        </Command>
+      ) : (
+        <div className="flex flex-col gap-4 overflow-y-auto px-5 pb-6 pt-2">
+          <div>
+            <Label htmlFor="new-category-name">Category name</Label>
+            <Input id="new-category-name" value={newName} onChange={(e) => setNewName(e.target.value)} className="mt-1.5" autoFocus />
+          </div>
+          <div>
+            <Label>Icon</Label>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {ICON_PICKER_OPTIONS.slice(0, 18).map((icon) => (
+                <button
+                  key={icon}
+                  type="button"
+                  onClick={() => setNewIcon(icon)}
+                  className={cn("rounded-lg p-1", newIcon === icon && "ring-2 ring-primary")}
+                >
+                  <CategoryIcon icon={icon} color={newColor} className="flex h-9 w-9 items-center justify-center rounded-lg" />
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label>Color</Label>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {COLOR_PICKER_OPTIONS.map((color) => {
+                const swatch = colorSwatch(color);
+                const active = newColor === color;
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setNewColor(color)}
+                    style={{ backgroundColor: swatch.bg }}
+                    className={cn("flex h-9 w-9 items-center justify-center rounded-full", active && "ring-2 ring-primary ring-offset-2")}
+                  >
+                    {active && <Check className="h-4 w-4" style={{ color: swatch.fg }} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setCreating(false)}>
+              Back
+            </Button>
+            <Button className="flex-1" onClick={handleCreate} disabled={saving || !newName.trim()}>
+              {saving ? "Saving…" : "Save category"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CategoryPicker({
+  open,
+  onOpenChange,
+  tree,
+  onSelect,
+  onCategoryCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  tree: CategoryWithChildren[];
+  onSelect: (selection: CategorySelection) => void;
+  onCategoryCreated: (category: CategoryWithChildren) => void;
+}) {
+  return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader>
           <DrawerTitle>Choose a category</DrawerTitle>
           <DrawerDescription>Global defaults plus anything you&apos;ve added.</DrawerDescription>
         </DrawerHeader>
-
-        {!creating ? (
-          <Command className="flex-1 overflow-hidden">
-            <CommandInput placeholder="Search categories…" />
-            <CommandList>
-              <CommandEmpty>No categories match.</CommandEmpty>
-              {tree.map((cat) => (
-                <CommandGroup key={cat.id} heading={cat.name}>
-                  <CommandItem value={cat.name} onSelect={() => pick(cat)}>
-                    <CategoryIcon icon={cat.icon} color={cat.color} />
-                    <span className="font-medium">{cat.name} (general)</span>
-                  </CommandItem>
-                  {cat.children.map((sub) => (
-                    <CommandItem key={sub.id} value={`${cat.name} ${sub.name}`} onSelect={() => pick(cat, sub)}>
-                      <CategoryIcon icon={sub.icon} color={cat.color} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" />
-                      {sub.name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              ))}
-            </CommandList>
-            <div className="border-t border-border p-2">
-              <Button variant="ghost" className="w-full justify-start" onClick={() => setCreating(true)}>
-                <Plus className="h-4 w-4" />
-                Add a new category
-              </Button>
-            </div>
-          </Command>
-        ) : (
-          <div className="flex flex-col gap-4 px-5 pb-6 pt-2">
-            <div>
-              <Label htmlFor="new-category-name">Category name</Label>
-              <Input id="new-category-name" value={newName} onChange={(e) => setNewName(e.target.value)} className="mt-1.5" autoFocus />
-            </div>
-            <div>
-              <Label>Icon</Label>
-              <div className="mt-1.5 flex flex-wrap gap-2">
-                {ICON_PICKER_OPTIONS.slice(0, 18).map((icon) => (
-                  <button
-                    key={icon}
-                    type="button"
-                    onClick={() => setNewIcon(icon)}
-                    className={cn("rounded-lg p-1", newIcon === icon && "ring-2 ring-primary")}
-                  >
-                    <CategoryIcon icon={icon} color={newColor} className="flex h-9 w-9 items-center justify-center rounded-lg" />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label>Color</Label>
-              <div className="mt-1.5 flex flex-wrap gap-2">
-                {COLOR_PICKER_OPTIONS.map((color) => {
-                  const swatch = colorSwatch(color);
-                  const active = newColor === color;
-                  return (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setNewColor(color)}
-                      style={{ backgroundColor: swatch.bg }}
-                      className={cn("flex h-9 w-9 items-center justify-center rounded-full", active && "ring-2 ring-primary ring-offset-2")}
-                    >
-                      {active && <Check className="h-4 w-4" style={{ color: swatch.fg }} />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => setCreating(false)}>
-                Back
-              </Button>
-              <Button className="flex-1" onClick={handleCreate} disabled={saving || !newName.trim()}>
-                {saving ? "Saving…" : "Save category"}
-              </Button>
-            </div>
-          </div>
-        )}
+        <CategoryPickerView
+          tree={tree}
+          onSelect={(selection) => {
+            onSelect(selection);
+            onOpenChange(false);
+          }}
+          onCategoryCreated={onCategoryCreated}
+          onBack={() => onOpenChange(false)}
+        />
       </DrawerContent>
     </Drawer>
   );

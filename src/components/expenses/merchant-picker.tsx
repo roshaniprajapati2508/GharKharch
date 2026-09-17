@@ -8,18 +8,16 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, Command
 import { createMerchant } from "@/lib/actions/merchants";
 import type { Tables } from "@/types/database";
 
-export function MerchantPicker({
-  open,
-  onOpenChange,
+export function MerchantPickerView({
   merchants,
   onSelect,
   onMerchantCreated,
+  onBack,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   merchants: Tables<"merchants">[];
   onSelect: (merchant: Tables<"merchants">) => void;
   onMerchantCreated: (merchant: Tables<"merchants">) => void;
+  onBack?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState(false);
@@ -36,7 +34,6 @@ export function MerchantPicker({
 
   function pick(m: Tables<"merchants">) {
     onSelect(m);
-    onOpenChange(false);
     setQuery("");
   }
 
@@ -55,42 +52,70 @@ export function MerchantPicker({
   }
 
   return (
+    <div className="flex h-full max-h-[80vh] flex-col">
+      <Command className="flex flex-1 flex-col overflow-hidden" shouldFilter={false}>
+        <CommandInput placeholder="Search merchants…" value={query} onValueChange={setQuery} autoFocus />
+        <CommandList className="flex-1 overflow-y-auto">
+          {filtered.length === 0 && <CommandEmpty>No merchants match &quot;{query}&quot;.</CommandEmpty>}
+          <CommandGroup>
+            {filtered.map((m) => (
+              <CommandItem key={m.id} value={m.name} onSelect={() => pick(m)}>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <Store className="h-4 w-4 text-muted-foreground" />
+                </span>
+                <span className="font-medium text-foreground">{m.name}</span>
+                {m.is_system && <span className="ml-auto text-[11px] text-muted-foreground">Suggested</span>}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+        {query.trim() && !exactMatch && (
+          <div className="border-t border-border p-3">
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={saving}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-primary hover:bg-muted"
+            >
+              <Plus className="h-4 w-4" />
+              {saving ? "Adding…" : `Create "${query.trim()}" as a new merchant`}
+            </button>
+          </div>
+        )}
+      </Command>
+    </div>
+  );
+}
+
+export function MerchantPicker({
+  open,
+  onOpenChange,
+  merchants,
+  onSelect,
+  onMerchantCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  merchants: Tables<"merchants">[];
+  onSelect: (merchant: Tables<"merchants">) => void;
+  onMerchantCreated: (merchant: Tables<"merchants">) => void;
+}) {
+  return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader>
           <DrawerTitle>Choose a merchant</DrawerTitle>
           <DrawerDescription>Search or add a new shop, app, or vendor.</DrawerDescription>
         </DrawerHeader>
-        <Command className="flex-1 overflow-hidden" shouldFilter={false}>
-          <CommandInput placeholder="Search merchants…" value={query} onValueChange={setQuery} />
-          <CommandList>
-            {filtered.length === 0 && <CommandEmpty>No merchants match &quot;{query}&quot;.</CommandEmpty>}
-            <CommandGroup>
-              {filtered.map((m) => (
-                <CommandItem key={m.id} value={m.name} onSelect={() => pick(m)}>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <Store className="h-4 w-4 text-muted-foreground" />
-                  </span>
-                  {m.name}
-                  {m.is_system && <span className="ml-auto text-[11px] text-muted-foreground">Suggested</span>}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-          {query.trim() && !exactMatch && (
-            <div className="border-t border-border p-2">
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={saving}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-primary hover:bg-muted"
-              >
-                <Plus className="h-4 w-4" />
-                {saving ? "Adding…" : `Create "${query.trim()}" as a new merchant`}
-              </button>
-            </div>
-          )}
-        </Command>
+        <MerchantPickerView
+          merchants={merchants}
+          onSelect={(m) => {
+            onSelect(m);
+            onOpenChange(false);
+          }}
+          onMerchantCreated={onMerchantCreated}
+          onBack={() => onOpenChange(false)}
+        />
       </DrawerContent>
     </Drawer>
   );
