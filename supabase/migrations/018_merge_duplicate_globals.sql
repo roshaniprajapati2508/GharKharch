@@ -1,5 +1,6 @@
 -- =========================================================
--- Migration 016 - allow merging duplicate global default categories/merchants
+-- Migration 018 - allow merging duplicate global default categories/merchants
+-- (renumbered from a conflicting "016" - see README.md's dependency notes)
 -- =========================================================
 -- Bug fix: merge_categories() and merge_merchants() in migration 011
 -- raised "Global default categories cannot be merged away" if the duplicate

@@ -28,6 +28,7 @@ are prepared here, complete and ready, for you to copy/paste or import yourself.
 | 015 | `015_analytics_enhancements.sql` | Not yet run — needs to be applied (new, this phase) |
 | 016 | `016_intelligence_and_payment_depth.sql` | Not yet run — needs to be applied (new, this phase) |
 | 017 | `017_receipts.sql` | Not yet run — needs to be applied (new, this phase) |
+| 018 | `018_merge_duplicate_globals.sql` | Not yet run — needs to be applied (bug fix; renumbered from a conflicting "016" filename found alongside this phase's own 016 — see the dependency note below) |
 
 Run **011** then **012** next to bring your database up to date with the
 Premium UX phase's duplicate-category cleanup/merge tooling and the new
@@ -217,6 +218,23 @@ read/write a receipt under `receipts/{household_id}/...`, matching how every
 other household-scoped resource in this app already works. Every statement is
 idempotent and safe to re-run.
 
+**018_merge_duplicate_globals.sql** *(bug fix, renumbered)* — Fixes
+`merge_categories()`/`merge_merchants()` (first defined in migration 011):
+they previously raised "Global default categories cannot be merged away" if
+the *duplicate* side of a merge was itself a global default (`household_id is
+null`) — meaning if a remote database ever ended up with duplicate global
+rows (e.g. two "Accessories" categories, or two identical system merchants),
+the "Find duplicates" merge tool could never clean them up. This migration
+allows merging two global defaults into one, reassigning every dependent
+reference (expenses, categories, merchants, recurring rules, budgets,
+patterns) to the surviving row, exactly as 011 already does for
+household-owned duplicates. This file was originally created as another
+`016_...sql` alongside this phase's own `016_intelligence_and_payment_depth.sql`
+— a genuine numbering collision between two pieces of work done around the
+same time — and has been renumbered to 018 (after 017) so the migrations stay
+strictly sequential; its content is unchanged from the original file, only
+the filename and this header comment changed.
+
 ## Dependencies / notes
 
 - 002 depends on 001 (uses `is_household_member()` and the tables it creates).
@@ -259,5 +277,10 @@ idempotent and safe to re-run.
   (relies on RLS already being enabled on `expenses`; `storage.objects`'
   RLS is enabled by Supabase itself). No dependency on 003-016. Safe to run
   any time after 001.
+- 018 depends on 011 (redefines `merge_categories`/`merge_merchants`, first
+  created there) and 001 (`is_household_member()`, `categories`/`merchants`
+  and everything that references them). No dependency on 012-017 — safe to
+  run any time after 011, including before 015/016/017 if you'd rather apply
+  it earlier since it's an independent bug fix, not new functionality.
 - As always: Claude prepares these files only. Running them against your live
   Supabase project is entirely up to you, via the SQL Editor or the CLI.
