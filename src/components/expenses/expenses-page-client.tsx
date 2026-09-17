@@ -199,7 +199,19 @@ export function ExpensesPageClient({
       )}
 
       <ExpenseFiltersSheet open={filtersOpen} onOpenChange={setFiltersOpen} categories={categories} filters={filters} onApply={applyFilters} />
-      <ExpenseSearch open={searchOpen} onOpenChange={setSearchOpen} />
+      <ExpenseSearch
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        onEdit={(exp) => {
+          setSearchOpen(false);
+          setEditTarget(exp);
+        }}
+        onDuplicate={(exp) => {
+          setSearchOpen(false);
+          handleDuplicate(exp);
+        }}
+        onDelete={handleDelete}
+      />
       <AddExpenseSheet
         open={!!editTarget}
         onOpenChange={(open) => !open && setEditTarget(null)}
