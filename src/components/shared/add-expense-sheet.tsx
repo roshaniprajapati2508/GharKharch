@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ChevronRight, ChevronLeft, Store, X } from "lucide-react";
+import { ChevronRight, ChevronLeft, Store } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -317,7 +317,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[94vh]">
         {/* Header with back navigation when browsing category or merchant */}
-        <DrawerHeader className="border-b border-border/50 pb-3">
+        <DrawerHeader className="border-b border-border/50 pb-3 pr-10">
           <div className="flex items-center justify-between">
             {sheetView !== "form" ? (
               <button
@@ -339,15 +339,6 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                 {sheetView === "category" ? "Choose Category" : "Choose Merchant"}
               </span>
             )}
-
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
           </div>
           <DrawerDescription className="sr-only">Enter the amount, item, and expense details.</DrawerDescription>
         </DrawerHeader>
