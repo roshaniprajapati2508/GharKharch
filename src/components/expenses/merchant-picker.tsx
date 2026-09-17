@@ -12,7 +12,7 @@ export function MerchantPickerView({
   merchants,
   onSelect,
   onMerchantCreated,
-  onBack,
+  onBack: _onBack,
 }: {
   merchants: Tables<"merchants">[];
   onSelect: (merchant: Tables<"merchants">) => void;

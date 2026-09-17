@@ -92,7 +92,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   useEffect(() => {
     if (!open) return;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- kicking off the reference-data fetch when the sheet opens
+     
     setLoadingRefs(true);
     Promise.all([
       listCategoriesForHousehold(),
@@ -159,7 +159,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   // field themselves yet - the suggestion never fills the field on its own.
   useEffect(() => {
     if (!isNewExpense || amountTouched || !open || !form.itemName.trim()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing a stale suggestion once its inputs no longer apply
+       
       setPriceMemory(null);
       return;
     }
@@ -184,7 +184,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   // picked a category themselves for this expense.
   useEffect(() => {
     if (categoryTouched || !open || !form.itemName.trim()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing a stale suggestion once its inputs no longer apply
+       
       setSuggestion(null);
       return;
     }

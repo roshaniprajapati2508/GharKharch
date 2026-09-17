@@ -49,7 +49,7 @@ export default function FindDuplicatesPage() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
+     
     load();
   }, [load]);
 
@@ -58,7 +58,7 @@ export default function FindDuplicatesPage() {
   return (
     <div className="flex flex-col gap-6 pb-6">
       <div className="flex items-center gap-3">
-        <Link href="/more" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
+        <Link href="/more" prefetch={true} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <div>
@@ -158,7 +158,7 @@ function MergeDialog({ target, onOpenChange, onMerged }: { target: MergeTarget; 
   const duplicateIds = group.ids.filter((id) => id !== canonicalId);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- kicking off a fetch triggered by canonicalId changing, not derivable from render
+     
     setLoadingImpact(true);
     const getImpact = kind === "category" ? getCategoryMergeImpact : getMerchantMergeImpact;
     Promise.all(duplicateIds.map((id) => getImpact(id))).then((results) => {
@@ -204,14 +204,27 @@ function MergeDialog({ target, onOpenChange, onMerged }: { target: MergeTarget; 
         <RadioGroup value={canonicalId} onValueChange={setCanonicalId} className="gap-3">
           {group.ids.map((id, i) => {
             const isGlobalEntry = group.isGlobal[i];
-            const disabled = hasGlobal && !isGlobalEntry;
+            const disabled = hasGlobal && !isGlobalEntry && !group.isGlobal.every(Boolean);
+            const isSelected = canonicalId === id;
             return (
-              <div key={id} className={cn("flex items-center gap-2.5 rounded-lg border border-border p-3", disabled && "opacity-50")}>
-                <RadioGroupItem value={id} id={id} disabled={disabled} />
-                <Label htmlFor={id} className={cn("flex flex-1 items-center gap-2 text-sm font-medium", disabled ? "cursor-default" : "cursor-pointer")}>
-                  {group.names[i]}
+              <div
+                key={id}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg border p-3 transition-colors",
+                  isSelected ? "border-primary/50 bg-primary/5" : "border-border",
+                  disabled && "opacity-50"
+                )}
+              >
+                <RadioGroupItem value={id} id={id} disabled={disabled} className="shrink-0" />
+                <Label htmlFor={id} className={cn("flex min-w-0 flex-1 items-center gap-2 text-sm font-medium", disabled ? "cursor-default" : "cursor-pointer")}>
+                  {kind === "category" ? (
+                    <Tag className="size-4 shrink-0 text-brand-primary" />
+                  ) : (
+                    <Store className="size-4 shrink-0 text-brand-primary" />
+                  )}
+                  <span className="truncate">{group.names[i]}</span>
                   {isGlobalEntry && (
-                    <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-normal text-muted-foreground">
+                    <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-normal text-muted-foreground">
                       Global default
                     </span>
                   )}

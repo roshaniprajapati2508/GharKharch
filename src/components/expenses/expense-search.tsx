@@ -80,7 +80,7 @@ export function ExpenseSearch({ open, onOpenChange }: { open: boolean; onOpenCha
   const [merchants, setMerchants] = useState<MerchantLite[]>([]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing recent searches when the sheet opens
+     
     if (open) setRecent(loadRecent());
   }, [open]);
 
@@ -102,7 +102,7 @@ export function ExpenseSearch({ open, onOpenChange }: { open: boolean; onOpenCha
 
   useEffect(() => {
     if (!query.trim()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing stale results when the query is emptied
+       
       setResults([]);
       return;
     }

@@ -36,11 +36,6 @@ function monthBounds(periodMonth: string) {
   return { start, end };
 }
 
-/** Normalizes any date/date-string to the 1st of its month, e.g. for the month picker. */
-export function toPeriodMonth(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-}
-
 export async function listBudgetsForMonth(periodMonth: string) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();

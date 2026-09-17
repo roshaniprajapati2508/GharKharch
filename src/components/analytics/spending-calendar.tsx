@@ -54,7 +54,7 @@ export function SpendingCalendar() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetching whenever the viewed month changes
+     
     load(monthsAgo);
   }, [monthsAgo, load]);
 

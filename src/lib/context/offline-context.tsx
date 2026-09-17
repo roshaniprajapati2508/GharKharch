@@ -44,7 +44,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   }, [refreshPendingCount]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading the browser's actual connectivity state on mount
+     
     setIsOnline(navigator.onLine);
     refreshPendingCount();
     if (navigator.onLine) runSync();

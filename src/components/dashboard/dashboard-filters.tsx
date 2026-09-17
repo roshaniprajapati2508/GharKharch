@@ -52,8 +52,8 @@ export function DashboardFilters({
   }
 
   return (
-    <div className="flex flex-col gap-2.5">
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-2.5">
+      <div className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {QUICK_PERIODS.map((p) => (
           <button
             key={p.key}

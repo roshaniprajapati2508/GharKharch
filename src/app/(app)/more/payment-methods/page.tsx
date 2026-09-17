@@ -45,7 +45,7 @@ export default function PaymentMethodsSettingsPage() {
   return (
     <div className="flex flex-col gap-5 pb-10">
       <div className="flex items-center gap-2">
-        <Link href="/more" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
+        <Link href="/more" prefetch={true} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <h1 className="text-xl font-bold tracking-tight text-foreground">Payment methods</h1>
@@ -89,7 +89,7 @@ function MethodsTab() {
     if (result.data) setMethods(result.data);
   }
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
+     
     load();
   }, []);
 
@@ -215,7 +215,7 @@ function CardsTab() {
     if (catalogueResult.data) setIssuers(catalogueResult.data.issuers);
   }
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
+     
     load();
   }, []);
 
@@ -362,7 +362,7 @@ function UpiTab() {
     if (result.data) setProfiles(result.data);
   }
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
+     
     load();
   }, []);
 
@@ -483,7 +483,7 @@ function BanksTab() {
     if (result.data) setAccounts(result.data);
   }
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
+     
     load();
   }, []);
 

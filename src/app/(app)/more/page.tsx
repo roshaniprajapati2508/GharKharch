@@ -25,7 +25,7 @@ function SectionLabel({ icon: Icon, children }: { icon: React.ComponentType<{ cl
 
 function MenuLink({ href, icon: Icon, label }: { href: string; icon: React.ComponentType<{ className?: string }>; label: string }) {
   return (
-    <Link href={href} className="flex items-center gap-3 px-5 py-4">
+    <Link href={href} prefetch={true} className="flex items-center gap-3 px-5 py-4">
       <Icon className="h-4 w-4 text-brand-primary" />
       <span className="text-sm font-medium text-foreground">{label}</span>
       <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
@@ -85,7 +85,7 @@ export default function MorePage() {
         <SectionLabel icon={Users}>Profile</SectionLabel>
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6">
-            <Link href="/more/profile" className="flex items-center gap-3">
+            <Link href="/more/profile" prefetch={true} className="flex items-center gap-3">
               <UserAvatar name={displayName} avatarUrl={avatarUrl} />
               <div className="text-sm">
                 <p className="font-medium text-foreground">{displayName}</p>

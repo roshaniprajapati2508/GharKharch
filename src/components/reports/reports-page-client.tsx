@@ -76,7 +76,7 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
 
   useEffect(() => {
     if (!initialData && !data) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount when no SSR/cached data is available
+       
       load(range);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

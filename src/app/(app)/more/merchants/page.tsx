@@ -51,7 +51,7 @@ export default function MerchantsSettingsPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
+     
     load();
   }, []);
 
@@ -175,7 +175,7 @@ export default function MerchantsSettingsPage() {
   return (
     <div className="flex flex-col gap-5 pb-10">
       <div className="flex items-center gap-2">
-        <Link href="/more" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
+        <Link href="/more" prefetch={true} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <h1 className="text-xl font-bold tracking-tight text-foreground">Merchants</h1>

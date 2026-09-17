@@ -30,7 +30,7 @@ export function CategoryPickerView({
   tree,
   onSelect,
   onCategoryCreated,
-  onBack,
+  onBack: _onBack,
 }: {
   tree: CategoryWithChildren[];
   onSelect: (selection: CategorySelection) => void;

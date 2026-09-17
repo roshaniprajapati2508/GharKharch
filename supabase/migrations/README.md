@@ -26,8 +26,9 @@ are prepared here, complete and ready, for you to copy/paste or import yourself.
 | 012 | `012_profile_storage.sql` | Not yet run - needs to be applied (new, this phase) |
 | 013 | `013_duplicate_finder_ownership.sql` | Not yet run - needs to be applied (bug fix) |
 | 015 | `015_analytics_enhancements.sql` | Not yet run - needs to be applied (new, this phase) |
+| 016 | `016_merge_duplicate_globals.sql` | Not yet run - needs to be applied (allows merging duplicate global records) |
 
-Run **011** then **012** next to bring your database up to date with the
+Run **011**, **012**, **013**, **015**, and **016** next to bring your database up to date with the
 Premium UX phase's duplicate-category cleanup/merge tooling and the new
 profile/avatar upload feature.
 

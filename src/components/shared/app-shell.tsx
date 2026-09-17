@@ -34,8 +34,8 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               plus the device's own safe-area inset on top of that. From
               `sm` up there's no bottom nav (SidebarNav takes over), so it
               drops back to ordinary page padding. */}
-          <main className="flex-1 px-4 pt-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-8 sm:pt-6 print:px-0 print:pb-0 print:pt-0">
-            <div className="mx-auto w-full max-w-5xl">
+          <main className="flex-1 min-w-0 max-w-full overflow-x-clip px-4 pt-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-8 sm:pt-6 print:px-0 print:pb-0 print:pt-0">
+            <div className="mx-auto w-full max-w-5xl min-w-0">
               <PageTransition>{children}</PageTransition>
             </div>
           </main>

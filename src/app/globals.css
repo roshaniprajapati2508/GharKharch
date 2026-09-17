@@ -185,11 +185,10 @@ h1, h2, h3, h4, h5, h6 {
    digits don't shift width as they change, e.g. className="font-mono
    tabular-nums". */
 
-/* Comfortable minimum touch targets on hand-held devices */
-@media (pointer: coarse) {
-  button, a[role="button"] {
-    min-height: 44px;
-  }
+/* Comfortable minimum touch targets on hand-held devices - apply to action controls, not all buttons/radios */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 /* Tailwind's preflight reset sets `button { cursor: default }` to match native
@@ -206,28 +205,14 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* Baseline hover/press feedback for every interactive control. Individual
-   components (Button, etc.) already declare their own hover/active states,
-   but a great many small icon-only controls across the app (row actions,
-   dropdown items, tabs) only set a `hover:bg-*` class with no transition -
-   the color change was correct but happened as an instant snap rather than
-   a smooth fade, which read as "nothing is interactive" even though hover
-   states existed. This applies a short, universal fade to color/background/
-   border/shadow changes on every button, link, and menu item, site-wide,
-   without having to touch each of those call sites individually. Movement
-   (transform/scale) is deliberately left out here - that's still opted into
-   per-component (see Button) so it can be disabled under prefers-reduced-
-   motion at the source; a color fade alone is not a vestibular concern. */
+/* Baseline hover/press feedback for every interactive control. */
 button, a, [role="button"], [role="menuitem"], [role="tab"] {
   transition-property: background-color, color, border-color, box-shadow;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
 
-/* Respect device safe areas (spec item: accessibility - safe-area insets) for
-   fixed/sticky chrome that sits at a device edge: bottom nav, bottom sheets,
-   and the sticky top bar under a notch/status bar. `env()` resolves to 0 on
-   devices without a safe-area inset, so these are harmless everywhere else. */
+/* Respect device safe areas (spec item: accessibility - safe-area insets) */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -236,15 +221,14 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
   padding-top: env(safe-area-inset-top);
 }
 
-/* Dashboard information architecture (spec items 33-34, 93-94): a genuinely
-   different arrangement per breakpoint, not a single column scaled down.
-   Mobile is one column in the spec's priority order; tablet pairs a couple
-   of sections; desktop pairs trend/category, merchants/person, and
-   frequent/largest side by side, with the calendar next to recent expenses. */
+/* Dashboard information architecture (spec items 33-34, 93-94) */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   grid-template-areas:
     "header"
     "brief"
@@ -264,7 +248,7 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
 
 @media (min-width: 640px) {
   .dashboard-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "header header"
       "brief brief"

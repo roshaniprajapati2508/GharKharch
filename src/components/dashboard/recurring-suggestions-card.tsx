@@ -55,7 +55,7 @@ export function RecurringSuggestionsCard() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading the per-device dismissed list on mount
+     
     setDismissed(loadDismissed());
     load();
   }, [load]);

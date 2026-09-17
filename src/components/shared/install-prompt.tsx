@@ -18,7 +18,7 @@ export function InstallPrompt() {
 
   useEffect(() => {
     try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reading a per-device preference on mount
+       
       setDismissed(window.localStorage.getItem(DISMISSED_KEY) === "1");
     } catch {
       // localStorage can throw in a private/locked-down browsing context - the prompt just stays hidden

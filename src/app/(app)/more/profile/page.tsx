@@ -141,7 +141,7 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col gap-6 pb-10">
       <div className="flex items-center gap-2">
-        <Link href="/more" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
+        <Link href="/more" prefetch={true} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <h1 className="text-xl font-bold tracking-tight text-foreground">Your profile</h1>
@@ -162,12 +162,12 @@ export default function ProfilePage() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
                 className={cn(
-                  "absolute -bottom-1 -right-1 flex h-9 w-9 min-h-9 min-w-9 aspect-square shrink-0 items-center justify-center rounded-full border-2 border-background bg-brand-primary p-0 text-white shadow-sm transition-transform active:scale-95",
+                  "absolute -bottom-1 -right-1 flex size-9 h-9 w-9 min-h-[36px] min-w-[36px] max-h-[36px] max-w-[36px] aspect-square shrink-0 items-center justify-center rounded-full border-2 border-background bg-brand-primary p-0 text-white shadow-sm transition-transform active:scale-95",
                   uploading && "opacity-70"
                 )}
                 aria-label="Change photo"
               >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4 shrink-0" />}
+                {uploading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Camera className="h-4 w-4 shrink-0" />}
               </button>
               <input ref={fileInputRef} type="file" accept={ALLOWED_TYPES.join(",")} className="hidden" onChange={handleFileSelected} />
               <PhotoCropDialog file={pendingCropFile} onCancel={() => setPendingCropFile(null)} onCropped={handleCropped} />

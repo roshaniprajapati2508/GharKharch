@@ -49,6 +49,7 @@ export function SidebarNav({ onAddClick }: { onAddClick: () => void }) {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
               title={item.label}
               className={cn(
                 "flex w-full items-center justify-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors md:justify-start",

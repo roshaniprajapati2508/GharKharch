@@ -23,6 +23,7 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
   return (
     <Link
       href={item.href}
+      prefetch={true}
       className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-lg py-1 text-[11px] font-medium"
     >
       <Icon className={cn("h-5 w-5 shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground")} />

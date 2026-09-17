@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CategoryIcon } from "@/lib/icon-map";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
-import { listBudgetsForMonth, upsertBudget, deleteBudget, toPeriodMonth, type BudgetWithProgress } from "@/lib/actions/budgets";
+import { listBudgetsForMonth, upsertBudget, deleteBudget, type BudgetWithProgress } from "@/lib/actions/budgets";
+import { toPeriodMonth } from "@/lib/date-utils";
 import { listCategoriesForHousehold } from "@/lib/actions/categories";
 import { formatINR } from "@/lib/utils";
 import type { Tables } from "@/types/database";
@@ -60,7 +61,7 @@ export default function BudgetsPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch whenever the selected month changes
+     
     load(periodMonth);
   }, [periodMonth]);
 
@@ -114,7 +115,7 @@ export default function BudgetsPage() {
   return (
     <div className="flex flex-col gap-5 pb-10">
       <div className="flex items-center gap-2">
-        <Link href="/more" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
+        <Link href="/more" prefetch={true} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <h1 className="text-xl font-bold tracking-tight text-foreground">Budgets</h1>

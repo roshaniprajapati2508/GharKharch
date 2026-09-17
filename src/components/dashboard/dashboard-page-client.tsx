@@ -78,7 +78,7 @@ export function DashboardPageClient({ initialData }: { initialData?: DashboardDa
 
   useEffect(() => {
     if (!initialData && !data) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount when no SSR/cached data is available
+       
       load(range, person);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,7 +132,7 @@ export function DashboardPageClient({ initialData }: { initialData?: DashboardDa
   const hasAnyActivity = data ? data.summary.txn_count > 0 : false;
 
   return (
-    <div className="relative flex flex-col gap-6 pb-10">
+    <div className="relative flex min-w-0 max-w-full flex-col gap-6 overflow-x-clip pb-10">
       <DashboardBackgroundDecoration />
 
       <div style={{ gridArea: "header" }}>

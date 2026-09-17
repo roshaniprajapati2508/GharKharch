@@ -62,7 +62,7 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
 
   useEffect(() => {
     if (!initialData && !data) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount when no SSR/cached data is available
+       
       load(range, person);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
