@@ -4,12 +4,37 @@
 // hard-coding strings per file, so the brand name/tagline/URL only ever need
 // to change in one place.
 
+function resolveSiteUrl(): string {
+  const customUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (customUrl && customUrl.trim().length > 0) {
+    const formatted = customUrl.startsWith("http") ? customUrl : `https://${customUrl}`;
+    return formatted.replace(/\/$/, "");
+  }
+
+  const vercelProjectUrl = process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (vercelProjectUrl && vercelProjectUrl.trim().length > 0) {
+    const formatted = vercelProjectUrl.startsWith("http") ? vercelProjectUrl : `https://${vercelProjectUrl}`;
+    return formatted.replace(/\/$/, "");
+  }
+
+  const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL;
+  if (vercelUrl && vercelUrl.trim().length > 0) {
+    const formatted = vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`;
+    return formatted.replace(/\/$/, "");
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return "https://ghar-kharch-three.vercel.app";
+  }
+
+  return "http://localhost:3000";
+}
+
 /**
- * The production URL, from NEXT_PUBLIC_SITE_URL. Falls back to localhost for
- * local dev only - never hard-code a temporary localhost URL into anything
- * that reads from SITE_URL itself.
+ * The production URL, from NEXT_PUBLIC_SITE_URL or Vercel system variables,
+ * falling back to the production deployment domain in production or localhost for local dev.
  */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+export const SITE_URL = resolveSiteUrl();
 
 export const SITE_NAME = "GharKharch";
 export const SITE_TAGLINE = "Household Money, Clearly.";
