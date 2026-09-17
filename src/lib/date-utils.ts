@@ -137,18 +137,22 @@ export function getPreviousComparableRange(range: DateRange): DateRange {
   return { start: prevStart, end: prevEnd, label: "Previous period" };
 }
 
-/** Human day-group label for an expense_date string relative to today, e.g. "Today" / "Yesterday" / "12 Sep 2026". */
+/** Human day-group label for an expense_date string relative to today, e.g. "Today · Thu, 17 Sep" / "Yesterday · Wed, 16 Sep" / "Thu, 17 Sep". */
 export function dayGroupLabel(iso: string): string {
   const today = getTodayISO();
   const yesterday = addDaysISO(today, -1);
-  if (iso === today) return "Today";
-  if (iso === yesterday) return "Yesterday";
-  return parseISODate(iso).toLocaleDateString("en-IN", {
+  const dateObj = parseISODate(iso);
+  const formattedDate = dateObj.toLocaleDateString("en-IN", {
+    weekday: "short",
     day: "numeric",
     month: "short",
-    year: parseISODate(iso).getUTCFullYear() !== parseISODate(today).getUTCFullYear() ? "numeric" : undefined,
+    year: dateObj.getUTCFullYear() !== parseISODate(today).getUTCFullYear() ? "numeric" : undefined,
     timeZone: "UTC",
   });
+
+  if (iso === today) return `Today · ${formattedDate}`;
+  if (iso === yesterday) return `Yesterday · ${formattedDate}`;
+  return formattedDate;
 }
 
 /** Short weekday+day label used for compact mobile chart axes, e.g. "12". */

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Loader2, Search } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/shared/user-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +19,7 @@ import { useHousehold } from "@/lib/context/household-context";
 
 export function TopBar() {
   const router = useRouter();
-  const { displayName, householdName } = useHousehold();
+  const { displayName, avatarUrl, householdName } = useHousehold();
   const [signingOut, setSigningOut] = useState(false);
 
   async function signOut() {
@@ -30,17 +30,10 @@ export function TopBar() {
     router.refresh();
   }
 
-  const initials = displayName
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
   return (
     <header className="safe-top sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
       <div className="sm:hidden">
-        <FullLogo width={60} className="h-auto w-auto" />
+        <FullLogo width={125} className="h-12 w-auto object-contain" />
       </div>
       <div className="hidden text-sm text-muted-foreground sm:block">{householdName}</div>
 
@@ -55,9 +48,7 @@ export function TopBar() {
 
         <DropdownMenu>
           <DropdownMenuTrigger className="ml-1 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <Avatar>
-              <AvatarFallback>{initials || "?"}</AvatarFallback>
-            </Avatar>
+            <UserAvatar name={displayName} avatarUrl={avatarUrl} className="h-9 w-9" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>{displayName}</DropdownMenuLabel>

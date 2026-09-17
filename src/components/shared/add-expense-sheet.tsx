@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ChevronRight, Store, Sparkles } from "lucide-react";
+import { ChevronRight, Store } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -34,7 +34,6 @@ import type { CategorySuggestion } from "@/lib/expense-intelligence/category-sug
 import { suggestMerchant } from "@/lib/expense-intelligence/merchant-suggester";
 import { isOffline, isNetworkError, queueExpense } from "@/lib/offline/offline-queue";
 import { useOffline } from "@/lib/context/offline-context";
-import { parseQuickEntry } from "@/lib/expense-intelligence/nl-parser";
 import type { ExpenseFormInput } from "@/lib/validations/expense";
 import type { Tables, ExpenseType } from "@/types/database";
 
@@ -186,28 +185,6 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     return match && match.confidence >= 0.7 && match.merchant.name.toLowerCase() !== form.itemName.trim().toLowerCase() ? match.merchant : null;
   }, [form.itemName, form.merchant, merchants]);
 
-  // Natural-language quick entry (spec section 45, 83): "Milk 60", "Croma
-  // 18999 card" — parsed deterministically, then dropped into the normal form
-  // fields so the rest of the flow (category suggestion, review, Save) is
-  // identical either way.
-  const [nlEntryOpen, setNlEntryOpen] = useState(false);
-  const [nlText, setNlText] = useState("");
-
-  function applyNaturalLanguageEntry() {
-    if (!nlText.trim()) return;
-    const parsed = parseQuickEntry(nlText);
-    setForm((f) => ({
-      ...f,
-      itemName: parsed.itemName || f.itemName,
-      amount: parsed.amount !== null ? String(parsed.amount) : f.amount,
-      paymentMethod: parsed.paymentMethod ?? f.paymentMethod,
-      date: parsed.expenseDate,
-      merchant: null,
-    }));
-    setNlText("");
-    setNlEntryOpen(false);
-    toast.message("Parsed — review and save");
-  }
 
   function applyMerchant(merchant: Tables<"merchants">) {
     setForm((f) => ({ ...f, merchant, itemName: merchant.name }));
@@ -350,35 +327,6 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
           </DrawerHeader>
 
           {!isEditing && <QuickAddBar chips={quickAddChips} onPick={handleQuickAdd} disabled={submitting || loadingRefs} />}
-
-          {!isEditing && (
-            <div className="px-5">
-              {!nlEntryOpen ? (
-                <button
-                  type="button"
-                  onClick={() => setNlEntryOpen(true)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-primary"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Type it out instead — e.g. &quot;Milk 60&quot; or &quot;Croma 18999 card&quot;
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <Input
-                    autoFocus
-                    value={nlText}
-                    onChange={(e) => setNlText(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && applyNaturalLanguageEntry()}
-                    placeholder="Milk 60, Vegetables 240 cash…"
-                    className="flex-1"
-                  />
-                  <Button type="button" onClick={applyNaturalLanguageEntry} disabled={!nlText.trim()}>
-                    Parse
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="flex-1 overflow-y-auto px-5">
             {/* No autoFocus here: popping the keyboard the instant this sheet
