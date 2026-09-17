@@ -31,10 +31,10 @@ export function TopBar() {
   }
 
   return (
-    <header className="safe-top sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
-      <div className="sm:hidden">
-        <FullLogo width={125} className="h-12 w-auto object-contain" />
-      </div>
+    <header className="safe-top sticky top-0 z-30 flex h-[70px] items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur sm:h-16 md:px-6">
+      <Link href="/dashboard" className="flex items-center py-1 sm:hidden">
+        <FullLogo width={180} className="h-14 w-auto object-contain" />
+      </Link>
       <div className="hidden text-sm text-muted-foreground sm:block">{householdName}</div>
 
       <div className="flex items-center gap-1">
