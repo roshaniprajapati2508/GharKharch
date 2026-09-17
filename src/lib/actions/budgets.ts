@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
-import { getTodayISO, parseISODate } from "@/lib/date-utils";
+import { getTodayISO, parseISODate, toPeriodMonth } from "@/lib/date-utils";
 import type { Tables } from "@/types/database";
 
 // The `budgets` table (migration 001) and its RLS policy (migration 002) have
