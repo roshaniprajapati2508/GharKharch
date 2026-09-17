@@ -53,7 +53,6 @@ import type { CategorySuggestion } from "@/lib/expense-intelligence/category-sug
 import { suggestMerchant } from "@/lib/expense-intelligence/merchant-suggester";
 import { isOffline, isNetworkError, queueExpense } from "@/lib/offline/offline-queue";
 import { useOffline } from "@/lib/context/offline-context";
-import { useQuickAddSave } from "@/lib/hooks/use-quick-add-save";
 import { parseQuickEntry } from "@/lib/expense-intelligence/nl-parser";
 import { detectPriceChange, type PriceChangeFlag } from "@/lib/actions/insights";
 import { ReceiptReviewSheet, type ReceiptReviewValues } from "@/components/shared/receipt-review-sheet";
@@ -96,7 +95,7 @@ function emptySingleState(userId: string) {
     expenseType: "household" as ExpenseType,
     date: getTodayISO(),
     time: "",
-    paymentMethod: null as string | null,
+    paymentMethod: "UPI" as string | null, // Default to UPI as requested
     cardId: null as string | null,
     upiProfileId: null as string | null,
     bankAccountId: null as string | null,
@@ -110,6 +109,17 @@ const COMMON_PAYMENT_METHODS = [
   { id: "Debit Card", label: "Debit Card", icon: CreditCard },
   { id: "Cash", label: "Cash", icon: Banknote },
   { id: "Bank Transfer", label: "Bank", icon: Landmark },
+];
+
+/** Pre-seeded instant top categories (0ms fallback before or during network cache hydration) */
+const DEFAULT_TOP_CATEGORIES: CategoryWithChildren[] = [
+  { id: "seed-food", name: "Food & Grocery", icon: "shopping-basket", color: "green", sort_order: 10, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
+  { id: "seed-shopping", name: "Shopping", icon: "shopping-bag", color: "pink", sort_order: 20, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
+  { id: "seed-fashion", name: "Fashion", icon: "shirt", color: "purple", sort_order: 30, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
+  { id: "seed-household", name: "Household", icon: "home", color: "amber", sort_order: 50, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
+  { id: "seed-transport", name: "Transport", icon: "car", color: "orange", sort_order: 60, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
+  { id: "seed-health", name: "Health", icon: "heart-pulse", color: "red", sort_order: 70, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
+  { id: "seed-personal", name: "Personal", icon: "user", color: "teal", sort_order: 80, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
 ];
 
 export function AddExpenseSheet({
@@ -141,13 +151,14 @@ export function AddExpenseSheet({
   const [shoppingRows, setShoppingRows] = useState<ShoppingRow[]>([emptyShoppingRow(null)]);
   const [shoppingCategoryRowKey, setShoppingCategoryRowKey] = useState<string | null>(null);
 
-  // Reference data with instant client caching
-  const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>(
-    () => getClientCachedData<CategoryWithChildren[]>("categories_tree_active") ?? []
-  );
-  const [categoryFlat, setCategoryFlat] = useState<Tables<"categories">[]>(
-    () => getClientCachedData<Tables<"categories">[]>("categories_flat_budget") ?? []
-  );
+  // Reference data with instant client caching & 0ms instant fallback
+  const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>(() => {
+    const cached = getClientCachedData<CategoryWithChildren[]>("categories_tree_active");
+    return cached && cached.length > 0 ? cached : DEFAULT_TOP_CATEGORIES;
+  });
+  const [categoryFlat, setCategoryFlat] = useState<Tables<"categories">[]>(() => {
+    return getClientCachedData<Tables<"categories">[]>("categories_flat_budget") ?? [];
+  });
   const [merchants, setMerchants] = useState<Tables<"merchants">[]>(
     () => getClientCachedData<Tables<"merchants">[]>("merchants_list") ?? []
   );
@@ -183,11 +194,30 @@ export function AddExpenseSheet({
       listBankAccounts(),
       getQuickAddChips(),
     ]).then(([cats, merch, methods, userCards, upi, banks, chips]) => {
-      if (cats.data) {
+      if (cats.data && cats.data.tree.length > 0) {
         setCategoryTree(cats.data.tree);
         setCategoryFlat(cats.data.flat);
         setClientCachedData("categories_tree_active", cats.data.tree);
         setClientCachedData("categories_flat_budget", cats.data.flat);
+
+        // If form had selected a seed category, sync the real DB category id
+        setForm((f) => {
+          if (f.category && f.category.categoryId.startsWith("seed-")) {
+            const match = cats.data!.flat.find(
+              (c) => c.name.toLowerCase() === f.category!.categoryName.toLowerCase() && !c.parent_id
+            );
+            if (match) {
+              return {
+                ...f,
+                category: {
+                  ...f.category,
+                  categoryId: match.id,
+                },
+              };
+            }
+          }
+          return f;
+        });
       }
       if (merch.data) {
         setMerchants(merch.data);
@@ -232,7 +262,7 @@ export function AddExpenseSheet({
         expenseType: source.expense_type,
         date: editExpense ? source.expense_date : getTodayISO(),
         time: source.expense_time?.slice(0, 5) ?? "",
-        paymentMethod: source.payment_method,
+        paymentMethod: source.payment_method || "UPI",
         cardId: source.card_id,
         upiProfileId: source.upi_profile_id,
         bankAccountId: source.bank_account_id,
@@ -347,7 +377,7 @@ export function AddExpenseSheet({
       ...f,
       itemName: parsed.itemName || f.itemName,
       amount: parsed.amount !== null ? String(parsed.amount) : f.amount,
-      paymentMethod: parsed.paymentMethod ?? f.paymentMethod,
+      paymentMethod: parsed.paymentMethod ?? f.paymentMethod ?? "UPI",
       date: parsed.expenseDate,
       merchant: null,
     }));
@@ -378,10 +408,16 @@ export function AddExpenseSheet({
   }
 
   function selectQuickCategory(cat: CategoryWithChildren) {
+    let realCatId = cat.id;
+    if (realCatId.startsWith("seed-")) {
+      const match = categoryFlat.find((c) => c.name.toLowerCase() === cat.name.toLowerCase() && !c.parent_id);
+      if (match) realCatId = match.id;
+    }
+
     setForm((f) => ({
       ...f,
       category: {
-        categoryId: cat.id,
+        categoryId: realCatId,
         subcategoryId: null,
         categoryName: cat.name,
         subcategoryName: null,
@@ -476,14 +512,27 @@ export function AddExpenseSheet({
     }
   }
 
-  const { saveChip: handleQuickAdd, savingChip } = useQuickAddSave({
-    onSaved: (expense) => {
-      onOptimisticAdd?.(expense);
-      onSaved?.(expense);
-      onOpenChange(false);
-    },
-    onQueued: () => onOpenChange(false),
-  });
+  // Safe Quick Add Pick: fills the form fields for user review and approval before saving
+  function handleQuickAddPick(chip: QuickAddChip) {
+    const matchedCategory = categoryFlat.find((c) => c.id === chip.categoryId);
+    const matchedSubcategory = chip.subcategoryId ? categoryFlat.find((c) => c.id === chip.subcategoryId) : null;
+
+    setForm((f) => ({
+      ...f,
+      amount: String(chip.amount),
+      itemName: chip.itemName,
+      category: {
+        categoryId: chip.categoryId,
+        subcategoryId: chip.subcategoryId,
+        categoryName: matchedCategory?.name ?? "Category",
+        subcategoryName: matchedSubcategory?.name ?? null,
+      },
+      paymentMethod: "UPI",
+    }));
+    setAmountTouched(true);
+    setCategoryTouched(true);
+    toast.info(`Loaded "${chip.itemName} ₹${chip.amount}" — tap Save Expense when ready`, { duration: 3000 });
+  }
 
   // Handle Single Expense Submit
   async function handleSubmitSingle() {
@@ -501,16 +550,22 @@ export function AddExpenseSheet({
       return;
     }
 
+    let finalCatId = form.category.categoryId;
+    if (finalCatId.startsWith("seed-")) {
+      const match = categoryFlat.find((c) => c.name.toLowerCase() === form.category!.categoryName.toLowerCase() && !c.parent_id);
+      if (match) finalCatId = match.id;
+    }
+
     setSubmitting(true);
     const payload = {
       amount,
       item_name: form.itemName.trim(),
-      category_id: form.category.categoryId,
+      category_id: finalCatId,
       subcategory_id: form.category.subcategoryId,
       merchant_id: form.merchant?.id ?? null,
       paid_by: form.paidBy,
       expense_type: form.expenseType,
-      payment_method: form.paymentMethod,
+      payment_method: form.paymentMethod || "UPI",
       card_id: form.cardId,
       upi_profile_id: form.upiProfileId,
       bank_account_id: form.bankAccountId,
@@ -582,10 +637,16 @@ export function AddExpenseSheet({
     setSubmitting(true);
     let savedCount = 0;
     for (const row of validShoppingRows) {
+      let finalCatId = row.category!.categoryId;
+      if (finalCatId.startsWith("seed-")) {
+        const match = categoryFlat.find((c) => c.name.toLowerCase() === row.category!.categoryName.toLowerCase() && !c.parent_id);
+        if (match) finalCatId = match.id;
+      }
+
       const result = await createExpense({
         amount: parseFloat(row.amount),
         item_name: row.itemName.trim(),
-        category_id: row.category!.categoryId,
+        category_id: finalCatId,
         subcategory_id: row.category!.subcategoryId,
         merchant_id: null,
         paid_by: userId,
@@ -609,9 +670,12 @@ export function AddExpenseSheet({
   const todayIso = getTodayISO();
   const yesterdayIso = addDaysISO(todayIso, -1);
 
-  // Top 7 categories for 1-tap quick select
+  // Top 7 categories for 1-tap quick select (never empty)
   const topCategories = useMemo(() => {
-    return categoryTree.slice(0, 7);
+    if (categoryTree && categoryTree.length > 0) {
+      return categoryTree.slice(0, 7);
+    }
+    return DEFAULT_TOP_CATEGORIES.slice(0, 7);
   }, [categoryTree]);
 
   const activeShoppingRow = shoppingRows.find((r) => r.key === shoppingCategoryRowKey) ?? null;
@@ -687,17 +751,17 @@ export function AddExpenseSheet({
             <DrawerDescription className="sr-only">Enter expense amount, item name, and details</DrawerDescription>
           </DrawerHeader>
 
-          {/* Quick Add Chips (for new single expense) */}
+          {/* Quick Add Chips (for new single expense) - Populates form on tap with fair review */}
           {!isEditing && entryMode === "single" && quickAddChips.length > 0 && (
             <div className="pt-2 pb-1.5 px-5 bg-surface-subtle/40 border-b border-border/30">
-              <QuickAddBar chips={quickAddChips} onPick={handleQuickAdd} disabled={savingChip !== null} />
+              <QuickAddBar chips={quickAddChips} onPick={handleQuickAddPick} />
             </div>
           )}
 
           {/* SINGLE EXPENSE MODE BODY */}
           {entryMode === "single" ? (
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              {/* Hero Amount Input */}
+              {/* Hero Amount Input with snug Rs position */}
               <div>
                 <AmountInput
                   value={form.amount}
@@ -723,7 +787,7 @@ export function AddExpenseSheet({
                 )}
               </div>
 
-              {/* 1-Tap Category Quick Chips with Rich Pastel Colors */}
+              {/* 1-Tap Category Quick Chips with Rich Pastel Colors (Always rendered immediately 0ms) */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
@@ -741,7 +805,10 @@ export function AddExpenseSheet({
                 {/* Quick Select Chips */}
                 <div className="flex flex-wrap gap-2">
                   {topCategories.map((cat) => {
-                    const isSelected = form.category?.categoryId === cat.id && !form.category.subcategoryId;
+                    const isSelected =
+                      (form.category?.categoryId === cat.id ||
+                        form.category?.categoryName.toLowerCase() === cat.name.toLowerCase()) &&
+                      !form.category.subcategoryId;
                     const swatch = colorSwatch(cat.color);
                     const Icon = getIcon(cat.icon);
 
@@ -781,14 +848,24 @@ export function AddExpenseSheet({
                     onClick={() => setCategoryPickerOpen(true)}
                     className={cn(
                       "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-dashed transition-all",
-                      form.category && !topCategories.some((c) => c.id === form.category?.categoryId && !form.category?.subcategoryId)
+                      form.category &&
+                        !topCategories.some(
+                          (c) =>
+                            c.name.toLowerCase() === form.category?.categoryName.toLowerCase() &&
+                            !form.category?.subcategoryId
+                        )
                         ? "bg-brand-primary text-white border-brand-primary shadow-sm font-bold"
                         : "border-muted-foreground/40 text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
                     <Layers className="h-3.5 w-3.5" />
                     <span>
-                      {form.category && !topCategories.some((c) => c.id === form.category?.categoryId && !form.category?.subcategoryId)
+                      {form.category &&
+                      !topCategories.some(
+                        (c) =>
+                          c.name.toLowerCase() === form.category?.categoryName.toLowerCase() &&
+                          !form.category?.subcategoryId
+                      )
                         ? form.category.subcategoryName
                           ? `${form.category.categoryName} → ${form.category.subcategoryName}`
                           : form.category.categoryName
@@ -896,7 +973,7 @@ export function AddExpenseSheet({
                 </div>
               </div>
 
-              {/* Payment Method Quick Pills */}
+              {/* Payment Method Quick Pills (Default: UPI) */}
               <div>
                 <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                   Payment Method

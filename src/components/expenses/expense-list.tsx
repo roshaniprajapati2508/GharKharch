@@ -6,6 +6,7 @@ import { formatINR } from "@/lib/utils";
 import { ExpenseRow } from "@/components/expenses/expense-row";
 import { AnalyzeExpenseSheet } from "@/components/expenses/analyze-expense-sheet";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export function ExpenseList({
   const [noteValue, setNoteValue] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [analyzeTarget, setAnalyzeTarget] = useState<EnrichedExpense | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EnrichedExpense | null>(null);
 
   async function viewReceipt(expense: EnrichedExpense) {
     if (!expense.receipt_path) return;
@@ -96,7 +98,7 @@ export function ExpenseList({
                 expense={e}
                 onEdit={() => onEdit(e)}
                 onDuplicate={() => onDuplicate(e)}
-                onDelete={() => onDelete(e)}
+                onDelete={() => setDeleteTarget(e)}
                 onAddNote={() => {
                   setNoteTarget(e);
                   setNoteValue(e.notes ?? "");
@@ -110,6 +112,26 @@ export function ExpenseList({
       ))}
 
       <AnalyzeExpenseSheet open={!!analyzeTarget} onOpenChange={(open) => !open && setAnalyzeTarget(null)} expense={analyzeTarget} />
+
+      <ConfirmationDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete expense?"
+        description={
+          deleteTarget
+            ? `Are you sure you want to delete "${deleteTarget.merchant_name || deleteTarget.item_name}" for ${formatINR(deleteTarget.amount)}?`
+            : "Are you sure you want to delete this expense?"
+        }
+        confirmLabel="Delete expense"
+        cancelLabel="Keep"
+        destructive={true}
+        onConfirm={() => {
+          if (deleteTarget) {
+            onDelete(deleteTarget);
+            setDeleteTarget(null);
+          }
+        }}
+      />
 
       <Dialog open={!!noteTarget} onOpenChange={(open) => !open && setNoteTarget(null)}>
         <DialogContent>
