@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <title>You're offline · GharKharch</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff8eb;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+        color: #0f2937;
+        text-align: center;
+        padding: 24px;
+      }
+      .card {
+        max-width: 320px;
+      }
+      .badge {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: #087f6e;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+        font-size: 24px;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0 0 8px;
+      }
+      p {
+        font-size: 14px;
+        color: #64748b;
+        margin: 0 0 20px;
+        line-height: 1.5;
+      }
+      button {
+        background: #087f6e;
+        color: white;
+        border: none;
+        border-radius: 999px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="badge">₹</div>
+      <h1>You're offline</h1>
+      <p>GharKharch couldn't reach the server. Any expenses you add now will be saved on this device and synced automatically once you're back online.</p>
+      <button onclick="location.reload()">Try again</button>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="96" viewBox="0 0 120 96" fill="none">
+  <ellipse cx="60" cy="80" rx="40" ry="6" fill="#e7f5ec" />
+  <circle cx="60" cy="52" r="26" fill="#fff8eb" stroke="#087f6e" stroke-width="3" />
+  <path d="M60 40 L60 30" stroke="#22c55e" stroke-width="3" stroke-linecap="round" />
+  <path d="M60 32 Q66 26 72 30 Q68 36 60 34" fill="#22c55e" />
+  <path d="M60 32 Q54 26 48 30 Q52 36 60 34" fill="#22c55e" />
+  <text x="60" y="60" text-anchor="middle" font-size="20" font-weight="700" fill="#087f6e" font-family="Inter, sans-serif">₹</text>
+</svg>
