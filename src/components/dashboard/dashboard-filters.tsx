@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, ChevronDown } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useHousehold } from "@/lib/context/household-context";
 import {
   getTodayRange,
   getLast7DaysRange,
@@ -33,28 +32,18 @@ const QUICK_PERIODS: { key: QuickPeriod; label: string; resolve: () => DateRange
   { key: "lastMonth", label: "Last Month", resolve: getPreviousMonthRange },
 ];
 
-/** Dashboard-wide "who" + "when" filter (spec section 37: Household/Me/Wife, Today/7D/30D/This Month/Last Month/Custom). */
 export function DashboardFilters({
   period,
-  person,
   onPeriodChange,
-  onPersonChange,
 }: {
   period: QuickPeriod;
-  person: PersonFilter;
+  person?: PersonFilter;
   onPeriodChange: (period: QuickPeriod, range: DateRange) => void;
-  onPersonChange: (person: PersonFilter) => void;
+  onPersonChange?: (person: PersonFilter) => void;
 }) {
-  const { displayName, partner } = useHousehold();
   const [customOpen, setCustomOpen] = useState(false);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
-
-  const personOptions: { key: PersonFilter; label: string }[] = [
-    { key: "household", label: "Household" },
-    { key: "me", label: displayName.split(" ")[0] || "Me" },
-    ...(partner ? [{ key: "partner" as const, label: partner.displayName.split(" ")[0] }] : []),
-  ];
 
   function applyCustom() {
     if (!customStart || !customEnd) return;
@@ -112,35 +101,6 @@ export function DashboardFilters({
           </PopoverContent>
         </Popover>
       </div>
-
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="flex w-fit items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-medium text-foreground"
-          >
-            {personOptions.find((o) => o.key === person)?.label ?? "Household"}
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-44 p-1">
-          <div className="flex flex-col">
-            {personOptions.map((opt) => (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => onPersonChange(opt.key)}
-                className={cn(
-                  "rounded-lg px-3 py-2 text-left text-sm",
-                  person === opt.key ? "bg-secondary font-medium text-secondary-foreground" : "text-foreground hover:bg-muted"
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
     </div>
   );
 }
