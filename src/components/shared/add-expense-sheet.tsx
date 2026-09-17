@@ -45,7 +45,8 @@ import { createExpense, updateExpense, type EnrichedExpense } from "@/lib/action
 import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/actions/categories";
 import { listMerchantsForHousehold } from "@/lib/actions/merchants";
 import { listPaymentMethodsForHousehold } from "@/lib/actions/payment-methods";
-import { listUserCards, listUpiProfiles, listBankAccounts, DEFAULT_HOUSEHOLD_CARDS, type EnrichedUserCard } from "@/lib/actions/payment-instruments";
+import { listUserCards, listUpiProfiles, listBankAccounts, type EnrichedUserCard } from "@/lib/actions/payment-instruments";
+import { DEFAULT_HOUSEHOLD_CARDS } from "@/lib/constants/payment-cards";
 import { getQuickAddChips, type QuickAddChip } from "@/lib/actions/quick-add";
 import { getCategorySuggestion } from "@/lib/actions/intelligence";
 import { getItemPriceMemory, type ItemPriceMemory } from "@/lib/actions/insights";

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, SITE_LOCALE, BRAND, absoluteUrl } from "@/lib/seo/site";
 import "./globals.css";
 
 // Typography system: Plus Jakarta Sans for headings/titles, Inter for body/UI
@@ -22,13 +23,33 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "GharKharch",
-    template: "%s · GharKharch",
+    default: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    template: `%s · ${SITE_NAME}`,
   },
-  description: "Private household expense intelligence. Household Money, Clearly.",
-  applicationName: "GharKharch",
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
   manifest: "/manifest.json",
+  // Sensible default for every route: authenticated app screens are never
+  // meant to be indexed. Public pages (privacy, terms) override this with
+  // their own `robots: { index: true, follow: true }` in their own
+  // metadata export - see spec section 12/24.
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    url: absoluteUrl("/"),
+    locale: SITE_LOCALE,
+    images: [{ url: absoluteUrl("/opengraph-image"), width: 1200, height: 630, alt: `${BRAND.name} - ${SITE_TAGLINE}` }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    images: [absoluteUrl("/opengraph-image")],
+  },
   icons: {
     icon: [
       { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
@@ -50,10 +71,27 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+// Organization structured data (spec section 15): only real, verifiable
+// facts - name, production URL, logo. No social profiles, no company
+// registration info, no address, no founders - none of that exists to
+// report, so none of it is fabricated here.
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: SITE_NAME,
+  url: SITE_URL,
+  logo: absoluteUrl(BRAND.logoPath),
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-IN" className={`${inter.variable} ${plusJakartaSans.variable}`}>
       <body className="antialiased">
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger -- static, locally-built JSON with no user input, the standard next.js pattern for JSON-LD
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
         {children}
         <Toaster />
       </body>
