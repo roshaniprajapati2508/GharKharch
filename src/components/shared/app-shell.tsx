@@ -11,6 +11,7 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { AddExpenseProvider, useAddExpense } from "@/lib/context/add-expense-context";
 import { SearchProvider } from "@/lib/context/search-context";
 import { OfflineProvider } from "@/lib/context/offline-context";
+import { FooterCredit } from "@/components/shared/footer";
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const { openAdd } = useAddExpense();
@@ -35,9 +36,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               plus the device's own safe-area inset on top of that. From
               `sm` up there's no bottom nav (SidebarNav takes over), so it
               drops back to ordinary page padding. */}
-          <main className="flex-1 min-w-0 max-w-full overflow-x-clip px-4 pt-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-8 sm:pt-6 print:px-0 print:pb-0 print:pt-0">
-            <div className="mx-auto w-full max-w-5xl min-w-0">
+          <main className="flex-1 min-w-0 max-w-full overflow-x-clip px-4 pt-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-8 sm:pt-6 print:px-0 print:pb-0 print:pt-0 flex flex-col">
+            <div className="mx-auto w-full max-w-5xl min-w-0 flex-1 flex flex-col justify-between">
               <PageTransition>{children}</PageTransition>
+              <div className="no-print mt-12 pb-2">
+                <FooterCredit />
+              </div>
             </div>
           </main>
         </div>
