@@ -2,7 +2,25 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronRight, Store, Sparkles, Paperclip, ScanLine, Loader2, X } from "lucide-react";
+import {
+  ChevronRight,
+  Store,
+  Sparkles,
+  Paperclip,
+  ScanLine,
+  Loader2,
+  X,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  Landmark,
+  Layers,
+  Plus,
+  Trash2,
+  Receipt,
+  ShoppingCart,
+  Zap,
+} from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -18,11 +36,11 @@ import { AmountInput } from "@/components/expenses/amount-input";
 import { CategoryPicker, type CategorySelection } from "@/components/expenses/category-picker";
 import { MerchantPicker } from "@/components/expenses/merchant-picker";
 import { PaidBySelector, ExpenseTypeSelector } from "@/components/expenses/person-selector";
-import { PaymentMethodSelect, CardQuickPicker, UpiQuickPicker, BankQuickPicker } from "@/components/expenses/payment-method-select";
-import { DateTimeFields, MoreOptionsDisclosure, NotesField } from "@/components/expenses/date-time-fields";
+import { CardQuickPicker, UpiQuickPicker, BankQuickPicker } from "@/components/expenses/payment-method-select";
 import { QuickAddBar } from "@/components/shared/quick-add-bar";
+import { CategoryIcon } from "@/lib/icon-map";
 import { useHousehold } from "@/lib/context/household-context";
-import { getTodayISO } from "@/lib/date-utils";
+import { getTodayISO, addDaysISO } from "@/lib/date-utils";
 import { createExpense, updateExpense, type EnrichedExpense } from "@/lib/actions/expenses";
 import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/actions/categories";
 import { listMerchantsForHousehold } from "@/lib/actions/merchants";
@@ -42,8 +60,9 @@ import { ReceiptReviewSheet, type ReceiptReviewValues } from "@/components/share
 import { checkAiConfigured, scanReceipt } from "@/lib/actions/receipts";
 import type { ParsedReceipt } from "@/lib/ai/receipt-parser";
 import { createClient } from "@/lib/supabase/client";
+import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";
 import type { Tables, ExpenseType } from "@/types/database";
-import { formatINR } from "@/lib/utils";
+import { cn, formatINR } from "@/lib/utils";
 
 interface AddExpenseSheetProps {
   open: boolean;
@@ -52,11 +71,22 @@ interface AddExpenseSheetProps {
   duplicateFrom?: EnrichedExpense | null;
   onOptimisticAdd?: (expense: Tables<"expenses">) => void;
   onSaved?: (expense: Tables<"expenses">) => void;
-  /** Switches to the "Shopping mode" sheet instead (spec section 1) — only offered from the global sheet instance (add-expense-context.tsx), not the Expenses screen's own edit-only instance. Placement: a small text link in the header, next to the title, visible only for a brand-new expense (not while editing/duplicating) since shopping mode is itself a way to *start* several new expenses, not an edit action. */
   onOpenShoppingMode?: () => void;
+  initialMode?: "single" | "shopping";
 }
 
-function emptyState(userId: string) {
+interface ShoppingRow {
+  key: string;
+  itemName: string;
+  amount: string;
+  category: CategorySelection | null;
+}
+
+function emptyShoppingRow(carryOver: CategorySelection | null): ShoppingRow {
+  return { key: crypto.randomUUID(), itemName: "", amount: "", category: carryOver };
+}
+
+function emptySingleState(userId: string) {
   return {
     amount: "",
     itemName: "",
@@ -74,33 +104,76 @@ function emptyState(userId: string) {
   };
 }
 
-export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom, onOptimisticAdd, onSaved, onOpenShoppingMode }: AddExpenseSheetProps) {
+const COMMON_PAYMENT_METHODS = [
+  { id: "UPI", label: "UPI", icon: Smartphone },
+  { id: "Credit Card", label: "Credit Card", icon: CreditCard },
+  { id: "Debit Card", label: "Debit Card", icon: CreditCard },
+  { id: "Cash", label: "Cash", icon: Banknote },
+  { id: "Bank Transfer", label: "Bank", icon: Landmark },
+];
+
+export function AddExpenseSheet({
+  open,
+  onOpenChange,
+  editExpense,
+  duplicateFrom,
+  onOptimisticAdd,
+  onSaved,
+  initialMode = "single",
+}: AddExpenseSheetProps) {
   const { userId, householdId } = useHousehold();
   const { refreshPendingCount } = useOffline();
   const isEditing = !!editExpense;
+  const isNewExpense = !isEditing && !duplicateFrom;
 
-  const [form, setForm] = useState(() => emptyState(userId));
+  // Active Tab Mode: 'single' | 'shopping'
+  const [entryMode, setEntryMode] = useState<"single" | "shopping">(initialMode);
+
+  // Single mode state
+  const [form, setForm] = useState(() => emptySingleState(userId));
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [amountTouched, setAmountTouched] = useState(false);
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [merchantPickerOpen, setMerchantPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [loadingRefs, setLoadingRefs] = useState(true);
 
-  const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>([]);
-  const [categoryFlat, setCategoryFlat] = useState<Tables<"categories">[]>([]);
-  const [merchants, setMerchants] = useState<Tables<"merchants">[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<Tables<"payment_methods">[]>([]);
-  const [cards, setCards] = useState<Tables<"user_cards">[]>([]);
-  const [upiProfiles, setUpiProfiles] = useState<Tables<"upi_profiles">[]>([]);
-  const [bankAccounts, setBankAccounts] = useState<Tables<"bank_accounts">[]>([]);
-  const [quickAddChips, setQuickAddChips] = useState<QuickAddChip[]>([]);
+  // Shopping mode state
+  const [shoppingRows, setShoppingRows] = useState<ShoppingRow[]>([emptyShoppingRow(null)]);
+  const [shoppingCategoryRowKey, setShoppingCategoryRowKey] = useState<string | null>(null);
+
+  // Reference data with instant client caching
+  const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>(
+    () => getClientCachedData<CategoryWithChildren[]>("categories_tree_active") ?? []
+  );
+  const [categoryFlat, setCategoryFlat] = useState<Tables<"categories">[]>(
+    () => getClientCachedData<Tables<"categories">[]>("categories_flat_budget") ?? []
+  );
+  const [merchants, setMerchants] = useState<Tables<"merchants">[]>(
+    () => getClientCachedData<Tables<"merchants">[]>("merchants_list") ?? []
+  );
+  const [paymentMethods, setPaymentMethods] = useState<Tables<"payment_methods">[]>(
+    () => getClientCachedData<Tables<"payment_methods">[]>("payment_methods_active") ?? []
+  );
+  const [cards, setCards] = useState<Tables<"user_cards">[]>(
+    () => getClientCachedData<Tables<"user_cards">[]>("user_cards_list") ?? []
+  );
+  const [upiProfiles, setUpiProfiles] = useState<Tables<"upi_profiles">[]>(
+    () => getClientCachedData<Tables<"upi_profiles">[]>("upi_profiles_list") ?? []
+  );
+  const [bankAccounts, setBankAccounts] = useState<Tables<"bank_accounts">[]>(
+    () => getClientCachedData<Tables<"bank_accounts">[]>("bank_accounts_list") ?? []
+  );
+  const [quickAddChips, setQuickAddChips] = useState<QuickAddChip[]>(
+    () => getClientCachedData<QuickAddChip[]>("quick_add_chips") ?? []
+  );
 
   useEffect(() => {
     if (!open) return;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- kicking off the reference-data fetch when the sheet opens
-    setLoadingRefs(true);
+    setEntryMode(initialMode);
+    setShoppingRows([emptyShoppingRow(null)]);
+
+    // Refresh refs in background
     Promise.all([
       listCategoriesForHousehold(),
       listMerchantsForHousehold(),
@@ -113,14 +186,33 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       if (cats.data) {
         setCategoryTree(cats.data.tree);
         setCategoryFlat(cats.data.flat);
+        setClientCachedData("categories_tree_active", cats.data.tree);
+        setClientCachedData("categories_flat_budget", cats.data.flat);
       }
-      if (merch.data) setMerchants(merch.data);
-      if (methods.data) setPaymentMethods(methods.data);
-      if (userCards.data) setCards(userCards.data);
-      if (upi.data) setUpiProfiles(upi.data);
-      if (banks.data) setBankAccounts(banks.data);
-      if (chips.data) setQuickAddChips(chips.data);
-      setLoadingRefs(false);
+      if (merch.data) {
+        setMerchants(merch.data);
+        setClientCachedData("merchants_list", merch.data);
+      }
+      if (methods.data) {
+        setPaymentMethods(methods.data);
+        setClientCachedData("payment_methods_active", methods.data);
+      }
+      if (userCards.data) {
+        setCards(userCards.data);
+        setClientCachedData("user_cards_list", userCards.data);
+      }
+      if (upi.data) {
+        setUpiProfiles(upi.data);
+        setClientCachedData("upi_profiles_list", upi.data);
+      }
+      if (banks.data) {
+        setBankAccounts(banks.data);
+        setClientCachedData("bank_accounts_list", banks.data);
+      }
+      if (chips.data) {
+        setQuickAddChips(chips.data);
+        setClientCachedData("quick_add_chips", chips.data);
+      }
     });
 
     const source = editExpense ?? duplicateFrom;
@@ -148,8 +240,9 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       });
       setCategoryTouched(true);
       setAmountTouched(true);
+      setEntryMode("single");
     } else {
-      setForm(emptyState(userId));
+      setForm(emptySingleState(userId));
       setCategoryTouched(false);
       setAmountTouched(false);
     }
@@ -161,16 +254,8 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   const [suggestion, setSuggestion] = useState<CategorySuggestion | null>(null);
   const [priceMemory, setPriceMemory] = useState<ItemPriceMemory | null>(null);
   const [priceChange, setPriceChange] = useState<PriceChangeFlag | null>(null);
-  const isNewExpense = !isEditing && !duplicateFrom;
 
-  // Receipt attach/scan (spec section 3) — attach-only support is limited to
-  // a brand-new expense (not edit/duplicate): editing an existing expense's
-  // receipt is a reasonable future addition, but out of this phase's scope,
-  // and keeping it new-expense-only avoids a half-finished "replace receipt"
-  // flow. `receiptFile` backs BOTH entry points — a receipt picked through
-  // "Scan receipt" is also attached as the expense's receipt image, since the
-  // person already has the photo in hand; "Attach receipt" alone never calls
-  // any AI.
+  // Receipt attach & scan
   const receiptAttachInputRef = useRef<HTMLInputElement>(null);
   const receiptScanInputRef = useRef<HTMLInputElement>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -186,13 +271,9 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     });
   }, [open]);
 
-  // "Same as last time" amount memory (smart amount suggestion): debounced,
-  // same pattern as the category suggestion effect below. Only offered for a
-  // brand-new expense, and only while the person hasn't touched the amount
-  // field themselves yet — the suggestion never fills the field on its own.
+  // Price memory suggestion
   useEffect(() => {
     if (!isNewExpense || amountTouched || !open || !form.itemName.trim()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing a stale suggestion once its inputs no longer apply
       setPriceMemory(null);
       setPriceChange(null);
       return;
@@ -202,12 +283,6 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       getItemPriceMemory(itemName).then((result) => {
         if (result.error === null) setPriceMemory(result.data);
       });
-      // Price-change detection (spec 2b) piggybacks on the same debounce as
-      // the amount-memory suggestion rather than adding a second network
-      // round trip on every keystroke — it's shown as a small, subtle note
-      // inside that existing suggestion row (see below), not a separate
-      // banner, since it's a secondary, easy-to-miss-on-purpose detail here;
-      // the fuller, explicit version lives in "Analyze this expense".
       detectPriceChange(itemName).then((result) => {
         if (result.error === null) setPriceChange(result.data);
       });
@@ -222,12 +297,9 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     setPriceMemory(null);
   }
 
-  // Smart category suggestion (spec section 12, 19): debounced so it doesn't
-  // fire a server action on every keystroke. Falls silent once the user has
-  // picked a category themselves for this expense.
+  // Category suggestions
   useEffect(() => {
     if (categoryTouched || !open || !form.itemName.trim()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing a stale suggestion once its inputs no longer apply
       setSuggestion(null);
       return;
     }
@@ -259,13 +331,12 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   const merchantHint = useMemo(() => {
     if (form.merchant || !form.itemName.trim()) return null;
     const match = suggestMerchant(form.itemName, merchants);
-    return match && match.confidence >= 0.7 && match.merchant.name.toLowerCase() !== form.itemName.trim().toLowerCase() ? match.merchant : null;
+    return match && match.confidence >= 0.7 && match.merchant.name.toLowerCase() !== form.itemName.trim().toLowerCase()
+      ? match.merchant
+      : null;
   }, [form.itemName, form.merchant, merchants]);
 
-  // Natural-language quick entry (spec section 45, 83): "Milk 60", "Croma
-  // 18999 card" — parsed deterministically, then dropped into the normal form
-  // fields so the rest of the flow (category suggestion, review, Save) is
-  // identical either way.
+  // Natural Language Entry
   const [nlEntryOpen, setNlEntryOpen] = useState(false);
   const [nlText, setNlText] = useState("");
 
@@ -282,7 +353,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     }));
     setNlText("");
     setNlEntryOpen(false);
-    toast.message("Parsed — review and save");
+    toast.message("Parsed — review details");
   }
 
   function applyMerchant(merchant: Tables<"merchants">) {
@@ -291,11 +362,32 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       const sub = categoryFlat.find((c) => c.id === merchant.subcategory_id);
       const parent = sub ? categoryFlat.find((c) => c.id === sub.parent_id) : null;
       if (sub && parent) {
-        setForm((f) => ({ ...f, category: { categoryId: parent.id, subcategoryId: sub.id, categoryName: parent.name, subcategoryName: sub.name } }));
+        setForm((f) => ({
+          ...f,
+          category: {
+            categoryId: parent.id,
+            subcategoryId: sub.id,
+            categoryName: parent.name,
+            subcategoryName: sub.name,
+          },
+        }));
         setCategoryTouched(true);
         toast.message(`Suggested category: ${parent.name} → ${sub.name}`);
       }
     }
+  }
+
+  function selectQuickCategory(cat: CategoryWithChildren) {
+    setForm((f) => ({
+      ...f,
+      category: {
+        categoryId: cat.id,
+        subcategoryId: null,
+        categoryName: cat.name,
+        subcategoryName: null,
+      },
+    }));
+    setCategoryTouched(true);
   }
 
   function readFileAsDataUrl(file: File): Promise<string> {
@@ -327,12 +419,12 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
         toast.error(result.error);
         return;
       }
-      setReceiptFile(file); // the scanned photo is kept as the expense's receipt attachment too
+      setReceiptFile(file);
       setParsedReceipt(result.data);
       setReceiptReviewOpen(true);
     } catch {
       setScanning(false);
-      toast.error("Couldn't read that photo");
+      toast.error("Couldn't read receipt photo");
     }
   }
 
@@ -345,19 +437,23 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     }));
     if (values.amount) setAmountTouched(true);
 
-    // A category guess is only ever applied when it actually matches one of
-    // this household's own categories by name — never a category id the AI
-    // invented — and it's still just a starting point the person can change
-    // via the normal category picker before saving (spec: AI never decides).
     if (values.categoryGuess) {
       const guess = values.categoryGuess.trim().toLowerCase();
       const match = categoryFlat.find((c) => !c.parent_id && c.name.toLowerCase().includes(guess));
       if (match) {
-        setForm((f) => ({ ...f, category: { categoryId: match.id, subcategoryId: null, categoryName: match.name, subcategoryName: null } }));
+        setForm((f) => ({
+          ...f,
+          category: {
+            categoryId: match.id,
+            subcategoryId: null,
+            categoryName: match.name,
+            subcategoryName: null,
+          },
+        }));
         setCategoryTouched(true);
       }
     }
-    toast.message("Reviewed — check the details and save");
+    toast.message("Reviewed details");
   }
 
   async function uploadReceiptIfAny(): Promise<string | null> {
@@ -366,14 +462,16 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       const supabase = createClient();
       const ext = receiptFile.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `${householdId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from("receipts").upload(path, receiptFile, { contentType: receiptFile.type || "image/jpeg" });
+      const { error } = await supabase.storage
+        .from("receipts")
+        .upload(path, receiptFile, { contentType: receiptFile.type || "image/jpeg" });
       if (error) {
-        toast.error("Couldn't upload the receipt — expense will be saved without it");
+        toast.error("Couldn't upload receipt — expense will be saved without it");
         return null;
       }
       return path;
     } catch {
-      toast.error("Couldn't upload the receipt — expense will be saved without it");
+      toast.error("Couldn't upload receipt — expense will be saved without it");
       return null;
     }
   }
@@ -387,7 +485,8 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     onQueued: () => onOpenChange(false),
   });
 
-  async function handleSubmit() {
+  // Handle Single Expense Submit
+  async function handleSubmitSingle() {
     if (!form.category) {
       toast.error("Choose a category");
       return;
@@ -420,31 +519,24 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       notes: form.notes.trim() || null,
     };
 
-    // Editing an existing expense while offline is out of scope (spec section
-    // 41's caution against a "fake offline experience" — reconciling a stale
-    // edit against server state safely needs more than a local queue can give
-    // us). Only brand-new expenses get queued; edits always go straight to
-    // the server and surface a normal error if that fails.
     if (!isEditing && isOffline()) {
-      // A receipt photo can't be uploaded while offline — the expense itself
-      // still queues normally (spec section 41), just without the receipt;
-      // there's no local-queue support for attaching it once back online.
-      if (receiptFile) toast.message("Receipt will need to be attached again once you're back online");
+      if (receiptFile) toast.message("Receipt will need to be attached again once back online");
       await queueExpense(payload);
       refreshPendingCount();
-      toast.message(`${payload.item_name} queued — will sync when back online`);
+      toast.message(`${payload.item_name} queued — will sync when online`);
       onOpenChange(false);
       return;
     }
 
-    setSubmitting(true);
     try {
       const receiptPath = isEditing ? null : await uploadReceiptIfAny();
-      const result = isEditing ? await updateExpense(editExpense!.id, payload) : await createExpense(payload, undefined, receiptPath);
+      const result = isEditing
+        ? await updateExpense(editExpense!.id, payload)
+        : await createExpense(payload, undefined, receiptPath);
       setSubmitting(false);
 
       if (result.error !== null) {
-        toast.error(result.error, { action: { label: "Retry", onClick: handleSubmit } });
+        toast.error(result.error, { action: { label: "Retry", onClick: handleSubmitSingle } });
         return;
       }
 
@@ -457,252 +549,566 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       if (!isEditing && isNetworkError(err)) {
         await queueExpense(payload);
         refreshPendingCount();
-        toast.message(`${payload.item_name} queued — will sync when back online`);
+        toast.message(`${payload.item_name} queued — will sync when online`);
         onOpenChange(false);
       } else {
-        toast.error("Something went wrong", { action: { label: "Retry", onClick: handleSubmit } });
+        toast.error("Something went wrong", { action: { label: "Retry", onClick: handleSubmitSingle } });
       }
     }
   }
 
+  // Shopping Mode Handlers
+  function updateShoppingRow(key: string, patch: Partial<ShoppingRow>) {
+    setShoppingRows((list) => list.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  function addShoppingRow() {
+    const last = shoppingRows[shoppingRows.length - 1];
+    setShoppingRows((list) => [...list, emptyShoppingRow(last?.category ?? null)]);
+  }
+
+  function removeShoppingRow(key: string) {
+    setShoppingRows((list) => (list.length > 1 ? list.filter((r) => r.key !== key) : list));
+  }
+
+  const validShoppingRows = shoppingRows.filter((r) => r.itemName.trim() && parseFloat(r.amount) > 0 && r.category);
+  const shoppingTotal = validShoppingRows.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+
+  async function handleSaveShopping() {
+    if (validShoppingRows.length === 0) {
+      toast.error("Add at least one item with an amount and category");
+      return;
+    }
+    setSubmitting(true);
+    let savedCount = 0;
+    for (const row of validShoppingRows) {
+      const result = await createExpense({
+        amount: parseFloat(row.amount),
+        item_name: row.itemName.trim(),
+        category_id: row.category!.categoryId,
+        subcategory_id: row.category!.subcategoryId,
+        merchant_id: null,
+        paid_by: userId,
+        expense_type: "household",
+        expense_date: getTodayISO(),
+      });
+      if (result.error !== null) {
+        toast.error(`Stopped after ${savedCount} saved — ${result.error}`);
+        setSubmitting(false);
+        setShoppingRows((list) => list.filter((r) => !validShoppingRows.slice(0, savedCount).some((saved) => saved.key === r.key)));
+        return;
+      }
+      savedCount += 1;
+      onSaved?.(result.data);
+    }
+    setSubmitting(false);
+    toast.success(`${savedCount} expense${savedCount === 1 ? "" : "s"} added · ${formatINR(shoppingTotal)}`);
+    onOpenChange(false);
+  }
+
+  const todayIso = getTodayISO();
+  const yesterdayIso = addDaysISO(todayIso, -1);
+
+  // Top 7 categories for 1-tap quick select
+  const topCategories = useMemo(() => {
+    return categoryTree.slice(0, 7);
+  }, [categoryTree]);
+
+  const activeShoppingRow = shoppingRows.find((r) => r.key === shoppingCategoryRowKey) ?? null;
+
   return (
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[94vh]">
-          <DrawerHeader>
-            <div className="flex items-center justify-between gap-2">
-              <DrawerTitle>{isEditing ? "Edit Expense" : "Add Expense"}</DrawerTitle>
-              {isNewExpense && onOpenShoppingMode && (
-                <button type="button" onClick={onOpenShoppingMode} className="text-xs font-medium text-primary">
-                  Shopping mode
-                </button>
-              )}
-            </div>
-            <DrawerDescription className="sr-only">Enter the amount, item, and who it&apos;s for.</DrawerDescription>
-          </DrawerHeader>
+        <DrawerContent className="max-h-[92vh] flex flex-col focus:outline-none">
+          {/* Header */}
+          <DrawerHeader className="px-5 pt-3 pb-2 border-b border-border/50">
+            <div className="flex items-center justify-between">
+              <DrawerTitle className="text-lg font-bold tracking-tight">
+                {isEditing ? "Edit Expense" : "Add Expense"}
+              </DrawerTitle>
 
-          {!isEditing && <QuickAddBar chips={quickAddChips} onPick={handleQuickAdd} disabled={savingChip !== null || loadingRefs} />}
-
-          {!isEditing && (
-            <div className="px-5">
-              {!nlEntryOpen ? (
-                <button
-                  type="button"
-                  onClick={() => setNlEntryOpen(true)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-primary"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Type it out instead — e.g. &quot;Milk 60&quot; or &quot;Croma 18999 card&quot;
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <Input
-                    autoFocus
-                    value={nlText}
-                    onChange={(e) => setNlText(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && applyNaturalLanguageEntry()}
-                    placeholder="Milk 60, Vegetables 240 cash…"
-                    className="flex-1"
-                  />
-                  <Button type="button" onClick={applyNaturalLanguageEntry} disabled={!nlText.trim()}>
-                    Parse
+              <div className="flex items-center gap-1.5">
+                {isNewExpense && entryMode === "single" && aiConfigured && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2.5 text-xs gap-1 text-primary hover:bg-brand-mint/50"
+                    onClick={() => receiptScanInputRef.current?.click()}
+                    disabled={scanning}
+                  >
+                    {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
+                    <span>{scanning ? "Scanning…" : "Scan"}</span>
                   </Button>
-                </div>
-              )}
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                  onClick={() => onOpenChange(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          )}
 
-          <div className="flex-1 overflow-y-auto px-5">
-            {/* No autoFocus here: popping the keyboard the instant this sheet
-                opens (while it's still animating up) made the viewport jump
-                around jarringly on mobile — let the person tap in when
-                they're ready instead. */}
-            <AmountInput
-              value={form.amount}
-              onChange={(v) => {
-                setForm((f) => ({ ...f, amount: v }));
-                setAmountTouched(true);
-              }}
-            />
-
-            {priceMemory && (
-              <div className="mb-4 flex flex-col gap-1">
+            {/* Mode Switcher Tabs */}
+            {isNewExpense && (
+              <div className="mt-2.5 grid grid-cols-2 p-1 bg-muted/70 rounded-xl">
                 <button
                   type="button"
-                  onClick={applyPriceMemory}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-xs text-brand-primary"
+                  onClick={() => setEntryMode("single")}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                    entryMode === "single"
+                      ? "bg-surface text-foreground shadow-sm font-bold"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <span>
-                    Last {formatINR(priceMemory.last)} · Typical {formatINR(priceMemory.typicalLow)}–{formatINR(priceMemory.typicalHigh)}
-                  </span>
-                  <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-brand-primary">Use {formatINR(priceMemory.last)}</span>
+                  <Zap className="h-3.5 w-3.5 text-brand-primary" />
+                  <span>Single Expense</span>
                 </button>
-                {priceChange && priceChange.direction !== "stable" && (
-                  <p className="px-1 text-[11px] text-muted-foreground">
-                    Price appears {priceChange.direction} than your previous typical amount for this item (based on your own past purchases).
-                  </p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setEntryMode("shopping")}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                    entryMode === "shopping"
+                      ? "bg-surface text-foreground shadow-sm font-bold"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <ShoppingCart className="h-3.5 w-3.5 text-brand-primary" />
+                  <span>Shopping Cart (Multi)</span>
+                </button>
               </div>
             )}
 
-            <div className="flex flex-col gap-4 pb-4">
+            <DrawerDescription className="sr-only">Enter expense amount, item name, and details</DrawerDescription>
+          </DrawerHeader>
+
+          {/* Quick Add Chips (for new single expense) */}
+          {!isEditing && entryMode === "single" && quickAddChips.length > 0 && (
+            <div className="pt-2 pb-1 bg-surface-subtle/50">
+              <QuickAddBar chips={quickAddChips} onPick={handleQuickAdd} disabled={savingChip !== null} />
+            </div>
+          )}
+
+          {/* SINGLE EXPENSE MODE BODY */}
+          {entryMode === "single" ? (
+            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4">
+              {/* Hero Amount Input */}
               <div>
-                <Label htmlFor="item-name">Item / Merchant</Label>
-                <div className="mt-1.5 flex gap-2">
-                  <Input
-                    id="item-name"
-                    value={form.itemName}
-                    onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value, merchant: null }))}
-                    placeholder="e.g. Milk, Zudio, Petrol"
-                    className="flex-1"
-                  />
-                  <Button type="button" variant="outline" size="icon" onClick={() => setMerchantPickerOpen(true)} aria-label="Browse merchants">
-                    <Store className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {merchantHint && (
-                <button
-                  type="button"
-                  onClick={() => applyMerchant(merchantHint)}
-                  className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-left text-sm text-foreground"
-                >
-                  <span>
-                    Did you mean <strong>{merchantHint.name}</strong>?
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </button>
-              )}
-
-              {suggestion && (
-                <button
-                  type="button"
-                  onClick={applySuggestion}
-                  className="flex items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-sm text-brand-primary"
-                >
-                  <span className="min-w-0">
-                    <span className="block">
-                      Category: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> — tap to apply
-                    </span>
-                    <span className="block truncate text-xs opacity-80">{suggestion.reason}</span>
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0" />
-                </button>
-              )}
-
-              <div>
-                <Label>Category</Label>
-                <button
-                  type="button"
-                  onClick={() => setCategoryPickerOpen(true)}
-                  className="mt-1.5 flex h-12 w-full items-center gap-3 rounded-md border border-input bg-surface px-3.5 text-left"
-                >
-                  {form.category ? (
-                    <>
-                      <span className="text-sm font-medium text-foreground">
-                        {form.category.categoryName}
-                        {form.category.subcategoryName ? ` · ${form.category.subcategoryName}` : ""}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">Choose a category</span>
-                  )}
-                  <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
-                </button>
-              </div>
-
-              <div>
-                <Label>Paid by</Label>
-                <div className="mt-1.5">
-                  <PaidBySelector value={form.paidBy} onChange={(v) => setForm((f) => ({ ...f, paidBy: v }))} />
-                </div>
-              </div>
-
-              <MoreOptionsDisclosure>
-                <div>
-                  <Label>Expense type</Label>
-                  <div className="mt-1.5">
-                    <ExpenseTypeSelector value={form.expenseType} onChange={(v) => setForm((f) => ({ ...f, expenseType: v }))} />
-                  </div>
-                </div>
-
-                <DateTimeFields
-                  date={form.date}
-                  time={form.time}
-                  onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
-                  onTimeChange={(v) => setForm((f) => ({ ...f, time: v }))}
+                <AmountInput
+                  value={form.amount}
+                  onChange={(v) => {
+                    setForm((f) => ({ ...f, amount: v }));
+                    setAmountTouched(true);
+                  }}
                 />
 
+                {priceMemory && (
+                  <div className="mt-1 flex items-center justify-between gap-2 rounded-lg bg-brand-mint/70 px-3 py-1.5 text-xs text-brand-primary">
+                    <span>
+                      Last: {formatINR(priceMemory.last)} · Typical: {formatINR(priceMemory.typicalLow)}–{formatINR(priceMemory.typicalHigh)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={applyPriceMemory}
+                      className="font-semibold underline hover:opacity-80"
+                    >
+                      Use {formatINR(priceMemory.last)}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 1-Tap Category Quick Chips */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Category
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryPickerOpen(true)}
+                    className="text-xs font-medium text-brand-primary flex items-center gap-0.5 hover:underline"
+                  >
+                    {form.category ? "Change" : "All categories"} <ChevronRight className="h-3 w-3" />
+                  </button>
+                </div>
+
+                {/* Quick Select Chips */}
+                <div className="flex flex-wrap gap-1.5">
+                  {topCategories.map((cat) => {
+                    const isSelected = form.category?.categoryId === cat.id && !form.category.subcategoryId;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => selectQuickCategory(cat)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                          isSelected
+                            ? "bg-brand-primary text-white shadow-sm ring-2 ring-brand-primary/20 scale-[1.02]"
+                            : "bg-muted/70 text-foreground hover:bg-muted"
+                        )}
+                      >
+                        <CategoryIcon icon={cat.icon} className="h-3.5 w-3.5 shrink-0" />
+                        <span>{cat.name}</span>
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={() => setCategoryPickerOpen(true)}
+                    className={cn(
+                      "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border border-dashed transition-all",
+                      form.category && !topCategories.some((c) => c.id === form.category?.categoryId && !form.category?.subcategoryId)
+                        ? "bg-brand-primary text-white border-brand-primary font-semibold"
+                        : "border-muted-foreground/30 text-muted-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    <span>
+                      {form.category && !topCategories.some((c) => c.id === form.category?.categoryId && !form.category?.subcategoryId)
+                        ? form.category.subcategoryName
+                          ? `${form.category.categoryName} → ${form.category.subcategoryName}`
+                          : form.category.categoryName
+                        : "More…"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Item / Merchant Input */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label htmlFor="item-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Item / Description
+                  </Label>
+                  {!isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => setNlEntryOpen(!nlEntryOpen)}
+                      className="text-xs text-primary flex items-center gap-1 hover:underline font-medium"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      {nlEntryOpen ? "Normal entry" : "Smart parse text"}
+                    </button>
+                  )}
+                </div>
+
+                {nlEntryOpen ? (
+                  <div className="flex gap-2">
+                    <Input
+                      autoFocus
+                      value={nlText}
+                      onChange={(e) => setNlText(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && applyNaturalLanguageEntry()}
+                      placeholder='e.g. "Milk 60" or "Zudio 1500 card"'
+                      className="flex-1 text-sm"
+                    />
+                    <Button type="button" size="sm" onClick={applyNaturalLanguageEntry} disabled={!nlText.trim()}>
+                      Parse
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      id="item-name"
+                      value={form.itemName}
+                      onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value, merchant: null }))}
+                      placeholder="e.g. Milk, Groceries, Petrol, Dinner"
+                      className="flex-1 text-sm h-11"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-11 w-11 shrink-0"
+                      onClick={() => setMerchantPickerOpen(true)}
+                      title="Pick merchant"
+                    >
+                      <Store className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Merchant suggestion hint */}
+                {merchantHint && (
+                  <button
+                    type="button"
+                    onClick={() => applyMerchant(merchantHint)}
+                    className="mt-2 flex w-full items-center justify-between rounded-lg bg-muted/80 px-3 py-2 text-left text-xs text-foreground hover:bg-muted"
+                  >
+                    <span>Did you mean <strong>{merchantHint.name}</strong>?</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                )}
+
+                {/* Smart category hint */}
+                {suggestion && (
+                  <button
+                    type="button"
+                    onClick={applySuggestion}
+                    className="mt-2 flex w-full items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-xs text-brand-primary hover:opacity-90"
+                  >
+                    <span>
+                      Suggested: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> ({suggestion.reason})
+                    </span>
+                    <span className="font-semibold underline shrink-0">Apply</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Paid By & Expense Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <Label>Payment method</Label>
-                  <div className="mt-1.5">
-                    <PaymentMethodSelect
-                      methods={paymentMethods}
-                      value={form.paymentMethod}
-                      onChange={(v) =>
-                        setForm((f) => ({ ...f, paymentMethod: v, cardId: null, upiProfileId: null, bankAccountId: null }))
-                      }
+                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                    Paid By
+                  </Label>
+                  <PaidBySelector value={form.paidBy} onChange={(v) => setForm((f) => ({ ...f, paidBy: v }))} />
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                    Type
+                  </Label>
+                  <ExpenseTypeSelector value={form.expenseType} onChange={(v) => setForm((f) => ({ ...f, expenseType: v }))} />
+                </div>
+              </div>
+
+              {/* Payment Method Quick Pills */}
+              <div>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Payment Method
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {COMMON_PAYMENT_METHODS.map((m) => {
+                    const isSelected = form.paymentMethod === m.id;
+                    const Icon = m.icon;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            paymentMethod: isSelected ? null : m.id,
+                            cardId: null,
+                            upiProfileId: null,
+                            bankAccountId: null,
+                          }))
+                        }
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                          isSelected
+                            ? "bg-brand-primary text-white shadow-sm ring-2 ring-brand-primary/20"
+                            : "bg-muted text-foreground hover:bg-muted/80"
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span>{m.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Specific Instrument Quick Pickers */}
+                {(form.paymentMethod === "Credit Card" || form.paymentMethod === "Debit Card") && cards.length > 0 && (
+                  <div className="mt-2">
+                    <CardQuickPicker cards={cards} value={form.cardId} onChange={(v) => setForm((f) => ({ ...f, cardId: v }))} />
+                  </div>
+                )}
+                {form.paymentMethod === "UPI" && upiProfiles.length > 0 && (
+                  <div className="mt-2">
+                    <UpiQuickPicker profiles={upiProfiles} value={form.upiProfileId} onChange={(v) => setForm((f) => ({ ...f, upiProfileId: v }))} />
+                  </div>
+                )}
+                {form.paymentMethod === "Bank Transfer" && bankAccounts.length > 0 && (
+                  <div className="mt-2">
+                    <BankQuickPicker accounts={bankAccounts} value={form.bankAccountId} onChange={(v) => setForm((f) => ({ ...f, bankAccountId: v }))} />
+                  </div>
+                )}
+              </div>
+
+              {/* Date & Optional Notes Inline */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                    Date
+                  </Label>
+                  <div className="flex gap-1.5 items-center">
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, date: todayIso }))}
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
+                        form.date === todayIso ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-foreground hover:bg-muted/80"
+                      )}
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, date: yesterdayIso }))}
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
+                        form.date === yesterdayIso ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-foreground hover:bg-muted/80"
+                      )}
+                    >
+                      Yesterday
+                    </button>
+                    <Input
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                      className="h-8 text-xs flex-1"
                     />
                   </div>
                 </div>
 
-                {(form.paymentMethod === "Credit Card" || form.paymentMethod === "Debit Card") && (
-                  <CardQuickPicker cards={cards} value={form.cardId} onChange={(v) => setForm((f) => ({ ...f, cardId: v }))} />
-                )}
-                {form.paymentMethod === "UPI" && (
-                  <UpiQuickPicker profiles={upiProfiles} value={form.upiProfileId} onChange={(v) => setForm((f) => ({ ...f, upiProfileId: v }))} />
-                )}
-                {form.paymentMethod === "Bank Transfer" && (
-                  <BankQuickPicker accounts={bankAccounts} value={form.bankAccountId} onChange={(v) => setForm((f) => ({ ...f, bankAccountId: v }))} />
-                )}
+                <div>
+                  <Label htmlFor="notes" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                    Notes (Optional)
+                  </Label>
+                  <Input
+                    id="notes"
+                    value={form.notes}
+                    onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                    placeholder="e.g. Split with friends, monthly bill"
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
 
-                {isNewExpense && (
-                  <div>
-                    <Label>Receipt</Label>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => receiptAttachInputRef.current?.click()}>
-                        <Paperclip className="h-3.5 w-3.5" /> {receiptFile ? "Replace photo" : "Attach receipt"}
-                      </Button>
-                      {/* "Scan receipt" is hidden (not just disabled) when no OPENAI_API_KEY is
-                          configured — the manual "Attach receipt" path above never depends on
-                          AI and always works, per spec: never show a feature that will
-                          silently fail. */}
-                      {aiConfigured && (
-                        <Button type="button" variant="outline" size="sm" onClick={() => receiptScanInputRef.current?.click()} disabled={scanning}>
-                          {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
-                          {scanning ? "Reading…" : "Scan receipt"}
-                        </Button>
-                      )}
-                      {receiptFile && (
-                        <button
-                          type="button"
-                          onClick={() => setReceiptFile(null)}
-                          className="flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
-                        >
-                          {receiptFile.name.length > 20 ? `${receiptFile.name.slice(0, 17)}…` : receiptFile.name}
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                    <input ref={receiptAttachInputRef} type="file" accept="image/*" className="hidden" onChange={handleAttachReceipt} />
-                    <input ref={receiptScanInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanReceipt} />
-                  </div>
-                )}
-
-                <NotesField value={form.notes} onChange={(v) => setForm((f) => ({ ...f, notes: v }))} />
-              </MoreOptionsDisclosure>
+              {/* Receipt Attachment Status */}
+              {receiptFile && (
+                <div className="flex items-center justify-between rounded-lg bg-brand-mint/50 px-3 py-2 text-xs text-brand-primary">
+                  <span className="flex items-center gap-1.5 font-medium truncate">
+                    <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                    {receiptFile.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setReceiptFile(null)}
+                    className="text-muted-foreground hover:text-destructive p-1"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            /* SHOPPING / MULTI-ITEM MODE BODY */
+            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Add multiple items from a grocery or mart run in one go. Each item becomes its own expense.
+                </p>
+              </div>
 
-          <DrawerFooter>
-            <Button size="lg" onClick={handleSubmit} loading={submitting}>
-              {isEditing ? "Save changes" : "Save"}
-            </Button>
+              <div className="flex flex-col gap-2.5">
+                {shoppingRows.map((row, i) => (
+                  <div
+                    key={row.key}
+                    className="flex items-center gap-2 rounded-xl border border-input/60 bg-surface p-2.5 shadow-sm"
+                  >
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <Input
+                        value={row.itemName}
+                        onChange={(e) => updateShoppingRow(row.key, { itemName: e.target.value })}
+                        placeholder={`Item ${i + 1}, e.g. Milk, Apples`}
+                        className="h-9 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShoppingCategoryRowKey(row.key)}
+                        className="flex h-8 items-center justify-between rounded-md bg-muted px-2.5 text-left text-xs text-foreground hover:bg-muted/80"
+                      >
+                        <span className="truncate">
+                          {row.category
+                            ? `${row.category.categoryName}${row.category.subcategoryName ? ` · ${row.category.subcategoryName}` : ""}`
+                            : "Choose category"}
+                        </span>
+                        <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      </button>
+                    </div>
+
+                    <Input
+                      value={row.amount}
+                      onChange={(e) => updateShoppingRow(row.key, { amount: e.target.value.replace(/[^0-9.]/g, "") })}
+                      inputMode="decimal"
+                      placeholder="₹0"
+                      className="h-9 w-24 text-right font-semibold text-sm"
+                    />
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeShoppingRow(row.key)}
+                      disabled={shoppingRows.length === 1}
+                      aria-label="Remove item"
+                      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addShoppingRow}
+                  className="w-full h-10 border-dashed gap-1.5 text-xs font-semibold"
+                >
+                  <Plus className="h-4 w-4" /> Add another item
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Footer Action */}
+          <DrawerFooter className="px-5 py-3 border-t border-border/50 bg-surface">
+            {entryMode === "single" ? (
+              <Button
+                size="lg"
+                className="w-full h-12 text-base font-bold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-md"
+                onClick={handleSubmitSingle}
+                loading={submitting}
+              >
+                {isEditing ? "Save changes" : "Save Expense"}
+              </Button>
+            ) : (
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+                  <span>{validShoppingRows.length} item{validShoppingRows.length === 1 ? "" : "s"} ready</span>
+                  <span className="text-sm font-bold text-foreground">Total: {formatINR(shoppingTotal)}</span>
+                </div>
+                <Button
+                  size="lg"
+                  className="w-full h-12 text-base font-bold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-md"
+                  onClick={handleSaveShopping}
+                  disabled={submitting || validShoppingRows.length === 0}
+                  loading={submitting}
+                >
+                  Save all {validShoppingRows.length > 0 ? `(${validShoppingRows.length} items)` : ""}
+                </Button>
+              </div>
+            )}
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
 
+      {/* Hidden File Inputs */}
+      <input ref={receiptAttachInputRef} type="file" accept="image/*" className="hidden" onChange={handleAttachReceipt} />
+      <input ref={receiptScanInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanReceipt} />
+
+      {/* Category Picker for Single Mode */}
       <CategoryPicker
         open={categoryPickerOpen}
         onOpenChange={setCategoryPickerOpen}
@@ -711,21 +1117,50 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
           setForm((f) => ({ ...f, category: selection }));
           setCategoryTouched(true);
         }}
-        onCategoryCreated={(cat) => setCategoryTree((t) => [...t, cat])}
+        onCategoryCreated={(cat) => {
+          setCategoryTree((t) => [...t, cat]);
+          setClientCachedData("categories_tree_active", [...categoryTree, cat]);
+        }}
       />
 
+      {/* Category Picker for Shopping Rows */}
+      <CategoryPicker
+        open={!!shoppingCategoryRowKey}
+        onOpenChange={(op) => !op && setShoppingCategoryRowKey(null)}
+        tree={categoryTree}
+        onSelect={(selection) => {
+          if (activeShoppingRow) {
+            updateShoppingRow(activeShoppingRow.key, { category: selection });
+          }
+          setShoppingCategoryRowKey(null);
+        }}
+        onCategoryCreated={(cat) => {
+          setCategoryTree((t) => [...t, cat]);
+          setClientCachedData("categories_tree_active", [...categoryTree, cat]);
+        }}
+      />
+
+      {/* Merchant Picker */}
       <MerchantPicker
         open={merchantPickerOpen}
         onOpenChange={setMerchantPickerOpen}
         merchants={merchants}
         onSelect={applyMerchant}
-        onMerchantCreated={(m) => setMerchants((list) => [...list, m])}
+        onMerchantCreated={(m) => {
+          setMerchants((list) => [...list, m]);
+          setClientCachedData("merchants_list", [...merchants, m]);
+        }}
       />
 
-      <ReceiptReviewSheet open={receiptReviewOpen} onOpenChange={setReceiptReviewOpen} parsed={parsedReceipt} onConfirm={applyReceiptReview} />
+      {/* Receipt Review */}
+      <ReceiptReviewSheet
+        open={receiptReviewOpen}
+        onOpenChange={setReceiptReviewOpen}
+        parsed={parsedReceipt}
+        onConfirm={applyReceiptReview}
+      />
     </>
   );
 }
 
-// Backwards-compatible alias for the placeholder name used in app-shell.tsx.
 export const AddExpenseDrawer = AddExpenseSheet;
