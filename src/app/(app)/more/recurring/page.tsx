@@ -58,14 +58,28 @@ function emptyForm(): FormState {
   return { id: null, name: "", amount: "", categoryId: "", frequency: "monthly", nextDueDate: "" };
 }
 
+import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
+
 type LogFormState = { amount: string; paidBy: string; expenseType: ExpenseType; date: string };
+
+type RecurringCachePayload = {
+  rules: RecurringWithCategory[];
+  summary: RecurringSummary | null;
+  tree: CategoryWithChildren[];
+};
 
 export default function RecurringExpensesPage() {
   const { userId } = useHousehold();
-  const [rules, setRules] = useState<RecurringWithCategory[]>([]);
-  const [summary, setSummary] = useState<RecurringSummary | null>(null);
-  const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [rules, setRules] = useState<RecurringWithCategory[]>(() => {
+    return getClientCachedData<RecurringCachePayload>("recurring_data")?.rules ?? [];
+  });
+  const [summary, setSummary] = useState<RecurringSummary | null>(() => {
+    return getClientCachedData<RecurringCachePayload>("recurring_data")?.summary ?? null;
+  });
+  const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>(() => {
+    return getClientCachedData<RecurringCachePayload>("recurring_data")?.tree ?? [];
+  });
+  const [loading, setLoading] = useState(() => !getClientCachedData<RecurringCachePayload>("recurring_data"));
   const [form, setForm] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<RecurringWithCategory | null>(null);
@@ -75,20 +89,32 @@ export default function RecurringExpensesPage() {
   const [logging, setLogging] = useState(false);
 
   async function load() {
-    setLoading(true);
+    const cached = getClientCachedData<RecurringCachePayload>("recurring_data");
+    if (!cached) {
+      setLoading(true);
+    }
     const [rulesResult, summaryResult, categoriesResult] = await Promise.all([
       listRecurringExpenses(),
       getRecurringSummary(),
       listCategoriesForHousehold(),
     ]);
-    if (rulesResult.data) setRules(rulesResult.data);
-    if (summaryResult.data) setSummary(summaryResult.data);
-    if (categoriesResult.data) setCategoryTree(categoriesResult.data.tree);
+    const nextRules = rulesResult.data ?? [];
+    const nextSummary = summaryResult.data ?? null;
+    const nextTree = categoriesResult.data?.tree ?? [];
+
+    if (rulesResult.data) setRules(nextRules);
+    if (summaryResult.data) setSummary(nextSummary);
+    if (categoriesResult.data) setCategoryTree(nextTree);
+
+    setClientCachedData("recurring_data", {
+      rules: nextRules,
+      summary: nextSummary,
+      tree: nextTree,
+    });
     setLoading(false);
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
     load();
   }, []);
 
@@ -138,6 +164,7 @@ export default function RecurringExpensesPage() {
       return;
     }
     toast.success(form.id ? "Recurring expense updated" : "Recurring expense added");
+    invalidateClientCache("recurring_");
     setForm(null);
     load();
   }
@@ -151,6 +178,7 @@ export default function RecurringExpensesPage() {
       return;
     }
     toast.success(r.active ? `${r.name} paused` : `${r.name} resumed`);
+    invalidateClientCache("recurring_");
     load();
   }
 
@@ -187,6 +215,8 @@ export default function RecurringExpensesPage() {
       return;
     }
     toast.success(`${logTarget.name} logged · ${formatINR(amount)}`);
+    invalidateClientCache("recurring_");
+    invalidateClientCache("expenses_");
     setLogTarget(null);
     setLogForm(null);
     load();
@@ -200,6 +230,7 @@ export default function RecurringExpensesPage() {
       return;
     }
     toast.success("Recurring expense removed");
+    invalidateClientCache("recurring_");
     setRemoveTarget(null);
     load();
   }
