@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import { Pencil, Copy, Trash2, MessageSquarePlus, MoreVertical } from "lucide-react";
 import { CategoryIcon } from "@/lib/icon-map";
-import { formatINR } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { formatINR, cn } from "@/lib/utils";
+import { formatExpenseTime } from "@/lib/date-utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,7 +50,7 @@ export function ExpenseRow({
     setDragX((x) => (x < -SWIPE_REVEAL / 2 ? -SWIPE_REVEAL : 0));
   }
 
-  const timeLabel = expense.expense_time ? expense.expense_time.slice(0, 5) : null;
+  const timeLabel = formatExpenseTime(expense.expense_time, expense.created_at);
 
   return (
     <div className="relative overflow-hidden rounded-xl">

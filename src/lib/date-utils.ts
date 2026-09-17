@@ -3,7 +3,7 @@
 // the app must independently agree on what "today" means in India rather than
 // trusting the browser's local timezone. We always compute an ISO
 // (YYYY-MM-DD) calendar-date string in Asia/Kolkata and compare those strings
-// directly — ISO date strings sort/compare correctly as plain strings.
+// directly - ISO date strings sort/compare correctly as plain strings.
 
 const KOLKATA_TZ = "Asia/Kolkata";
 
@@ -158,4 +158,40 @@ export function dayGroupLabel(iso: string): string {
 /** Short weekday+day label used for compact mobile chart axes, e.g. "12". */
 export function shortDayLabel(iso: string): string {
   return String(parseISODate(iso).getUTCDate());
+}
+
+/** Returns current HH:mm time string in Asia/Kolkata (e.g. "17:35"). */
+export function getCurrentKolkataTime(): string {
+  const d = new Date();
+  return d.toLocaleTimeString("en-GB", { timeZone: KOLKATA_TZ, hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+/** Formats an expense_time (HH:mm or HH:mm:ss) or created_at ISO string into 12-hour format e.g. "5:30 PM". */
+export function formatExpenseTime(timeStr?: string | null, createdAt?: string | null): string | null {
+  if (timeStr && timeStr.trim()) {
+    const parts = timeStr.split(":");
+    const hh = parseInt(parts[0], 10);
+    const mm = parseInt(parts[1], 10);
+    if (!isNaN(hh) && !isNaN(mm)) {
+      const period = hh >= 12 ? "PM" : "AM";
+      const h12 = hh % 12 === 0 ? 12 : hh % 12;
+      return `${h12}:${String(mm).padStart(2, "0")} ${period}`;
+    }
+  }
+  if (createdAt) {
+    try {
+      const d = new Date(createdAt);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString("en-IN", {
+          timeZone: KOLKATA_TZ,
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }

@@ -21,7 +21,7 @@ import { DateTimeFields, NotesField } from "@/components/expenses/date-time-fiel
 import { QuickAddBar } from "@/components/shared/quick-add-bar";
 import { CategoryIcon } from "@/lib/icon-map";
 import { useHousehold } from "@/lib/context/household-context";
-import { getTodayISO } from "@/lib/date-utils";
+import { getTodayISO, getCurrentKolkataTime } from "@/lib/date-utils";
 import { createExpense, updateExpense, type EnrichedExpense } from "@/lib/actions/expenses";
 import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/actions/categories";
 import { listMerchantsForHousehold } from "@/lib/actions/merchants";
@@ -57,7 +57,7 @@ function emptyState(userId: string) {
     paidBy: userId,
     expenseType: "household" as ExpenseType,
     date: getTodayISO(),
-    time: "",
+    time: getCurrentKolkataTime(),
     paymentMethod: null as string | null,
     cardId: null as string | null,
     upiProfileId: null as string | null,
@@ -210,12 +210,13 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       paid_by: userId,
       expense_type: "household",
       expense_date: getTodayISO(),
+      expense_time: `${getCurrentKolkataTime()}:00`,
     };
 
     if (isOffline()) {
       await queueExpense(payload);
       refreshPendingCount();
-      toast.message(`${chip.itemName} queued — will sync when back online`);
+      toast.message(`${chip.itemName} queued - will sync when back online`);
       onOpenChange(false);
       return;
     }
@@ -237,7 +238,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       if (isNetworkError(err)) {
         await queueExpense(payload);
         refreshPendingCount();
-        toast.message(`${chip.itemName} queued — will sync when back online`);
+        toast.message(`${chip.itemName} queued - will sync when back online`);
         onOpenChange(false);
       } else {
         toast.error("Something went wrong", { action: { label: "Retry", onClick: () => handleQuickAdd(chip) } });
@@ -281,7 +282,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     if (!isEditing && isOffline()) {
       await queueExpense(payload);
       refreshPendingCount();
-      toast.message(`${payload.item_name} queued — will sync when back online`);
+      toast.message(`${payload.item_name} queued - will sync when back online`);
       onOpenChange(false);
       return;
     }
@@ -305,7 +306,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       if (!isEditing && isNetworkError(err)) {
         await queueExpense(payload);
         refreshPendingCount();
-        toast.message(`${payload.item_name} queued — will sync when back online`);
+        toast.message(`${payload.item_name} queued - will sync when back online`);
         onOpenChange(false);
       } else {
         toast.error("Something went wrong", { action: { label: "Retry", onClick: handleSubmit } });
@@ -422,7 +423,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                   >
                     <span className="min-w-0">
                       <span className="block">
-                        Category: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> — tap to apply
+                        Category: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> - tap to apply
                       </span>
                       <span className="block truncate text-xs opacity-80">{suggestion.reason}</span>
                     </span>

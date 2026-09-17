@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { expenseFormSchema, type ExpenseFormInput } from "@/lib/validations/expense";
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
-import { getTodayISO } from "@/lib/date-utils";
+import { getTodayISO, getCurrentKolkataTime } from "@/lib/date-utils";
 import type { Tables } from "@/types/database";
 
 function normalizeItemName(name: string) {
@@ -100,7 +100,7 @@ export async function createExpense(rawInput: ExpenseFormInput) {
         upi_profile_id: input.upi_profile_id ?? null,
         bank_account_id: input.bank_account_id ?? null,
         expense_date: input.expense_date,
-        expense_time: input.expense_time ?? null,
+        expense_time: input.expense_time ?? `${getCurrentKolkataTime()}:00`,
         notes: input.notes ?? null,
       })
       .select()
@@ -234,6 +234,7 @@ export async function duplicateExpense(id: string) {
         upi_profile_id: original.upi_profile_id,
         bank_account_id: original.bank_account_id,
         expense_date: getTodayISO(), // spec section 43: duplicate always lands on today
+        expense_time: `${getCurrentKolkataTime()}:00`,
         notes: original.notes,
       })
       .select()
@@ -259,7 +260,7 @@ export interface ExpenseFilters {
   limit?: number;
 }
 
-/** Enriched shape the UI actually renders — joined in JS, never via PostgREST embeds (see database.ts header). */
+/** Enriched shape the UI actually renders - joined in JS, never via PostgREST embeds (see database.ts header). */
 export type EnrichedExpense = Tables<"expenses"> & {
   category_name: string | null;
   category_icon: string | null;
