@@ -21,7 +21,7 @@ interface UseQuickAddSaveOptions {
  * Shared "tap a Quick Add chip, save instantly" logic (spec sections 10, 22,
  * 81): builds the same expense payload a chip has always produced, saves it
  * via the real `createExpense` action, and falls back to the offline queue
- * on a connectivity failure — exactly what the Add Expense sheet's
+ * on a connectivity failure - exactly what the Add Expense sheet's
  * `QuickAddBar` has always done. Both the sheet and the dashboard's Daily
  * Brief card call this instead of each re-implementing the save/queue/retry
  * flow themselves.
@@ -46,7 +46,7 @@ export function useQuickAddSave({ onSaved, onQueued }: UseQuickAddSaveOptions = 
     if (isOffline()) {
       await queueExpense(payload);
       refreshPendingCount();
-      toast.message(`${chip.itemName} queued — will sync when back online`);
+      toast.message(`${chip.itemName} queued - will sync when back online`);
       onQueued?.(chip);
       return;
     }
@@ -66,7 +66,7 @@ export function useQuickAddSave({ onSaved, onQueued }: UseQuickAddSaveOptions = 
       if (isNetworkError(err)) {
         await queueExpense(payload);
         refreshPendingCount();
-        toast.message(`${chip.itemName} queued — will sync when back online`);
+        toast.message(`${chip.itemName} queued - will sync when back online`);
         onQueued?.(chip);
       } else {
         toast.error("Something went wrong", { action: { label: "Retry", onClick: () => saveChip(chip) } });

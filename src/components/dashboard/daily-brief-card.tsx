@@ -22,16 +22,16 @@ interface BriefData {
 }
 
 /**
- * "Read this once a day" digest — a single compact card that composes what's
+ * "Read this once a day" digest - a single compact card that composes what's
  * already computed elsewhere (today/week snapshot, this-month's category
  * movers, the soonest-due recurring bill) plus a few Quick Add chips, rather
  * than a new full screen. Deliberately replaces the standalone SnapshotCard
  * and SpendingChangesCard on the dashboard: those two plus this card would
  * have shown the same today/week/month-mover numbers twice on one page. Each
  * sub-row renders only when its source action actually has something to say
- * — never a placeholder for a missing insight or an empty recurring section.
- * The month-end forecast is deliberately NOT folded in here — see
- * ForecastCard — because a projection is a different kind of claim than
+ * - never a placeholder for a missing insight or an empty recurring section.
+ * The month-end forecast is deliberately NOT folded in here - see
+ * ForecastCard - because a projection is a different kind of claim than
  * "what happened", and the product brief calls it out as its own capability.
  */
 export function DailyBriefCard() {

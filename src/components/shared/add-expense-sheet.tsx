@@ -156,7 +156,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   // "Same as last time" amount memory (smart amount suggestion): debounced,
   // same pattern as the category suggestion effect below. Only offered for a
   // brand-new expense, and only while the person hasn't touched the amount
-  // field themselves yet — the suggestion never fills the field on its own.
+  // field themselves yet - the suggestion never fills the field on its own.
   useEffect(() => {
     if (!isNewExpense || amountTouched || !open || !form.itemName.trim()) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing a stale suggestion once its inputs no longer apply
@@ -220,7 +220,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   }, [form.itemName, form.merchant, merchants]);
 
   // Natural-language quick entry (spec section 45, 83): "Milk 60", "Croma
-  // 18999 card" — parsed deterministically, then dropped into the normal form
+  // 18999 card" - parsed deterministically, then dropped into the normal form
   // fields so the rest of the flow (category suggestion, review, Save) is
   // identical either way.
   const [nlEntryOpen, setNlEntryOpen] = useState(false);
@@ -239,7 +239,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     }));
     setNlText("");
     setNlEntryOpen(false);
-    toast.message("Parsed — review and save");
+    toast.message("Parsed - review and save");
   }
 
   function applyMerchant(merchant: Tables<"merchants">) {
@@ -298,14 +298,14 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     };
 
     // Editing an existing expense while offline is out of scope (spec section
-    // 41's caution against a "fake offline experience" — reconciling a stale
+    // 41's caution against a "fake offline experience" - reconciling a stale
     // edit against server state safely needs more than a local queue can give
     // us). Only brand-new expenses get queued; edits always go straight to
     // the server and surface a normal error if that fails.
     if (!isEditing && isOffline()) {
       await queueExpense(payload);
       refreshPendingCount();
-      toast.message(`${payload.item_name} queued — will sync when back online`);
+      toast.message(`${payload.item_name} queued - will sync when back online`);
       onOpenChange(false);
       return;
     }
@@ -329,7 +329,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       if (!isEditing && isNetworkError(err)) {
         await queueExpense(payload);
         refreshPendingCount();
-        toast.message(`${payload.item_name} queued — will sync when back online`);
+        toast.message(`${payload.item_name} queued - will sync when back online`);
         onOpenChange(false);
       } else {
         toast.error("Something went wrong", { action: { label: "Retry", onClick: handleSubmit } });
@@ -357,7 +357,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                   className="flex items-center gap-1.5 text-xs font-medium text-primary"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  Type it out instead — e.g. &quot;Milk 60&quot; or &quot;Croma 18999 card&quot;
+                  Type it out instead - e.g. &quot;Milk 60&quot; or &quot;Croma 18999 card&quot;
                 </button>
               ) : (
                 <div className="flex gap-2">
@@ -380,7 +380,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
           <div className="flex-1 overflow-y-auto px-5">
             {/* No autoFocus here: popping the keyboard the instant this sheet
                 opens (while it's still animating up) made the viewport jump
-                around jarringly on mobile — let the person tap in when
+                around jarringly on mobile - let the person tap in when
                 they're ready instead. */}
             <AmountInput
               value={form.amount}
@@ -397,7 +397,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                 className="mb-4 flex w-full items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-xs text-brand-primary"
               >
                 <span>
-                  Last {formatINR(priceMemory.last)} · Typical {formatINR(priceMemory.typicalLow)}–{formatINR(priceMemory.typicalHigh)}
+                  Last {formatINR(priceMemory.last)} · Typical {formatINR(priceMemory.typicalLow)}-{formatINR(priceMemory.typicalHigh)}
                 </span>
                 <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-brand-primary">Use {formatINR(priceMemory.last)}</span>
               </button>
@@ -441,7 +441,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                 >
                   <span className="min-w-0">
                     <span className="block">
-                      Category: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> — tap to apply
+                      Category: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> - tap to apply
                     </span>
                     <span className="block truncate text-xs opacity-80">{suggestion.reason}</span>
                   </span>

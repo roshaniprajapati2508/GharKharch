@@ -33,7 +33,7 @@ type MerchantLite = { id: string; name: string };
  * Parses a small set of operators from spec section 20's examples: ">5000",
  * "wife", "september", a category/subcategory name, a merchant name, or a
  * plain text search. Category/merchant matching is partial and case
- * insensitive against the already-fetched lists (no extra round trip) — a
+ * insensitive against the already-fetched lists (no extra round trip) - a
  * parent category match also pulls in all of its subcategory ids.
  */
 function parseSearchIntent(query: string, partnerName: string | undefined, categories: CategoryLite[], merchants: MerchantLite[]) {

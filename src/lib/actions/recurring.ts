@@ -7,11 +7,11 @@ import type { Tables } from "@/types/database";
 
 // `recurring_expenses` (migration 001) has had a real, RLS-protected table
 // since day one, but the only thing that ever wrote to it was accepting a
-// detected "looks recurring" suggestion (intelligence.ts) — there was no way
+// detected "looks recurring" suggestion (intelligence.ts) - there was no way
 // to see, edit, pause, or manually add a recurring bill (rent, a
 // subscription, an EMI) that GharKharch hadn't already detected on its own.
 // This file + more/recurring/page.tsx close that gap. Nothing here ever
-// auto-creates an actual expense from a rule (spec section 88) — it's purely
+// auto-creates an actual expense from a rule (spec section 88) - it's purely
 // bookkeeping of what recurs, same as the existing suggestion-acceptance flow.
 
 const recurringInputSchema = z.object({
@@ -66,7 +66,7 @@ export async function listRecurringExpenses() {
 
 // Normalizes each frequency to an equivalent monthly amount, for a single
 // "total monthly recurring spend" figure (wishlist gap). Values follow the
-// actual `RecurringFrequency` enum in types/database.ts — there is no
+// actual `RecurringFrequency` enum in types/database.ts - there is no
 // biweekly/quarterly cadence in this schema, so those aren't handled.
 // "custom" has no fixed cadence to normalize, so it's excluded from the
 // monthly total (its amount is still shown per-rule in the Upcoming list).
@@ -197,7 +197,7 @@ export async function deleteRecurringExpense(id: string) {
     const { supabase, householdId } = await requireHouseholdContext();
     // Safe to hard-delete (unlike categories/merchants): expenses.recurring_rule_id
     // is ON DELETE SET NULL (migration 001), so past logged expenses that were
-    // tagged from this rule simply lose the tag — their amount/category/date
+    // tagged from this rule simply lose the tag - their amount/category/date
     // are untouched.
     const { error } = await supabase.from("recurring_expenses").delete().eq("id", id).eq("household_id", householdId);
     if (error) throw new ActionError(error.message);

@@ -10,7 +10,7 @@ import type { Database } from "@/types/database";
 
 type MerchantBreakdownRow = Database["public"]["Functions"]["get_merchant_breakdown"]["Returns"][number];
 
-/** Tiny inline sparkline for a merchant's trailing monthly spend — no charting library needed for something this small. */
+/** Tiny inline sparkline for a merchant's trailing monthly spend - no charting library needed for something this small. */
 function Sparkline({ values }: { values: number[] }) {
   if (values.length < 2 || values.every((v) => v === 0)) return null;
   const width = 64;

@@ -1,7 +1,7 @@
 "use server";
 
 // Thin wrappers around the SQL analytics functions from migration 006. Every
-// aggregation happens in Postgres — this file never pulls raw transactions
+// aggregation happens in Postgres - this file never pulls raw transactions
 // into JS to sum them (spec section 48-50, 88: "do NOT fetch all expenses and
 // calculate everything in React").
 
@@ -30,7 +30,7 @@ export interface AnalyticsFilters {
 function resolvePaidBy(filters: AnalyticsFilters, userId: string, partnerId: string | null): string | null {
   if (filters.person === "me") return userId;
   if (filters.person === "partner") return partnerId ?? userId;
-  return null; // household — no filter
+  return null; // household - no filter
 }
 
 const EMPTY_SUMMARY: ExpenseSummaryRow = {
@@ -247,7 +247,7 @@ export async function getMerchantMonthlyTrend(merchantId: string, months = 6) {
   });
 }
 
-/** Daily totals for the spending calendar heatmap (spec section 8F, 33) — independent of the page's own period filter, driven by `monthsAgo`. */
+/** Daily totals for the spending calendar heatmap (spec section 8F, 33) - independent of the page's own period filter, driven by `monthsAgo`. */
 export async function getCalendarMonthData(monthsAgo: number) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();

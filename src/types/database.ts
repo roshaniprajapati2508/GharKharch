@@ -171,7 +171,7 @@ export interface Database {
           item_name: string;
           category_id: string;
           subcategory_id: string | null;
-          payment_method: string | null; // free text, matches a payment_methods.name (see migration 005) — not a fixed enum
+          payment_method: string | null; // free text, matches a payment_methods.name (see migration 005) - not a fixed enum
           card_id: string | null;
           upi_profile_id: string | null;
           bank_account_id: string | null;
