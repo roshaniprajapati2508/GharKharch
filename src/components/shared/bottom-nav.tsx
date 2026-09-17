@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Receipt, PieChart, FileBarChart, MoreHorizontal, Plus } from "lucide-react";
+import { Home, Receipt, PieChart, MoreHorizontal, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
+const LEFT_NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/expenses", label: "Expenses", icon: Receipt },
+] as const;
+
+const RIGHT_NAV_ITEMS = [
   { href: "/analytics", label: "Analytics", icon: PieChart },
-  { href: "/reports", label: "Reports", icon: FileBarChart },
   { href: "/more", label: "More", icon: MoreHorizontal },
 ] as const;
 
-type NavItem = (typeof NAV_ITEMS)[number];
+type NavItem = (typeof LEFT_NAV_ITEMS)[number] | (typeof RIGHT_NAV_ITEMS)[number];
 
 function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
   const Icon = item.icon;
@@ -21,53 +23,46 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
   return (
     <Link
       href={item.href}
-      className="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-lg py-1 text-[11px] font-medium"
+      className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-lg py-1 text-[11px] font-medium"
     >
-      <Icon className={cn("h-5 w-5 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
-      <span className={cn("whitespace-nowrap", active ? "text-primary" : "text-muted-foreground")}>
+      <Icon className={cn("h-5 w-5 shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground")} />
+      <span className={cn("whitespace-nowrap transition-colors", active ? "font-semibold text-primary" : "text-muted-foreground")}>
         {item.label}
       </span>
     </Link>
   );
 }
 
-// Phones only — from `sm` up, `SidebarNav` takes over (a compact icon rail at
-// sm/md, the full labeled sidebar at md+), so this never has to squeeze onto
-// a tablet-width screen. Real bottom bars (iOS/Android system, most shopping
-// and banking apps) never spend a whole column on empty space just to make
-// room for a raised centre button — they size the button to fit within the
-// bar and give every label its own full-width flex slot instead of a shared
-// grid column, which is what was causing "More" to wrap on narrower phones.
 export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
   const pathname = usePathname();
 
   return (
     <nav
-      className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur sm:hidden"
+      className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur-md sm:hidden"
       aria-label="Primary"
     >
-      <div className="relative mx-auto flex max-w-md items-center gap-1 px-2 pb-1 pt-2">
-        {NAV_ITEMS.slice(0, 2).map((item) => (
+      <div className="mx-auto grid max-w-md grid-cols-5 items-center px-2 py-1">
+        {LEFT_NAV_ITEMS.map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} />
         ))}
 
-        {/* Reserved footprint for the floating Add button below — matches its
-            h-14 (56px) width exactly, so it never steals width from a label. */}
-        <div className="w-14 shrink-0" aria-hidden />
+        {/* Center elevated floating Add button */}
+        <div className="flex items-center justify-center">
+          <button
+            type="button"
+            onClick={onAddClick}
+            aria-label="Add expense"
+            className="flex h-12 w-12 -translate-y-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-background transition-transform active:scale-95 hover:bg-primary/90"
+          >
+            <Plus className="h-6 w-6 stroke-[2.5]" />
+          </button>
+        </div>
 
-        {NAV_ITEMS.slice(2).map((item) => (
+        {RIGHT_NAV_ITEMS.map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} />
         ))}
-
-        <button
-          type="button"
-          onClick={onAddClick}
-          aria-label="Add expense"
-          className="absolute left-1/2 top-0 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
       </div>
     </nav>
   );
 }
+

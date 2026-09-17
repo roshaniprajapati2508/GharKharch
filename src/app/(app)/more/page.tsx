@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Copy, LogOut, Users, Tag, Store, Wallet, PiggyBank, Repeat, ChevronRight, Sparkles, Merge, Home, ShieldCheck, Pencil } from "lucide-react";
+import { Copy, LogOut, Users, Tag, Store, Wallet, PiggyBank, Repeat, ChevronRight, Sparkles, Merge, Home, ShieldCheck, Pencil, FileBarChart } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -173,6 +173,7 @@ export default function MorePage() {
             <MenuLink href="/more/payment-methods" icon={Wallet} label="Payment methods, cards & UPI" />
             <MenuLink href="/more/budgets" icon={PiggyBank} label="Budgets" />
             <MenuLink href="/more/recurring" icon={Repeat} label="Recurring expenses" />
+            <MenuLink href="/reports" icon={FileBarChart} label="Reports & Export" />
           </CardContent>
         </Card>
       </div>
