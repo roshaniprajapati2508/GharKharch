@@ -1,6 +1,8 @@
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ChevronRight, ChevronLeft, Store } from "lucide-react";
+import { ChevronRight, Store, Sparkles } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -13,15 +15,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AmountInput } from "@/components/expenses/amount-input";
-import { CategoryPickerView, type CategorySelection } from "@/components/expenses/category-picker";
-import { MerchantPickerView } from "@/components/expenses/merchant-picker";
+import { CategoryPicker, type CategorySelection } from "@/components/expenses/category-picker";
+import { MerchantPicker } from "@/components/expenses/merchant-picker";
 import { PaidBySelector, ExpenseTypeSelector } from "@/components/expenses/person-selector";
 import { PaymentMethodSelect, CardQuickPicker, UpiQuickPicker, BankQuickPicker } from "@/components/expenses/payment-method-select";
-import { DateTimeFields, NotesField } from "@/components/expenses/date-time-fields";
+import { DateTimeFields, MoreOptionsDisclosure, NotesField } from "@/components/expenses/date-time-fields";
 import { QuickAddBar } from "@/components/shared/quick-add-bar";
-import { CategoryIcon } from "@/lib/icon-map";
 import { useHousehold } from "@/lib/context/household-context";
-import { getTodayISO, getCurrentKolkataTime } from "@/lib/date-utils";
+import { getTodayISO } from "@/lib/date-utils";
 import { createExpense, updateExpense, type EnrichedExpense } from "@/lib/actions/expenses";
 import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/actions/categories";
 import { listMerchantsForHousehold } from "@/lib/actions/merchants";
@@ -29,13 +30,15 @@ import { listPaymentMethodsForHousehold } from "@/lib/actions/payment-methods";
 import { listUserCards, listUpiProfiles, listBankAccounts } from "@/lib/actions/payment-instruments";
 import { getQuickAddChips, type QuickAddChip } from "@/lib/actions/quick-add";
 import { getCategorySuggestion } from "@/lib/actions/intelligence";
+import { getItemPriceMemory, type ItemPriceMemory } from "@/lib/actions/insights";
 import type { CategorySuggestion } from "@/lib/expense-intelligence/category-suggester";
 import { suggestMerchant } from "@/lib/expense-intelligence/merchant-suggester";
 import { isOffline, isNetworkError, queueExpense } from "@/lib/offline/offline-queue";
 import { useOffline } from "@/lib/context/offline-context";
-import { cn } from "@/lib/utils";
-import type { ExpenseFormInput } from "@/lib/validations/expense";
+import { useQuickAddSave } from "@/lib/hooks/use-quick-add-save";
+import { parseQuickEntry } from "@/lib/expense-intelligence/nl-parser";
 import type { Tables, ExpenseType } from "@/types/database";
+import { formatINR } from "@/lib/utils";
 
 interface AddExpenseSheetProps {
   open: boolean;
@@ -46,8 +49,6 @@ interface AddExpenseSheetProps {
   onSaved?: (expense: Tables<"expenses">) => void;
 }
 
-type SheetView = "form" | "category" | "merchant";
-
 function emptyState(userId: string) {
   return {
     amount: "",
@@ -57,7 +58,7 @@ function emptyState(userId: string) {
     paidBy: userId,
     expenseType: "household" as ExpenseType,
     date: getTodayISO(),
-    time: getCurrentKolkataTime(),
+    time: "",
     paymentMethod: null as string | null,
     cardId: null as string | null,
     upiProfileId: null as string | null,
@@ -71,9 +72,11 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   const { refreshPendingCount } = useOffline();
   const isEditing = !!editExpense;
 
-  const [sheetView, setSheetView] = useState<SheetView>("form");
   const [form, setForm] = useState(() => emptyState(userId));
   const [categoryTouched, setCategoryTouched] = useState(false);
+  const [amountTouched, setAmountTouched] = useState(false);
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [merchantPickerOpen, setMerchantPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loadingRefs, setLoadingRefs] = useState(true);
 
@@ -87,12 +90,8 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   const [quickAddChips, setQuickAddChips] = useState<QuickAddChip[]>([]);
 
   useEffect(() => {
-    if (!open) {
-      setSheetView("form");
-      return;
-    }
+    if (!open) return;
 
-    setSheetView("form");
     // eslint-disable-next-line react-hooks/set-state-in-effect -- kicking off the reference-data fetch when the sheet opens
     setLoadingRefs(true);
     Promise.all([
@@ -141,15 +140,48 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
         notes: source.notes ?? "",
       });
       setCategoryTouched(true);
+      setAmountTouched(true);
     } else {
       setForm(emptyState(userId));
       setCategoryTouched(false);
+      setAmountTouched(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editExpense, duplicateFrom]);
 
   const [suggestion, setSuggestion] = useState<CategorySuggestion | null>(null);
+  const [priceMemory, setPriceMemory] = useState<ItemPriceMemory | null>(null);
+  const isNewExpense = !isEditing && !duplicateFrom;
 
+  // "Same as last time" amount memory (smart amount suggestion): debounced,
+  // same pattern as the category suggestion effect below. Only offered for a
+  // brand-new expense, and only while the person hasn't touched the amount
+  // field themselves yet — the suggestion never fills the field on its own.
+  useEffect(() => {
+    if (!isNewExpense || amountTouched || !open || !form.itemName.trim()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing a stale suggestion once its inputs no longer apply
+      setPriceMemory(null);
+      return;
+    }
+    const itemName = form.itemName;
+    const timer = setTimeout(() => {
+      getItemPriceMemory(itemName).then((result) => {
+        if (result.error === null) setPriceMemory(result.data);
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [form.itemName, amountTouched, open, isNewExpense]);
+
+  function applyPriceMemory() {
+    if (!priceMemory) return;
+    setForm((f) => ({ ...f, amount: String(priceMemory.last) }));
+    setAmountTouched(true);
+    setPriceMemory(null);
+  }
+
+  // Smart category suggestion (spec section 12, 19): debounced so it doesn't
+  // fire a server action on every keystroke. Falls silent once the user has
+  // picked a category themselves for this expense.
   useEffect(() => {
     if (categoryTouched || !open || !form.itemName.trim()) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing a stale suggestion once its inputs no longer apply
@@ -187,6 +219,29 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     return match && match.confidence >= 0.7 && match.merchant.name.toLowerCase() !== form.itemName.trim().toLowerCase() ? match.merchant : null;
   }, [form.itemName, form.merchant, merchants]);
 
+  // Natural-language quick entry (spec section 45, 83): "Milk 60", "Croma
+  // 18999 card" — parsed deterministically, then dropped into the normal form
+  // fields so the rest of the flow (category suggestion, review, Save) is
+  // identical either way.
+  const [nlEntryOpen, setNlEntryOpen] = useState(false);
+  const [nlText, setNlText] = useState("");
+
+  function applyNaturalLanguageEntry() {
+    if (!nlText.trim()) return;
+    const parsed = parseQuickEntry(nlText);
+    setForm((f) => ({
+      ...f,
+      itemName: parsed.itemName || f.itemName,
+      amount: parsed.amount !== null ? String(parsed.amount) : f.amount,
+      paymentMethod: parsed.paymentMethod ?? f.paymentMethod,
+      date: parsed.expenseDate,
+      merchant: null,
+    }));
+    setNlText("");
+    setNlEntryOpen(false);
+    toast.message("Parsed — review and save");
+  }
+
   function applyMerchant(merchant: Tables<"merchants">) {
     setForm((f) => ({ ...f, merchant, itemName: merchant.name }));
     if (!categoryTouched && merchant.subcategory_id) {
@@ -200,51 +255,14 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
     }
   }
 
-  async function handleQuickAdd(chip: QuickAddChip) {
-    const payload: ExpenseFormInput = {
-      amount: chip.amount || 0,
-      item_name: chip.itemName,
-      category_id: chip.categoryId,
-      subcategory_id: chip.subcategoryId,
-      merchant_id: chip.merchantId,
-      paid_by: userId,
-      expense_type: "household",
-      expense_date: getTodayISO(),
-      expense_time: `${getCurrentKolkataTime()}:00`,
-    };
-
-    if (isOffline()) {
-      await queueExpense(payload);
-      refreshPendingCount();
-      toast.message(`${chip.itemName} queued - will sync when back online`);
+  const { saveChip: handleQuickAdd, savingChip } = useQuickAddSave({
+    onSaved: (expense) => {
+      onOptimisticAdd?.(expense);
+      onSaved?.(expense);
       onOpenChange(false);
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const result = await createExpense(payload);
-      setSubmitting(false);
-      if (result.error !== null) {
-        toast.error(result.error, { action: { label: "Retry", onClick: () => handleQuickAdd(chip) } });
-        return;
-      }
-      onOptimisticAdd?.(result.data);
-      onSaved?.(result.data);
-      toast.success(`${chip.itemName} added · ₹${chip.amount}`);
-      onOpenChange(false);
-    } catch (err) {
-      setSubmitting(false);
-      if (isNetworkError(err)) {
-        await queueExpense(payload);
-        refreshPendingCount();
-        toast.message(`${chip.itemName} queued - will sync when back online`);
-        onOpenChange(false);
-      } else {
-        toast.error("Something went wrong", { action: { label: "Retry", onClick: () => handleQuickAdd(chip) } });
-      }
-    }
-  }
+    },
+    onQueued: () => onOpenChange(false),
+  });
 
   async function handleSubmit() {
     if (!form.category) {
@@ -279,10 +297,15 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       notes: form.notes.trim() || null,
     };
 
+    // Editing an existing expense while offline is out of scope (spec section
+    // 41's caution against a "fake offline experience" — reconciling a stale
+    // edit against server state safely needs more than a local queue can give
+    // us). Only brand-new expenses get queued; edits always go straight to
+    // the server and surface a normal error if that fails.
     if (!isEditing && isOffline()) {
       await queueExpense(payload);
       refreshPendingCount();
-      toast.message(`${payload.item_name} queued - will sync when back online`);
+      toast.message(`${payload.item_name} queued — will sync when back online`);
       onOpenChange(false);
       return;
     }
@@ -306,7 +329,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       if (!isEditing && isNetworkError(err)) {
         await queueExpense(payload);
         refreshPendingCount();
-        toast.message(`${payload.item_name} queued - will sync when back online`);
+        toast.message(`${payload.item_name} queued — will sync when back online`);
         onOpenChange(false);
       } else {
         toast.error("Something went wrong", { action: { label: "Retry", onClick: handleSubmit } });
@@ -315,202 +338,146 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[94vh]">
-        {/* Header with back navigation when browsing category or merchant */}
-        <DrawerHeader className="border-b border-border/50 pb-3 pr-10">
-          <div className="flex items-center justify-between">
-            {sheetView !== "form" ? (
+    <>
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[94vh]">
+          <DrawerHeader>
+            <DrawerTitle>{isEditing ? "Edit Expense" : "Add Expense"}</DrawerTitle>
+            <DrawerDescription className="sr-only">Enter the amount, item, and who it&apos;s for.</DrawerDescription>
+          </DrawerHeader>
+
+          {!isEditing && <QuickAddBar chips={quickAddChips} onPick={handleQuickAdd} disabled={savingChip !== null || loadingRefs} />}
+
+          {!isEditing && (
+            <div className="px-5">
+              {!nlEntryOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setNlEntryOpen(true)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-primary"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Type it out instead — e.g. &quot;Milk 60&quot; or &quot;Croma 18999 card&quot;
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    autoFocus
+                    value={nlText}
+                    onChange={(e) => setNlText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && applyNaturalLanguageEntry()}
+                    placeholder="Milk 60, Vegetables 240 cash…"
+                    className="flex-1"
+                  />
+                  <Button type="button" onClick={applyNaturalLanguageEntry} disabled={!nlText.trim()}>
+                    Parse
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto px-5">
+            {/* No autoFocus here: popping the keyboard the instant this sheet
+                opens (while it's still animating up) made the viewport jump
+                around jarringly on mobile — let the person tap in when
+                they're ready instead. */}
+            <AmountInput
+              value={form.amount}
+              onChange={(v) => {
+                setForm((f) => ({ ...f, amount: v }));
+                setAmountTouched(true);
+              }}
+            />
+
+            {priceMemory && (
               <button
                 type="button"
-                onClick={() => setSheetView("form")}
-                className="flex items-center gap-1.5 rounded-lg py-1 pr-2 text-sm font-medium text-primary transition-colors hover:bg-muted"
+                onClick={applyPriceMemory}
+                className="mb-4 flex w-full items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-xs text-brand-primary"
               >
-                <ChevronLeft className="h-5 w-5" />
-                <span>Back to expense</span>
+                <span>
+                  Last {formatINR(priceMemory.last)} · Typical {formatINR(priceMemory.typicalLow)}–{formatINR(priceMemory.typicalHigh)}
+                </span>
+                <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-brand-primary">Use {formatINR(priceMemory.last)}</span>
               </button>
-            ) : (
-              <DrawerTitle className="text-lg font-semibold tracking-tight">
-                {isEditing ? "Edit Expense" : "Add Expense"}
-              </DrawerTitle>
             )}
 
-            {sheetView !== "form" && (
-              <span className="text-sm font-semibold text-foreground">
-                {sheetView === "category" ? "Choose Category" : "Choose Merchant"}
-              </span>
-            )}
-          </div>
-          <DrawerDescription className="sr-only">Enter the amount, item, and expense details.</DrawerDescription>
-        </DrawerHeader>
-
-        {/* Dynamic sheet views */}
-        {sheetView === "category" ? (
-          <div className="flex-1 overflow-hidden">
-            <CategoryPickerView
-              tree={categoryTree}
-              onSelect={(selection) => {
-                setForm((f) => ({ ...f, category: selection }));
-                setCategoryTouched(true);
-                setSheetView("form");
-              }}
-              onCategoryCreated={(cat) => setCategoryTree((t) => [...t, cat])}
-              onBack={() => setSheetView("form")}
-            />
-          </div>
-        ) : sheetView === "merchant" ? (
-          <div className="flex-1 overflow-hidden">
-            <MerchantPickerView
-              merchants={merchants}
-              onSelect={(m) => {
-                applyMerchant(m);
-                setSheetView("form");
-              }}
-              onMerchantCreated={(m) => setMerchants((list) => [...list, m])}
-              onBack={() => setSheetView("form")}
-            />
-          </div>
-        ) : (
-          <>
-            {!isEditing && <QuickAddBar chips={quickAddChips} onPick={handleQuickAdd} disabled={submitting || loadingRefs} />}
-
-            <div className="flex-1 overflow-y-auto px-5">
-              <AmountInput value={form.amount} onChange={(v) => setForm((f) => ({ ...f, amount: v }))} />
-
-              <div className="flex flex-col gap-4 pb-4">
-                {/* Item / Merchant */}
-                <div>
-                  <Label htmlFor="item-name">Item / Merchant</Label>
-                  <div className="mt-1.5 flex gap-2">
-                    <Input
-                      id="item-name"
-                      value={form.itemName}
-                      onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value, merchant: null }))}
-                      placeholder="e.g. Milk, Zudio, Petrol"
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setSheetView("merchant")}
-                      aria-label="Browse merchants"
-                      title="Browse merchants"
-                    >
-                      <Store className="h-4 w-4" />
-                    </Button>
-                  </div>
+            <div className="flex flex-col gap-4 pb-4">
+              <div>
+                <Label htmlFor="item-name">Item / Merchant</Label>
+                <div className="mt-1.5 flex gap-2">
+                  <Input
+                    id="item-name"
+                    value={form.itemName}
+                    onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value, merchant: null }))}
+                    placeholder="e.g. Milk, Zudio, Petrol"
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" size="icon" onClick={() => setMerchantPickerOpen(true)} aria-label="Browse merchants">
+                    <Store className="h-4 w-4" />
+                  </Button>
                 </div>
+              </div>
 
-                {merchantHint && (
-                  <button
-                    type="button"
-                    onClick={() => applyMerchant(merchantHint)}
-                    className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-left text-sm text-foreground"
-                  >
-                    <span>
-                      Did you mean <strong>{merchantHint.name}</strong>?
+              {merchantHint && (
+                <button
+                  type="button"
+                  onClick={() => applyMerchant(merchantHint)}
+                  className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-left text-sm text-foreground"
+                >
+                  <span>
+                    Did you mean <strong>{merchantHint.name}</strong>?
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              )}
+
+              {suggestion && (
+                <button
+                  type="button"
+                  onClick={applySuggestion}
+                  className="flex items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-sm text-brand-primary"
+                >
+                  <span className="min-w-0">
+                    <span className="block">
+                      Category: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> — tap to apply
                     </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </button>
-                )}
+                    <span className="block truncate text-xs opacity-80">{suggestion.reason}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0" />
+                </button>
+              )}
 
-                {suggestion && (
-                  <button
-                    type="button"
-                    onClick={applySuggestion}
-                    className="flex items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-sm text-brand-primary"
-                  >
-                    <span className="min-w-0">
-                      <span className="block">
-                        Category: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> - tap to apply
+              <div>
+                <Label>Category</Label>
+                <button
+                  type="button"
+                  onClick={() => setCategoryPickerOpen(true)}
+                  className="mt-1.5 flex h-12 w-full items-center gap-3 rounded-md border border-input bg-surface px-3.5 text-left"
+                >
+                  {form.category ? (
+                    <>
+                      <span className="text-sm font-medium text-foreground">
+                        {form.category.categoryName}
+                        {form.category.subcategoryName ? ` · ${form.category.subcategoryName}` : ""}
                       </span>
-                      <span className="block truncate text-xs opacity-80">{suggestion.reason}</span>
-                    </span>
-                    <ChevronRight className="h-4 w-4 shrink-0" />
-                  </button>
-                )}
-
-                {/* Category Selection */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label>Category</Label>
-                    <button
-                      type="button"
-                      onClick={() => setSheetView("category")}
-                      className="text-xs font-medium text-primary hover:underline"
-                    >
-                      Browse all
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setSheetView("category")}
-                    className={cn(
-                      "mt-1.5 flex h-12 w-full items-center gap-3 rounded-xl border px-3 text-left transition-colors",
-                      form.category ? "border-primary/50 bg-secondary/30" : "border-input bg-surface hover:bg-muted"
-                    )}
-                  >
-                    {form.category ? (
-                      <>
-                        <span className="text-sm font-medium text-foreground">
-                          {form.category.categoryName}
-                          {form.category.subcategoryName ? ` · ${form.category.subcategoryName}` : ""}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Choose a category</span>
-                    )}
-                    <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
-                  </button>
-
-                  {/* Quick popular category chips */}
-                  {categoryTree.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {categoryTree.slice(0, 6).map((cat) => {
-                        const isSelected = form.category?.categoryId === cat.id;
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => {
-                              setForm((f) => ({
-                                ...f,
-                                category: {
-                                  categoryId: cat.id,
-                                  subcategoryId: null,
-                                  categoryName: cat.name,
-                                  subcategoryName: null,
-                                },
-                              }));
-                              setCategoryTouched(true);
-                            }}
-                            className={cn(
-                              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                              isSelected
-                                ? "border-primary bg-secondary font-semibold text-secondary-foreground"
-                                : "border-border bg-surface text-muted-foreground hover:bg-muted hover:text-foreground"
-                            )}
-                          >
-                            <CategoryIcon icon={cat.icon} color={cat.color} className="flex h-4 w-4 shrink-0 items-center justify-center rounded" />
-                            <span>{cat.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    </>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Choose a category</span>
                   )}
-                </div>
+                  <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
+                </button>
+              </div>
 
-                {/* Paid By */}
-                <div>
-                  <Label>Paid by</Label>
-                  <div className="mt-1.5">
-                    <PaidBySelector value={form.paidBy} onChange={(v) => setForm((f) => ({ ...f, paidBy: v }))} />
-                  </div>
+              <div>
+                <Label>Paid by</Label>
+                <div className="mt-1.5">
+                  <PaidBySelector value={form.paidBy} onChange={(v) => setForm((f) => ({ ...f, paidBy: v }))} />
                 </div>
+              </div>
 
-                {/* Expense Type (Visible by default) */}
+              <MoreOptionsDisclosure>
                 <div>
                   <Label>Expense type</Label>
                   <div className="mt-1.5">
@@ -518,7 +485,6 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                   </div>
                 </div>
 
-                {/* Date & Time (Visible by default) */}
                 <DateTimeFields
                   date={form.date}
                   time={form.time}
@@ -526,7 +492,6 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                   onTimeChange={(v) => setForm((f) => ({ ...f, time: v }))}
                 />
 
-                {/* Payment Method (Visible by default) */}
                 <div>
                   <Label>Payment method</Label>
                   <div className="mt-1.5">
@@ -550,20 +515,38 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                   <BankQuickPicker accounts={bankAccounts} value={form.bankAccountId} onChange={(v) => setForm((f) => ({ ...f, bankAccountId: v }))} />
                 )}
 
-                {/* Notes (Visible by default) */}
                 <NotesField value={form.notes} onChange={(v) => setForm((f) => ({ ...f, notes: v }))} />
-              </div>
+              </MoreOptionsDisclosure>
             </div>
+          </div>
 
-            <DrawerFooter className="border-t border-border/50 bg-background/80 pt-3 backdrop-blur">
-              <Button size="lg" className="h-12 w-full text-base font-semibold" onClick={handleSubmit} loading={submitting}>
-                {isEditing ? "Save changes" : "Save Expense"}
-              </Button>
-            </DrawerFooter>
-          </>
-        )}
-      </DrawerContent>
-    </Drawer>
+          <DrawerFooter>
+            <Button size="lg" onClick={handleSubmit} loading={submitting}>
+              {isEditing ? "Save changes" : "Save"}
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      <CategoryPicker
+        open={categoryPickerOpen}
+        onOpenChange={setCategoryPickerOpen}
+        tree={categoryTree}
+        onSelect={(selection) => {
+          setForm((f) => ({ ...f, category: selection }));
+          setCategoryTouched(true);
+        }}
+        onCategoryCreated={(cat) => setCategoryTree((t) => [...t, cat])}
+      />
+
+      <MerchantPicker
+        open={merchantPickerOpen}
+        onOpenChange={setMerchantPickerOpen}
+        merchants={merchants}
+        onSelect={applyMerchant}
+        onMerchantCreated={(m) => setMerchants((list) => [...list, m])}
+      />
+    </>
   );
 }
 

@@ -9,6 +9,8 @@ import { useHousehold } from "@/lib/context/household-context";
 import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-context";
 import { DashboardFilters, type QuickPeriod } from "@/components/dashboard/dashboard-filters";
 import { SummaryHeader } from "@/components/dashboard/summary-header";
+import { DailyBriefCard } from "@/components/dashboard/daily-brief-card";
+import { ForecastCard } from "@/components/dashboard/forecast-card";
 import { SpendingTrendChart } from "@/components/dashboard/spending-trend-chart";
 import { CategoryBreakdownList } from "@/components/dashboard/category-breakdown-list";
 import { TopMerchantsCard } from "@/components/dashboard/top-merchants-card";
@@ -76,6 +78,7 @@ export function DashboardPageClient({ initialData }: { initialData?: DashboardDa
 
   useEffect(() => {
     if (!initialData && !data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount when no SSR/cached data is available
       load(range, person);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,6 +150,14 @@ export function DashboardPageClient({ initialData }: { initialData?: DashboardDa
         </div>
       ) : data && hasAnyActivity ? (
         <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="dashboard-grid">
+          <motion.div variants={fadeInUp} style={{ gridArea: "brief" }}>
+            <DailyBriefCard />
+          </motion.div>
+
+          <motion.div variants={fadeInUp} style={{ gridArea: "forecast" }}>
+            <ForecastCard />
+          </motion.div>
+
           <motion.div variants={fadeInUp} style={{ gridArea: "summary" }}>
             <SummaryHeader
               periodLabel={data.range.label}
