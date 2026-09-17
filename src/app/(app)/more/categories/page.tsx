@@ -23,12 +23,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
-import { CategoryIcon, ICON_PICKER_OPTIONS, COLOR_PICKER_OPTIONS, colorSwatch } from "@/lib/icon-map";
+import { CategoryIcon } from "@/lib/icon-map";
+import { IconColorPicker } from "@/components/shared/icon-color-picker";
 import { cn } from "@/lib/utils";
 import {
   listCategoriesForHousehold,
   createCategory,
   updateCategory,
+  customizeCategory,
+  hideGlobalCategory,
   deleteCategory,
   getCategoryUsageCount,
   reassignAndDeleteCategory,
@@ -67,6 +70,7 @@ export default function CategoriesSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [customizingGlobalId, setCustomizingGlobalId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState<string | null>(null);
   const [icon, setIcon] = useState("circle");
@@ -75,6 +79,8 @@ export default function CategoriesSettingsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Tables<"categories"> | null>(null);
   const [usageCount, setUsageCount] = useState<number | null>(null);
   const [reassignTo, setReassignTo] = useState<string | null>(null);
+  const [hideTarget, setHideTarget] = useState<Tables<"categories"> | null>(null);
+  const [hiding, setHiding] = useState(false);
 
   const [query, setQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
@@ -153,7 +159,16 @@ export default function CategoriesSettingsPage() {
   }
 
   function openEditFlow(cat: Tables<"categories">) {
-    setEditingId(cat.id);
+    if (!cat.household_id) {
+      // Global default — can't edit the shared row, so this opens the same sheet
+      // in "customize" mode: saving creates a household copy and hides the
+      // default (migration 014) instead of calling updateCategory.
+      setCustomizingGlobalId(cat.id);
+      setEditingId(null);
+    } else {
+      setEditingId(cat.id);
+      setCustomizingGlobalId(null);
+    }
     setName(cat.name);
     setParentId(cat.parent_id);
     setIcon(cat.icon ?? "circle");
@@ -164,6 +179,7 @@ export default function CategoriesSettingsPage() {
   function closeSheet() {
     setCreating(false);
     setEditingId(null);
+    setCustomizingGlobalId(null);
     setName("");
     setParentId(null);
     setIcon("circle");
@@ -173,16 +189,32 @@ export default function CategoriesSettingsPage() {
   async function handleCreate() {
     if (!name.trim()) return;
     setSaving(true);
-    const result = editingId
-      ? await updateCategory(editingId, { name: name.trim(), icon, color })
-      : await createCategory({ name: name.trim(), parent_id: parentId, icon, color, sort_order: 999 });
+    const result = customizingGlobalId
+      ? await customizeCategory(customizingGlobalId, { name: name.trim(), icon, color })
+      : editingId
+        ? await updateCategory(editingId, { name: name.trim(), icon, color })
+        : await createCategory({ name: name.trim(), parent_id: parentId, icon, color, sort_order: 999 });
     setSaving(false);
     if (result.error !== null) {
       toast.error(result.error);
       return;
     }
-    toast.success(editingId ? `"${result.data.name}" updated` : `"${result.data.name}" added`);
+    toast.success(customizingGlobalId ? `"${result.data.name}" is now yours to edit` : editingId ? `"${result.data.name}" updated` : `"${result.data.name}" added`);
     closeSheet();
+    load();
+  }
+
+  async function handleHideGlobal() {
+    if (!hideTarget) return;
+    setHiding(true);
+    const result = await hideGlobalCategory(hideTarget.id);
+    setHiding(false);
+    if (result.error !== null) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(`"${hideTarget.name}" removed from your categories`);
+    setHideTarget(null);
     load();
   }
 
@@ -387,30 +419,39 @@ export default function CategoriesSettingsPage() {
                             Inactive
                           </Badge>
                         )}
-                        {!cat.household_id ? (
-                          <Badge variant="outline" className="ml-auto">
+                        {!cat.household_id && (
+                          <Badge variant="outline" className="shrink-0">
                             Default
                           </Badge>
-                        ) : (
-                          !selectMode && (
-                            <div className="ml-auto flex items-center gap-0.5">
-                              <button onClick={() => handleMove(cat, -1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
-                                <ChevronUp className="h-3.5 w-3.5" />
-                              </button>
-                              <button onClick={() => handleMove(cat, 1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
-                                <ChevronDown className="h-3.5 w-3.5" />
-                              </button>
-                              <button onClick={() => handleToggleActive(cat)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted" title={cat.is_active === false ? "Reactivate" : "Deactivate"}>
-                                {cat.is_active === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                              </button>
-                              <button onClick={() => openEditFlow(cat)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-primary" title="Edit">
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                              <button onClick={() => openDeleteFlow(cat)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive">
+                        )}
+                        {!selectMode && (
+                          <div className="ml-auto flex items-center gap-0.5">
+                            {cat.household_id && (
+                              <>
+                                <button onClick={() => handleMove(cat, -1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
+                                  <ChevronUp className="h-3.5 w-3.5" />
+                                </button>
+                                <button onClick={() => handleMove(cat, 1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                </button>
+                                <button onClick={() => handleToggleActive(cat)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted" title={cat.is_active === false ? "Reactivate" : "Deactivate"}>
+                                  {cat.is_active === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                                </button>
+                              </>
+                            )}
+                            <button onClick={() => openEditFlow(cat)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-primary" title="Edit">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            {cat.household_id ? (
+                              <button onClick={() => openDeleteFlow(cat)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive" title="Delete">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
-                            </div>
-                          )
+                            ) : (
+                              <button onClick={() => setHideTarget(cat)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive" title="Remove from my categories">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                       {cat.children.length > 0 && (
@@ -444,23 +485,38 @@ export default function CategoriesSettingsPage() {
                                           Inactive
                                         </Badge>
                                       )}
-                                      {sub.household_id && !selectMode && (
+                                      {!sub.household_id && (
+                                        <Badge variant="outline" className="shrink-0 text-[10px]">
+                                          Default
+                                        </Badge>
+                                      )}
+                                      {!selectMode && (
                                         <div className="ml-auto flex items-center gap-0.5">
-                                          <button onClick={() => handleMove(sub, -1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
-                                            <ChevronUp className="h-3 w-3" />
-                                          </button>
-                                          <button onClick={() => handleMove(sub, 1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
-                                            <ChevronDown className="h-3 w-3" />
-                                          </button>
-                                          <button onClick={() => handleToggleActive(sub)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
-                                            {sub.is_active === false ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                                          </button>
+                                          {sub.household_id && (
+                                            <>
+                                              <button onClick={() => handleMove(sub, -1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
+                                                <ChevronUp className="h-3 w-3" />
+                                              </button>
+                                              <button onClick={() => handleMove(sub, 1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
+                                                <ChevronDown className="h-3 w-3" />
+                                              </button>
+                                              <button onClick={() => handleToggleActive(sub)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
+                                                {sub.is_active === false ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                                              </button>
+                                            </>
+                                          )}
                                           <button onClick={() => openEditFlow(sub)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-primary" title="Edit">
                                             <Pencil className="h-3.5 w-3.5" />
                                           </button>
-                                          <button onClick={() => openDeleteFlow(sub)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive">
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                          </button>
+                                          {sub.household_id ? (
+                                            <button onClick={() => openDeleteFlow(sub)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive" title="Delete">
+                                              <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                          ) : (
+                                            <button onClick={() => setHideTarget(sub)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive" title="Remove from my categories">
+                                              <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                          )}
                                         </div>
                                       )}
                                     </div>
@@ -548,38 +604,23 @@ export default function CategoriesSettingsPage() {
       {creating && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={closeSheet}>
           <div className="safe-bottom w-full max-w-md rounded-t-2xl bg-card p-5 sm:rounded-2xl sm:pb-5" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-4 text-lg font-semibold text-foreground">
-              {editingId ? "Edit category" : parentId ? "Add subcategory" : "Add category"}
+            <h2 className="mb-1 text-lg font-semibold text-foreground">
+              {customizingGlobalId ? "Customize default" : editingId ? "Edit category" : parentId ? "Add subcategory" : "Add category"}
             </h2>
+            {customizingGlobalId && (
+              <p className="mb-3 text-xs text-muted-foreground">
+                This is a shared default, so saving creates your own editable copy with these changes and removes the original default from your list — nothing changes for anyone else.
+              </p>
+            )}
             <div className="flex flex-col gap-4">
               <div>
                 <Label>Name</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5" autoFocus />
               </div>
               <div>
-                <Label>Icon</Label>
-                <div className="mt-1.5 flex max-h-48 flex-wrap gap-2 overflow-y-auto rounded-lg border border-border p-2">
-                  {ICON_PICKER_OPTIONS.map((i) => (
-                    <button key={i} onClick={() => setIcon(i)} className={cn("rounded-lg p-0.5", icon === i && "ring-2 ring-primary")}>
-                      <CategoryIcon icon={i} color={color} className="flex h-9 w-9 items-center justify-center rounded-lg" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <Label>Color</Label>
-                <div className="mt-1.5 flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-lg border border-border p-2">
-                  {COLOR_PICKER_OPTIONS.map((c) => {
-                    const swatch = colorSwatch(c);
-                    return (
-                      <button
-                        key={c}
-                        onClick={() => setColor(c)}
-                        style={{ backgroundColor: swatch.bg }}
-                        className={cn("h-9 w-9 rounded-full", color === c && "ring-2 ring-primary ring-offset-2")}
-                      />
-                    );
-                  })}
+                <Label>Icon &amp; color</Label>
+                <div className="mt-1.5">
+                  <IconColorPicker icon={icon} color={color} onIconChange={setIcon} onColorChange={setColor} />
                 </div>
               </div>
               <div className="flex gap-2 pt-2">
@@ -629,6 +670,17 @@ export default function CategoriesSettingsPage() {
           </div>
         )}
       </ConfirmationDialog>
+
+      <ConfirmationDialog
+        open={!!hideTarget}
+        onOpenChange={(open) => !open && setHideTarget(null)}
+        title={`Remove "${hideTarget?.name}" from your categories?`}
+        description="This only affects your household — it stays available to everyone else, and any past expenses using it keep it."
+        confirmLabel="Remove"
+        destructive
+        onConfirm={handleHideGlobal}
+        confirmDisabled={hiding}
+      />
     </div>
   );
 }

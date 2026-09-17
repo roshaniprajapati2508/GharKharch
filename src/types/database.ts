@@ -410,6 +410,18 @@ export interface Database {
         };
         Relationships: [];
       };
+      household_hidden_categories: {
+        Row: { household_id: string; category_id: string; hidden_at: string };
+        Insert: { household_id: string; category_id: string };
+        Update: Partial<{ household_id: string; category_id: string }>;
+        Relationships: [];
+      };
+      household_hidden_merchants: {
+        Row: { household_id: string; merchant_id: string; hidden_at: string };
+        Insert: { household_id: string; merchant_id: string };
+        Update: Partial<{ household_id: string; merchant_id: string }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -536,6 +548,22 @@ export interface Database {
       find_duplicate_merchants: {
         Args: { p_household_id: string };
         Returns: { name_key: string; merchant_ids: string[]; merchant_names: string[]; household_scoped: boolean; is_global: boolean[] }[];
+      };
+      customize_category: {
+        Args: { p_global_id: string; p_household_id: string; p_name?: string | null; p_icon?: string | null; p_color?: string | null };
+        Returns: Database["public"]["Tables"]["categories"]["Row"];
+      };
+      customize_merchant: {
+        Args: { p_global_id: string; p_household_id: string; p_name?: string | null; p_icon?: string | null };
+        Returns: Database["public"]["Tables"]["merchants"]["Row"];
+      };
+      hide_global_category: {
+        Args: { p_category_id: string; p_household_id: string };
+        Returns: void;
+      };
+      hide_global_merchant: {
+        Args: { p_merchant_id: string; p_household_id: string };
+        Returns: void;
       };
     };
     Enums: Record<string, never>;

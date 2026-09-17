@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Plus, Store, Trash2, Search, X, Tags } from "lucide-react";
+import { ChevronLeft, Plus, Pencil, Store, Trash2, Search, X, Tags } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,8 @@ import {
   listMerchantsForHousehold,
   createMerchant,
   updateMerchant,
+  customizeMerchant,
+  hideGlobalMerchant,
   deactivateMerchant,
   addMerchantAlias,
   removeMerchantAlias,
@@ -34,6 +36,11 @@ export default function MerchantsSettingsPage() {
   const [parentBusy, setParentBusy] = useState(false);
   const [nameEdit, setNameEdit] = useState("");
   const [nameBusy, setNameBusy] = useState(false);
+  const [customizeTarget, setCustomizeTarget] = useState<Tables<"merchants"> | null>(null);
+  const [customizeName, setCustomizeName] = useState("");
+  const [customizeSaving, setCustomizeSaving] = useState(false);
+  const [hideTarget, setHideTarget] = useState<Tables<"merchants"> | null>(null);
+  const [hiding, setHiding] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -123,6 +130,34 @@ export default function MerchantsSettingsPage() {
     load();
   }
 
+  async function handleCustomizeSave() {
+    if (!customizeTarget || !customizeName.trim()) return;
+    setCustomizeSaving(true);
+    const result = await customizeMerchant(customizeTarget.id, { name: customizeName.trim() });
+    setCustomizeSaving(false);
+    if (result.error !== null) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(`"${result.data.name}" is now yours to edit`);
+    setCustomizeTarget(null);
+    load();
+  }
+
+  async function handleHideGlobal() {
+    if (!hideTarget) return;
+    setHiding(true);
+    const result = await hideGlobalMerchant(hideTarget.id);
+    setHiding(false);
+    if (result.error !== null) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(`"${hideTarget.name}" removed from your merchants`);
+    setHideTarget(null);
+    load();
+  }
+
   async function handleSetParent(parentId: string | null) {
     if (!liveDetailTarget) return;
     setParentBusy(true);
@@ -167,56 +202,61 @@ export default function MerchantsSettingsPage() {
       ) : (
         <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
           {filtered.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => {
-                if (!m.household_id) return;
-                setDetailTarget(m);
-                setNameEdit(m.name);
-              }}
-              disabled={!m.household_id}
-              className="flex w-full items-center gap-3 px-3 py-2.5 text-left disabled:cursor-default"
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                <Store className="h-4 w-4 text-muted-foreground" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate text-sm font-medium text-foreground">{m.name}</span>
-                  {m.parent_merchant_id && (
-                    <Badge variant="outline" className="shrink-0 text-[10px]">
-                      grouped
-                    </Badge>
+            <div key={m.id} className="flex w-full items-center gap-3 px-3 py-2.5 text-left">
+              <button
+                onClick={() => {
+                  if (m.household_id) {
+                    setDetailTarget(m);
+                    setNameEdit(m.name);
+                  }
+                }}
+                disabled={!m.household_id}
+                className="flex min-w-0 flex-1 items-center gap-3 disabled:cursor-default"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <Store className="h-4 w-4 text-muted-foreground" />
+                </span>
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate text-sm font-medium text-foreground">{m.name}</span>
+                    {m.parent_merchant_id && (
+                      <Badge variant="outline" className="shrink-0 text-[10px]">
+                        grouped
+                      </Badge>
+                    )}
+                  </div>
+                  {m.aliases && m.aliases.length > 0 && (
+                    <p className="truncate text-xs text-muted-foreground">aka {m.aliases.join(", ")}</p>
                   )}
                 </div>
-                {m.aliases && m.aliases.length > 0 && (
-                  <p className="truncate text-xs text-muted-foreground">aka {m.aliases.join(", ")}</p>
-                )}
-              </div>
-              {m.is_system ? (
-                <Badge variant="outline" className="ml-auto shrink-0">
+              </button>
+              {m.is_system && (
+                <Badge variant="outline" className="shrink-0">
                   Suggested
                 </Badge>
-              ) : (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteTarget(m);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.stopPropagation();
-                      setDeleteTarget(m);
-                    }
-                  }}
-                  className="ml-auto shrink-0 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
+              )}
+              <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                {!m.household_id && (
+                  <button
+                    onClick={() => {
+                      setCustomizeTarget(m);
+                      setCustomizeName(m.name);
+                    }}
+                    className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-primary"
+                    title="Edit"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => (m.household_id ? setDeleteTarget(m) : setHideTarget(m))}
+                  className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
+                  title={m.household_id ? "Remove" : "Remove from my merchants"}
                 >
                   <Trash2 className="h-4 w-4" />
-                </span>
-              )}
-            </button>
+                </button>
+              </div>
+            </div>
           ))}
           {filtered.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">No merchants match.</p>}
         </div>
@@ -323,6 +363,38 @@ export default function MerchantsSettingsPage() {
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+
+      {customizeTarget && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setCustomizeTarget(null)}>
+          <div className="safe-bottom w-full max-w-md rounded-t-2xl bg-card p-5 sm:rounded-2xl sm:pb-5" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-1 text-lg font-semibold text-foreground">Customize this merchant</h2>
+            <p className="mb-3 text-xs text-muted-foreground">
+              This is a shared/system merchant, so saving creates your own editable copy and removes the original from your list — nothing changes for anyone else. Once saved, you can add aliases and grouping on your copy same as any merchant you add yourself.
+            </p>
+            <Label>Name</Label>
+            <Input value={customizeName} onChange={(e) => setCustomizeName(e.target.value)} className="mt-1.5" autoFocus onKeyDown={(e) => e.key === "Enter" && handleCustomizeSave()} />
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setCustomizeTarget(null)}>
+                Cancel
+              </Button>
+              <Button className="flex-1" loading={customizeSaving} disabled={!customizeName.trim()} onClick={handleCustomizeSave}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmationDialog
+        open={!!hideTarget}
+        onOpenChange={(open) => !open && setHideTarget(null)}
+        title={`Remove "${hideTarget?.name}" from your merchants?`}
+        description="This only affects your household — it stays available to everyone else, and any past expenses using it keep it."
+        confirmLabel="Remove"
+        destructive
+        onConfirm={handleHideGlobal}
+        confirmDisabled={hiding}
+      />
     </div>
   );
 }

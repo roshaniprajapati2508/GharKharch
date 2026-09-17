@@ -6,10 +6,13 @@ import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/a
 import { normalizeMerchantName } from "@/lib/merchant-utils";
 import type { Tables, TablesUpdate } from "@/types/database";
 
-/** Global (system) + this household's own merchants. */
+/** Global (system) + this household's own merchants. Excludes any global/system merchants this household has hidden/customized away (migration 014). */
 export async function listMerchantsForHousehold() {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();
+    const { data: hiddenRows } = await supabase.from("household_hidden_merchants").select("merchant_id").eq("household_id", householdId);
+    const hiddenIds = new Set((hiddenRows ?? []).map((r) => r.merchant_id));
+
     const { data, error } = await supabase
       .from("merchants")
       .select("*")
@@ -17,7 +20,7 @@ export async function listMerchantsForHousehold() {
       .eq("is_active", true)
       .order("name", { ascending: true });
     if (error) throw new ActionError(error.message);
-    return (data ?? []) as Tables<"merchants">[];
+    return ((data ?? []) as Tables<"merchants">[]).filter((m) => !hiddenIds.has(m.id));
   });
 }
 
@@ -67,6 +70,37 @@ export async function updateMerchant(id: string, rawInput: Partial<MerchantFormI
     if (error || !data) throw new ActionError(error?.message ?? "Couldn't update the merchant");
     revalidatePath("/more/merchants");
     return data as Tables<"merchants">;
+  });
+}
+
+/**
+ * "Edit" for a global/system merchant (migration 014): creates a household-
+ * owned copy seeded from the merchant's current values plus any changes,
+ * and hides the original for this household only. Mirrors customizeCategory.
+ */
+export async function customizeMerchant(globalId: string, changes: Partial<Pick<MerchantFormInput, "name" | "icon">>) {
+  return runAction(async () => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { data, error } = await supabase.rpc("customize_merchant", {
+      p_global_id: globalId,
+      p_household_id: householdId,
+      p_name: changes.name ?? null,
+      p_icon: changes.icon ?? null,
+    });
+    if (error || !data) throw new ActionError(error?.message ?? "Couldn't customize this merchant");
+    revalidatePath("/more/merchants");
+    return data as Tables<"merchants">;
+  });
+}
+
+/** "Remove" for a global/system merchant — hides it from this household's lists/pickers without touching the shared row or any other household (migration 014). */
+export async function hideGlobalMerchant(globalId: string) {
+  return runAction(async () => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { error } = await supabase.rpc("hide_global_merchant", { p_merchant_id: globalId, p_household_id: householdId });
+    if (error) throw new ActionError(error.message);
+    revalidatePath("/more/merchants");
+    return { id: globalId };
   });
 }
 

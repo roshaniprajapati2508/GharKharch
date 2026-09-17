@@ -7,10 +7,13 @@ import type { Tables } from "@/types/database";
 
 export type CategoryWithChildren = Tables<"categories"> & { children: Tables<"categories">[] };
 
-/** Global (household_id null) + this household's own categories, as a parent->children tree, plus the flat list. */
+/** Global (household_id null) + this household's own categories, as a parent->children tree, plus the flat list. Excludes any global defaults this household has hidden/customized away (migration 014). */
 export async function listCategoriesForHousehold(options?: { includeInactive?: boolean }) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();
+
+    const { data: hiddenRows } = await supabase.from("household_hidden_categories").select("category_id").eq("household_id", householdId);
+    const hiddenIds = new Set((hiddenRows ?? []).map((r) => r.category_id));
 
     let query = supabase
       .from("categories")
@@ -21,7 +24,7 @@ export async function listCategoriesForHousehold(options?: { includeInactive?: b
     const { data, error } = await query;
 
     if (error) throw new ActionError(error.message);
-    const flat = data ?? [];
+    const flat = (data ?? []).filter((c) => !hiddenIds.has(c.id));
 
     const topLevel = flat.filter((c) => c.parent_id === null);
     const tree: CategoryWithChildren[] = topLevel.map((parent) => ({
@@ -63,6 +66,41 @@ export async function updateCategory(id: string, rawInput: Partial<CategoryFormI
     if (error || !data) throw new ActionError(error?.message ?? "Couldn't update the category");
     revalidatePath("/more/categories");
     return data as Tables<"categories">;
+  });
+}
+
+/**
+ * "Edit" for a global default category (migration 014): can't mutate the
+ * shared row (it's visible to every household), so this creates a normal
+ * household-owned copy seeded from the default's current values plus
+ * whatever the caller is changing, and hides the original default for this
+ * household only. The new row is then just an ordinary category — full
+ * edit/delete/reorder applies to it going forward.
+ */
+export async function customizeCategory(globalId: string, changes: Partial<Pick<CategoryFormInput, "name" | "icon" | "color">>) {
+  return runAction(async () => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { data, error } = await supabase.rpc("customize_category", {
+      p_global_id: globalId,
+      p_household_id: householdId,
+      p_name: changes.name ?? null,
+      p_icon: changes.icon ?? null,
+      p_color: changes.color ?? null,
+    });
+    if (error || !data) throw new ActionError(error?.message ?? "Couldn't customize this category");
+    revalidatePath("/more/categories");
+    return data as Tables<"categories">;
+  });
+}
+
+/** "Remove" for a global default category — hides it from this household's lists/pickers without touching the shared row or any other household (migration 014). */
+export async function hideGlobalCategory(globalId: string) {
+  return runAction(async () => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { error } = await supabase.rpc("hide_global_category", { p_category_id: globalId, p_household_id: householdId });
+    if (error) throw new ActionError(error.message);
+    revalidatePath("/more/categories");
+    return { id: globalId };
   });
 }
 
