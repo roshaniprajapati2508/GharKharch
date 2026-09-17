@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { TrendingUp } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 import { getHouseholdForecast, type HouseholdForecast } from "@/lib/actions/insights";
+import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
 
 /**
  * Household-wide month-end spending projection (product brief section 3.1,
@@ -15,16 +16,28 @@ import { getHouseholdForecast, type HouseholdForecast } from "@/lib/actions/insi
  * month elapsed, or nothing spent yet, to extrapolate from — see the guard
  * logic in `getHouseholdForecast()`.
  */
-export function ForecastCard() {
-  const [forecast, setForecast] = useState<HouseholdForecast | null>(null);
-  const [loaded, setLoaded] = useState(false);
+export function ForecastCard({
+  initialForecast,
+}: {
+  initialForecast?: HouseholdForecast | null;
+} = {}) {
+  const [forecast, setForecast] = useState<HouseholdForecast | null>(initialForecast ?? null);
+  const [loaded, setLoaded] = useState(initialForecast !== undefined);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     getHouseholdForecast().then((result) => {
       if (result.error === null) setForecast(result.data);
       setLoaded(true);
     });
   }, []);
+
+  useEffect(() => {
+    if (initialForecast === undefined) {
+      load();
+    }
+  }, [initialForecast, load]);
+
+  useOnExpenseSaved(load);
 
   if (!loaded || !forecast) return null;
 

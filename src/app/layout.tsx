@@ -89,7 +89,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         <script
           type="application/ld+json"
-          // eslint-disable-next-line react/no-danger -- static, locally-built JSON with no user input, the standard next.js pattern for JSON-LD
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
         {children}

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { formatINR, cn } from "@/lib/utils";
 import { getDailyWeeklySnapshot, getSpendingChanges, type DailyWeeklySnapshot, type SpendingChangesResult } from "@/lib/actions/insights";
 import { getRecurringSummary, type RecurringWithCategory } from "@/lib/actions/recurring";
 import { getQuickAddChips, type QuickAddChip } from "@/lib/actions/quick-add";
 import { useQuickAddSave } from "@/lib/hooks/use-quick-add-save";
+import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -15,7 +16,7 @@ function greeting(): string {
   return "Good evening";
 }
 
-interface BriefData {
+export interface BriefData {
   snapshot: DailyWeeklySnapshot;
   changes: SpendingChangesResult | null;
   nextRecurring: RecurringWithCategory | null;
@@ -34,12 +35,18 @@ interface BriefData {
  * ForecastCard — because a projection is a different kind of claim than
  * "what happened", and the product brief calls it out as its own capability.
  */
-export function DailyBriefCard() {
-  const [data, setData] = useState<BriefData | null>(null);
-  const [chips, setChips] = useState<QuickAddChip[]>([]);
-  const [loaded, setLoaded] = useState(false);
+export function DailyBriefCard({
+  initialData,
+  initialChips,
+}: {
+  initialData?: BriefData | null;
+  initialChips?: QuickAddChip[];
+} = {}) {
+  const [data, setData] = useState<BriefData | null>(initialData ?? null);
+  const [chips, setChips] = useState<QuickAddChip[]>(initialChips ?? []);
+  const [loaded, setLoaded] = useState(initialData !== undefined);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     Promise.all([getDailyWeeklySnapshot(), getSpendingChanges(), getRecurringSummary(), getQuickAddChips(4)]).then(
       ([snapshotRes, changesRes, recurringRes, chipsRes]) => {
         if (snapshotRes.error === null) {
@@ -54,6 +61,14 @@ export function DailyBriefCard() {
       }
     );
   }, []);
+
+  useEffect(() => {
+    if (initialData === undefined) {
+      load();
+    }
+  }, [initialData, load]);
+
+  useOnExpenseSaved(load);
 
   const { saveChip, savingChip } = useQuickAddSave();
 

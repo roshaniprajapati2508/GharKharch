@@ -9,7 +9,7 @@ import { useHousehold } from "@/lib/context/household-context";
 import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-context";
 import { DashboardFilters, type QuickPeriod } from "@/components/dashboard/dashboard-filters";
 import { SummaryHeader } from "@/components/dashboard/summary-header";
-import { DailyBriefCard } from "@/components/dashboard/daily-brief-card";
+import { DailyBriefCard, type BriefData } from "@/components/dashboard/daily-brief-card";
 import { ForecastCard } from "@/components/dashboard/forecast-card";
 import { SpendingTrendChart } from "@/components/dashboard/spending-trend-chart";
 import { CategoryBreakdownList } from "@/components/dashboard/category-breakdown-list";
@@ -30,12 +30,26 @@ import { toastUndo } from "@/lib/toast-helpers";
 import { getMonthRange, type DateRange } from "@/lib/date-utils";
 import { formatINR } from "@/lib/utils";
 import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
+import type { QuickAddChip } from "@/lib/actions/quick-add";
+import type { HouseholdForecast } from "@/lib/actions/insights";
 
 function getDashboardCacheKey(range: DateRange, person: PersonFilter) {
   return `dashboard_${range.start}_${range.end}_${person}`;
 }
 
-export function DashboardPageClient({ initialData }: { initialData?: DashboardData | null }) {
+interface DashboardPageClientProps {
+  initialData?: DashboardData | null;
+  initialBrief?: BriefData | null;
+  initialChips?: QuickAddChip[];
+  initialForecast?: HouseholdForecast | null;
+}
+
+export function DashboardPageClient({
+  initialData,
+  initialBrief,
+  initialChips,
+  initialForecast,
+}: DashboardPageClientProps) {
   const { displayName } = useHousehold();
   const { openAdd } = useAddExpense();
 
@@ -151,11 +165,11 @@ export function DashboardPageClient({ initialData }: { initialData?: DashboardDa
       ) : data && hasAnyActivity ? (
         <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="dashboard-grid">
           <motion.div variants={fadeInUp} style={{ gridArea: "brief" }}>
-            <DailyBriefCard />
+            <DailyBriefCard initialData={initialBrief} initialChips={initialChips} />
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "forecast" }}>
-            <ForecastCard />
+            <ForecastCard initialForecast={initialForecast} />
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "summary" }}>
