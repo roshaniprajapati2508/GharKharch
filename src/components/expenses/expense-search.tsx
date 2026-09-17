@@ -101,11 +101,13 @@ export function ExpenseSearch({ open, onOpenChange }: { open: boolean; onOpenCha
 
       const enriched: EnrichedExpense[] = (data ?? []).map((e) => {
         const cat = categoryMap.get(e.category_id);
+        const subcat = e.subcategory_id ? categoryMap.get(e.subcategory_id) : null;
         return {
           ...e,
           category_name: cat?.name ?? null,
           category_icon: cat?.icon ?? null,
           category_color: cat?.color ?? null,
+          subcategory_name: subcat?.name ?? null,
           merchant_name: e.merchant_id ? merchantMap.get(e.merchant_id) ?? null : null,
           payer_name: profileMap.get(e.paid_by) ?? "Someone",
         };

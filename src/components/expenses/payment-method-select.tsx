@@ -75,6 +75,43 @@ export function CardQuickPicker({
   );
 }
 
+/** When Bank Transfer is the payment method and the household has bank accounts on file, let them pick which one — mirrors CardQuickPicker/UpiQuickPicker. Fixes a gap where editing an expense that already had a bank account attached would silently clear it on save. */
+export function BankQuickPicker({
+  accounts,
+  value,
+  onChange,
+}: {
+  accounts: Tables<"bank_accounts">[];
+  value: string | null;
+  onChange: (id: string | null) => void;
+}) {
+  if (accounts.length === 0) return null;
+  return (
+    <div>
+      <p className="mb-1.5 text-xs font-medium text-muted-foreground">Which bank account?</p>
+      <div className="flex flex-wrap gap-2">
+        {accounts.map((a) => {
+          const active = value === a.id;
+          return (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => onChange(active ? null : a.id)}
+              className={cn(
+                "h-9 rounded-full border px-3 text-xs font-medium transition-colors",
+                active ? "border-primary bg-secondary text-secondary-foreground" : "border-border bg-surface text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {a.bank_name}
+              {a.account_last4 ? ` •••• ${a.account_last4}` : ""}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function UpiQuickPicker({
   profiles,
   value,

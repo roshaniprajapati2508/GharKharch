@@ -2,10 +2,28 @@
 
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const Drawer = ({ shouldScaleBackground = true, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
-  <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} {...props} />
+// `handleOnly` restricts vaul's swipe-to-dismiss gesture to the small grip
+// handle at the top of the sheet instead of the entire sheet body. Without
+// it, vaul treats any touch-drag anywhere in the content as a potential
+// close gesture — which competes with tapping buttons/chips and with
+// scrolling a long form, and on a real touchscreen a tap that has even a
+// pixel of incidental vertical movement can get swallowed as a drag-start
+// instead of registering as a click. That's what made controls inside
+// "More options" feel unresponsive. `autoFocus={false}` stops vaul from
+// focusing (and popping the keyboard for) the first focusable field the
+// instant a sheet opens — jarring on mobile, especially while the sheet is
+// still animating in; a component that wants a field focused does so
+// itself, deliberately, once it's ready (see AmountInput usage).
+const Drawer = ({
+  shouldScaleBackground = true,
+  handleOnly = true,
+  autoFocus = false,
+  ...props
+}: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
+  <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} handleOnly={handleOnly} autoFocus={autoFocus} {...props} />
 );
 Drawer.displayName = "Drawer";
 
@@ -23,8 +41,8 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> & { showClose?: boolean }
+>(({ className, children, showClose = true, ...props }, ref) => (
   <DrawerPortal>
     <DrawerOverlay />
     <DrawerPrimitive.Content
@@ -35,7 +53,22 @@ const DrawerContent = React.forwardRef<
       )}
       {...props}
     >
-      <div className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-border" />
+      {/* The grip handle is the only draggable-to-dismiss area (see `handleOnly`
+          on Drawer above) — swipe down from here still closes the sheet. Must
+          be vaul's own `Handle` primitive, not a plain div: `handleOnly` only
+          recognizes drags that start on it. */}
+      <DrawerPrimitive.Handle className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-border" />
+      {/* An explicit, discoverable close control — swipe-to-dismiss alone isn't
+          a reliable or obvious way to close a sheet, especially for anyone who
+          doesn't already know the gesture. */}
+      {showClose && (
+        <DrawerPrimitive.Close
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </DrawerPrimitive.Close>
+      )}
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>

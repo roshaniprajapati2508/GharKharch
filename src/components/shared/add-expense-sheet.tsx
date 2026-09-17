@@ -18,7 +18,7 @@ import { AmountInput } from "@/components/expenses/amount-input";
 import { CategoryPicker, type CategorySelection } from "@/components/expenses/category-picker";
 import { MerchantPicker } from "@/components/expenses/merchant-picker";
 import { PaidBySelector, ExpenseTypeSelector } from "@/components/expenses/person-selector";
-import { PaymentMethodSelect, CardQuickPicker, UpiQuickPicker } from "@/components/expenses/payment-method-select";
+import { PaymentMethodSelect, CardQuickPicker, UpiQuickPicker, BankQuickPicker } from "@/components/expenses/payment-method-select";
 import { DateTimeFields, MoreOptionsDisclosure, NotesField } from "@/components/expenses/date-time-fields";
 import { QuickAddBar } from "@/components/shared/quick-add-bar";
 import { useHousehold } from "@/lib/context/household-context";
@@ -27,7 +27,7 @@ import { createExpense, updateExpense, type EnrichedExpense } from "@/lib/action
 import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/actions/categories";
 import { listMerchantsForHousehold } from "@/lib/actions/merchants";
 import { listPaymentMethodsForHousehold } from "@/lib/actions/payment-methods";
-import { listUserCards, listUpiProfiles } from "@/lib/actions/payment-instruments";
+import { listUserCards, listUpiProfiles, listBankAccounts } from "@/lib/actions/payment-instruments";
 import { getQuickAddChips, type QuickAddChip } from "@/lib/actions/quick-add";
 import { getCategorySuggestion } from "@/lib/actions/intelligence";
 import type { CategorySuggestion } from "@/lib/expense-intelligence/category-suggester";
@@ -60,6 +60,7 @@ function emptyState(userId: string) {
     paymentMethod: null as string | null,
     cardId: null as string | null,
     upiProfileId: null as string | null,
+    bankAccountId: null as string | null,
     notes: "",
   };
 }
@@ -82,6 +83,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   const [paymentMethods, setPaymentMethods] = useState<Tables<"payment_methods">[]>([]);
   const [cards, setCards] = useState<Tables<"user_cards">[]>([]);
   const [upiProfiles, setUpiProfiles] = useState<Tables<"upi_profiles">[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<Tables<"bank_accounts">[]>([]);
   const [quickAddChips, setQuickAddChips] = useState<QuickAddChip[]>([]);
 
   useEffect(() => {
@@ -95,8 +97,9 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       listPaymentMethodsForHousehold(),
       listUserCards(),
       listUpiProfiles(),
+      listBankAccounts(),
       getQuickAddChips(),
-    ]).then(([cats, merch, methods, userCards, upi, chips]) => {
+    ]).then(([cats, merch, methods, userCards, upi, banks, chips]) => {
       if (cats.data) {
         setCategoryTree(cats.data.tree);
         setCategoryFlat(cats.data.flat);
@@ -105,6 +108,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       if (methods.data) setPaymentMethods(methods.data);
       if (userCards.data) setCards(userCards.data);
       if (upi.data) setUpiProfiles(upi.data);
+      if (banks.data) setBankAccounts(banks.data);
       if (chips.data) setQuickAddChips(chips.data);
       setLoadingRefs(false);
     });
@@ -129,6 +133,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
         paymentMethod: source.payment_method,
         cardId: source.card_id,
         upiProfileId: source.upi_profile_id,
+        bankAccountId: source.bank_account_id,
         notes: source.notes ?? "",
       });
       setCategoryTouched(true);
@@ -289,7 +294,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
       payment_method: form.paymentMethod,
       card_id: form.cardId,
       upi_profile_id: form.upiProfileId,
-      bank_account_id: null,
+      bank_account_id: form.bankAccountId,
       expense_date: form.date,
       expense_time: form.time ? `${form.time}:00` : null,
       notes: form.notes.trim() || null,
@@ -376,7 +381,11 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
           )}
 
           <div className="flex-1 overflow-y-auto px-5">
-            <AmountInput value={form.amount} onChange={(v) => setForm((f) => ({ ...f, amount: v }))} autoFocus={!isEditing} />
+            {/* No autoFocus here: popping the keyboard the instant this sheet
+                opens (while it's still animating up) made the viewport jump
+                around jarringly on mobile — let the person tap in when
+                they're ready instead. */}
+            <AmountInput value={form.amount} onChange={(v) => setForm((f) => ({ ...f, amount: v }))} />
 
             <div className="flex flex-col gap-4 pb-4">
               <div>
@@ -473,7 +482,9 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                     <PaymentMethodSelect
                       methods={paymentMethods}
                       value={form.paymentMethod}
-                      onChange={(v) => setForm((f) => ({ ...f, paymentMethod: v, cardId: null, upiProfileId: null }))}
+                      onChange={(v) =>
+                        setForm((f) => ({ ...f, paymentMethod: v, cardId: null, upiProfileId: null, bankAccountId: null }))
+                      }
                     />
                   </div>
                 </div>
@@ -483,6 +494,9 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                 )}
                 {form.paymentMethod === "UPI" && (
                   <UpiQuickPicker profiles={upiProfiles} value={form.upiProfileId} onChange={(v) => setForm((f) => ({ ...f, upiProfileId: v }))} />
+                )}
+                {form.paymentMethod === "Bank Transfer" && (
+                  <BankQuickPicker accounts={bankAccounts} value={form.bankAccountId} onChange={(v) => setForm((f) => ({ ...f, bankAccountId: v }))} />
                 )}
 
                 <NotesField value={form.notes} onChange={(v) => setForm((f) => ({ ...f, notes: v }))} />

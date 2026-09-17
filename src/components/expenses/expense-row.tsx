@@ -90,7 +90,8 @@ export function ExpenseRow({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">{expense.merchant_name ?? expense.item_name}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {expense.category_name ?? "Uncategorized"} · {expense.payer_name}
+            {expense.category_name ?? "Uncategorized"}
+            {expense.subcategory_name ? ` › ${expense.subcategory_name}` : ""} · {expense.payer_name}
             {timeLabel ? ` · ${timeLabel}` : ""}
           </p>
         </div>

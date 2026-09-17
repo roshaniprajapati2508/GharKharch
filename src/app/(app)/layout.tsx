@@ -34,10 +34,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // query instead of two separate profile look-ups.
   const [{ data: household }, { data: members }] = await Promise.all([
     supabase.from("households").select("id, name, invite_code").eq("id", membership.household_id).single(),
-    supabase.from("household_members").select("user_id").eq("household_id", membership.household_id),
+    supabase.from("household_members").select("user_id, role").eq("household_id", membership.household_id),
   ]);
 
   const memberIds = (members ?? []).map((m) => m.user_id);
+  const isOwner = (members ?? []).find((m) => m.user_id === user.id)?.role === "owner";
   const partnerUserId = memberIds.find((id) => id !== user.id) ?? null;
 
   const { data: profiles } = await supabase
@@ -57,6 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         householdName: household!.name,
         inviteCode: household!.invite_code,
         userId: user.id,
+        isOwner,
         displayName: profile?.display_name ?? user.email?.split("@")[0] ?? "You",
         username: profile?.username ?? null,
         avatarUrl: profile?.avatar_url ?? null,

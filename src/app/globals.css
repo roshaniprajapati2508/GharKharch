@@ -192,6 +192,20 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Tailwind's preflight reset sets `button { cursor: default }` to match native
+   browser button behavior — correct for a native OS-style button, but on the
+   web it means every one of our buttons (filter chips, row actions, tabs,
+   dropdown items) silently loses the pointer/hand cursor a mouse user expects
+   on anything clickable, with no visual indication it's interactive at all.
+   Restoring it globally, and skipping genuinely disabled controls so those
+   correctly keep the "not allowed" affordance instead. */
+button:not(:disabled), [role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
 /* Baseline hover/press feedback for every interactive control. Individual
    components (Button, etc.) already declare their own hover/active states,
    but a great many small icon-only controls across the app (row actions,

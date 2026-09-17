@@ -7,6 +7,7 @@ export interface HouseholdContextValue {
   householdName: string;
   inviteCode: string;
   userId: string;
+  isOwner: boolean;
   displayName: string;
   username: string | null;
   avatarUrl: string | null;

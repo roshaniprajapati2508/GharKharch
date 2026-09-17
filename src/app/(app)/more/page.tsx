@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Copy, LogOut, Users, Tag, Store, Wallet, ChevronRight, Sparkles, Merge, Home, ShieldCheck } from "lucide-react";
+import { Copy, LogOut, Users, Tag, Store, Wallet, PiggyBank, Repeat, ChevronRight, Sparkles, Merge, Home, ShieldCheck, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { useHousehold } from "@/lib/context/household-context";
 import { createClient } from "@/lib/supabase/client";
+import { renameHousehold } from "@/lib/actions/household";
 
 function SectionLabel({ icon: Icon, children }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
   return (
@@ -33,12 +35,37 @@ function MenuLink({ href, icon: Icon, label }: { href: string; icon: React.Compo
 
 export default function MorePage() {
   const router = useRouter();
-  const { householdName, inviteCode, displayName, avatarUrl, partner } = useHousehold();
+  const { householdName, inviteCode, displayName, avatarUrl, partner, isOwner } = useHousehold();
   const [signingOut, setSigningOut] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState(householdName);
+  const [savingName, setSavingName] = useState(false);
 
   async function copyCode() {
     await navigator.clipboard.writeText(inviteCode);
     toast.success("Invite code copied");
+  }
+
+  function openRename() {
+    setNameDraft(householdName);
+    setRenaming(true);
+  }
+
+  async function saveRename() {
+    if (!nameDraft.trim() || nameDraft.trim() === householdName) {
+      setRenaming(false);
+      return;
+    }
+    setSavingName(true);
+    const result = await renameHousehold(nameDraft.trim());
+    setSavingName(false);
+    if (result.error !== null) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Household renamed");
+    setRenaming(false);
+    router.refresh();
   }
 
   async function signOut() {
@@ -75,7 +102,33 @@ export default function MorePage() {
         <SectionLabel icon={Home}>Household</SectionLabel>
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">{householdName}</CardTitle>
+            {renaming ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && saveRename()}
+                  autoFocus
+                  className="h-9"
+                  maxLength={60}
+                />
+                <Button size="sm" loading={savingName} onClick={saveRename}>
+                  Save
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setRenaming(false)} disabled={savingName}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <CardTitle className="flex items-center gap-2">
+                {householdName}
+                {isOwner && (
+                  <button onClick={openRename} className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-primary" aria-label="Rename household">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </CardTitle>
+            )}
             <CardDescription>Shared by you {partner ? `and ${partner.displayName}` : "— invite your partner to join"}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
@@ -118,6 +171,8 @@ export default function MorePage() {
             <MenuLink href="/more/merchants" icon={Store} label="Merchants" />
             <MenuLink href="/more/duplicates" icon={Merge} label="Find duplicates" />
             <MenuLink href="/more/payment-methods" icon={Wallet} label="Payment methods, cards & UPI" />
+            <MenuLink href="/more/budgets" icon={PiggyBank} label="Budgets" />
+            <MenuLink href="/more/recurring" icon={Repeat} label="Recurring expenses" />
           </CardContent>
         </Card>
       </div>
