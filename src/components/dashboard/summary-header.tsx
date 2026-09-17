@@ -42,19 +42,28 @@ export function SummaryHeader({
   const change = percentChange(total, prevTotal);
   const days = Math.max(summary.days, 1);
   const dailyAvg = total / days;
-  const weeklyAvg = dailyAvg * 7;
+  const avgPerTxn = summary.txn_count > 0 ? total / summary.txn_count : 0;
 
   const topCategory = categoryBreakdown[0] ?? null;
   const TopCategoryIcon = topCategory ? getIcon(topCategory.icon) : null;
   const frequentMerchant = mostFrequentMerchant(topMerchants);
   const highestDay = highestSpendingDayLabel(dailySpending);
 
-  const stats: { label: string; value: string }[] = [
-    { label: "Daily average", value: formatINR(dailyAvg) },
-    { label: "Weekly average", value: formatINR(weeklyAvg) },
-    { label: "Transactions", value: String(summary.txn_count) },
-    { label: "Largest expense", value: summary.largest_amount ? formatINR(summary.largest_amount) : "—" },
-  ];
+  const isSingleDay = summary.days <= 1;
+
+  const stats: { label: string; value: string }[] = isSingleDay
+    ? [
+        { label: "Transactions", value: String(summary.txn_count) },
+        { label: "Avg / transaction", value: summary.txn_count > 0 ? formatINR(avgPerTxn) : "—" },
+        { label: "Largest expense", value: summary.largest_amount ? formatINR(summary.largest_amount) : "—" },
+        { label: "Top category", value: topCategory?.category_name ?? "—" },
+      ]
+    : [
+        { label: "Daily average", value: formatINR(dailyAvg) },
+        { label: "Avg / transaction", value: summary.txn_count > 0 ? formatINR(avgPerTxn) : "—" },
+        { label: "Transactions", value: String(summary.txn_count) },
+        { label: "Largest expense", value: summary.largest_amount ? formatINR(summary.largest_amount) : "—" },
+      ];
 
   return (
     <div className="flex flex-col gap-4">

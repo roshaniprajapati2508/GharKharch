@@ -162,12 +162,12 @@ export default function ProfilePage() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
                 className={cn(
-                  "absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-brand-primary text-white shadow-sm transition-transform active:scale-95",
+                  "absolute -bottom-1 -right-1 flex h-9 w-9 min-h-9 min-w-9 aspect-square shrink-0 items-center justify-center rounded-full border-2 border-background bg-brand-primary p-0 text-white shadow-sm transition-transform active:scale-95",
                   uploading && "opacity-70"
                 )}
                 aria-label="Change photo"
               >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4 shrink-0" />}
               </button>
               <input ref={fileInputRef} type="file" accept={ALLOWED_TYPES.join(",")} className="hidden" onChange={handleFileSelected} />
               <PhotoCropDialog file={pendingCropFile} onCancel={() => setPendingCropFile(null)} onCropped={handleCropped} />
