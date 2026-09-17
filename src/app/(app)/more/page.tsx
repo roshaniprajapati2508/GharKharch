@@ -2,7 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Copy, LogOut, Users, Tag, Store, Wallet, PiggyBank, Repeat, ChevronRight, Sparkles, Merge, Home, ShieldCheck, Pencil, FileBarChart } from "lucide-react";
+import {
+  Copy,
+  LogOut,
+  Users,
+  Tag,
+  Store,
+  Wallet,
+  PiggyBank,
+  Repeat,
+  ChevronRight,
+  Sparkles,
+  Merge,
+  Home,
+  ShieldCheck,
+  Pencil,
+  DatabaseBackup,
+  UploadCloud,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,6 +30,7 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { useHousehold } from "@/lib/context/household-context";
 import { createClient } from "@/lib/supabase/client";
 import { renameHousehold } from "@/lib/actions/household";
+import { exportHouseholdBackup } from "@/lib/actions/reports";
 
 function SectionLabel({ icon: Icon, children }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
   return (
@@ -25,7 +43,7 @@ function SectionLabel({ icon: Icon, children }: { icon: React.ComponentType<{ cl
 
 function MenuLink({ href, icon: Icon, label }: { href: string; icon: React.ComponentType<{ className?: string }>; label: string }) {
   return (
-    <Link href={href} prefetch={true} className="flex items-center gap-3 px-5 py-4">
+    <Link href={href} className="flex items-center gap-3 px-5 py-4">
       <Icon className="h-4 w-4 text-brand-primary" />
       <span className="text-sm font-medium text-foreground">{label}</span>
       <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
@@ -40,6 +58,25 @@ export default function MorePage() {
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState(householdName);
   const [savingName, setSavingName] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+
+  async function downloadBackup() {
+    setBackingUp(true);
+    const result = await exportHouseholdBackup();
+    setBackingUp(false);
+    if (result.error !== null) {
+      toast.error(result.error);
+      return;
+    }
+    const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: "application/json;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `gharkharch-backup-${result.data.exportedAt.slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Backup downloaded");
+  }
 
   async function copyCode() {
     await navigator.clipboard.writeText(inviteCode);
@@ -85,7 +122,7 @@ export default function MorePage() {
         <SectionLabel icon={Users}>Profile</SectionLabel>
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6">
-            <Link href="/more/profile" prefetch={true} className="flex items-center gap-3">
+            <Link href="/more/profile" className="flex items-center gap-3">
               <UserAvatar name={displayName} avatarUrl={avatarUrl} />
               <div className="text-sm">
                 <p className="font-medium text-foreground">{displayName}</p>
@@ -129,7 +166,7 @@ export default function MorePage() {
                 )}
               </CardTitle>
             )}
-            <CardDescription>Shared by you {partner ? `and ${partner.displayName}` : "- invite your partner to join"}</CardDescription>
+            <CardDescription>Shared by you {partner ? `and ${partner.displayName}` : "— invite your partner to join"}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {partner && (
@@ -173,7 +210,22 @@ export default function MorePage() {
             <MenuLink href="/more/payment-methods" icon={Wallet} label="Payment methods, cards & UPI" />
             <MenuLink href="/more/budgets" icon={PiggyBank} label="Budgets" />
             <MenuLink href="/more/recurring" icon={Repeat} label="Recurring expenses" />
-            <MenuLink href="/reports" icon={FileBarChart} label="Reports & Export" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Data & Privacy section: full backup + CSV import, kept separate from
+          Reports (which only ever exports the currently-selected date range)
+          so "give me everything" and "add things in bulk" have one clear home. */}
+      <div className="flex flex-col gap-2">
+        <SectionLabel icon={DatabaseBackup}>Data & privacy</SectionLabel>
+        <Card>
+          <CardContent className="flex flex-col divide-y divide-border p-0">
+            <button onClick={downloadBackup} disabled={backingUp} className="flex items-center gap-3 px-5 py-4 text-left disabled:opacity-60">
+              <DatabaseBackup className="h-4 w-4 text-brand-primary" />
+              <span className="text-sm font-medium text-foreground">{backingUp ? "Preparing backup…" : "Backup my data"}</span>
+            </button>
+            <MenuLink href="/more/import" icon={UploadCloud} label="Import expenses from CSV" />
           </CardContent>
         </Card>
       </div>
@@ -183,7 +235,7 @@ export default function MorePage() {
         <SectionLabel icon={Sparkles}>App</SectionLabel>
         <Card>
           <CardContent className="flex flex-col divide-y divide-border p-0">
-            <MenuLink href="/more/ask" icon={Sparkles} label="Ask GharKharch A.I" />
+            <MenuLink href="/more/ask" icon={Sparkles} label="Ask GharKharch" />
           </CardContent>
         </Card>
       </div>

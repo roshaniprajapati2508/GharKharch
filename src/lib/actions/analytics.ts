@@ -1,13 +1,14 @@
 "use server";
 
 // Thin wrappers around the SQL analytics functions from migration 006. Every
-// aggregation happens in Postgres - this file never pulls raw transactions
+// aggregation happens in Postgres — this file never pulls raw transactions
 // into JS to sum them (spec section 48-50, 88: "do NOT fetch all expenses and
 // calculate everything in React").
 
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
 import { getExpenses, type EnrichedExpense } from "@/lib/actions/expenses";
-import { getPreviousComparableRange, getMonthRange, type DateRange } from "@/lib/date-utils";
+import { getPreviousComparableRange, getMonthRange, getPreviousMonthRange, type DateRange } from "@/lib/date-utils";
+import { percentChange } from "@/lib/utils";
 import type { Database } from "@/types/database";
 
 type ExpenseSummaryRow = Database["public"]["Functions"]["get_expense_summary"]["Returns"][number];
@@ -30,7 +31,7 @@ export interface AnalyticsFilters {
 function resolvePaidBy(filters: AnalyticsFilters, userId: string, partnerId: string | null): string | null {
   if (filters.person === "me") return userId;
   if (filters.person === "partner") return partnerId ?? userId;
-  return null; // household - no filter
+  return null; // household — no filter
 }
 
 const EMPTY_SUMMARY: ExpenseSummaryRow = {
@@ -247,7 +248,104 @@ export async function getMerchantMonthlyTrend(merchantId: string, months = 6) {
   });
 }
 
-/** Daily totals for the spending calendar heatmap (spec section 8F, 33) - independent of the page's own period filter, driven by `monthsAgo`. */
+/** Per-category monthly trend for the small sparkline on the Category Analytics tab — mirrors getMerchantMonthlyTrend exactly. */
+export async function getCategoryMonthlyTrend(categoryId: string, months = 6) {
+  return runAction(async () => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { data, error } = await supabase.rpc("get_category_monthly_trend", {
+      p_household_id: householdId,
+      p_category_id: categoryId,
+      p_months: months,
+    });
+    if (error) throw new ActionError(error.message);
+    return data ?? [];
+  });
+}
+
+/** A merchant's share of its own category's total spend for the period (distinct from get_merchant_breakdown's share_pct, which is share of the household GRAND total). Returns the top category by the merchant's spend in it, or null if this merchant has no categorized spend in the range. */
+export async function getMerchantCategoryShare(merchantId: string, range: DateRange) {
+  return runAction(async () => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { data, error } = await supabase.rpc("get_merchant_category_share", {
+      p_household_id: householdId,
+      p_merchant_id: merchantId,
+      p_start: range.start,
+      p_end: range.end,
+    });
+    if (error) throw new ActionError(error.message);
+    return data?.[0] ?? null;
+  });
+}
+
+export type CardBreakdownRow = Database["public"]["Functions"]["get_card_breakdown"]["Returns"][number];
+export type UpiBreakdownRow = Database["public"]["Functions"]["get_upi_breakdown"]["Returns"][number];
+
+export interface PaymentDepthData {
+  cardBreakdown: CardBreakdownRow[];
+  upiBreakdown: UpiBreakdownRow[];
+  /** Top row of each breakdown, sorted by total spend — "most used" reads more usefully here than transaction count, since a card used for one large bill is arguably more "in use" than one tapped for a handful of tiny ones. */
+  mostUsedCard: CardBreakdownRow | null;
+  mostUsedUpi: UpiBreakdownRow | null;
+}
+
+/** Payment analytics depth (batch phase): breakdown by specific card and UPI profile (distinct from get_payment_method_breakdown's free-text payment_method grouping), plus each one's top/"most used" row. */
+export async function getPaymentDepthData(range: DateRange) {
+  return runAction(async (): Promise<PaymentDepthData> => {
+    const { supabase, householdId } = await requireHouseholdContext();
+
+    const [cardRes, upiRes] = await Promise.all([
+      supabase.rpc("get_card_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
+      supabase.rpc("get_upi_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
+    ]);
+    if (cardRes.error) throw new ActionError(cardRes.error.message);
+    if (upiRes.error) throw new ActionError(upiRes.error.message);
+
+    const cardBreakdown = cardRes.data ?? [];
+    const upiBreakdown = upiRes.data ?? [];
+
+    return {
+      cardBreakdown,
+      upiBreakdown,
+      mostUsedCard: cardBreakdown[0] ?? null, // already sorted by total desc (get_card_breakdown)
+      mostUsedUpi: upiBreakdown[0] ?? null, // already sorted by total desc (get_upi_breakdown)
+    };
+  });
+}
+
+export interface CashComparison {
+  thisMonth: { total: number; txnCount: number };
+  lastMonth: { total: number; txnCount: number };
+  changePct: number | null;
+}
+
+/** Cash this-month-vs-last-month, filtered to the "Cash" row of the existing payment-method breakdown — no new SQL needed. */
+export async function getCashComparison() {
+  return runAction(async (): Promise<CashComparison> => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    const thisMonth = getMonthRange(0);
+    const lastMonth = getPreviousMonthRange();
+
+    const [thisRes, lastRes] = await Promise.all([
+      supabase.rpc("get_payment_method_breakdown", { p_household_id: householdId, p_start: thisMonth.start, p_end: thisMonth.end }),
+      supabase.rpc("get_payment_method_breakdown", { p_household_id: householdId, p_start: lastMonth.start, p_end: lastMonth.end }),
+    ]);
+    if (thisRes.error) throw new ActionError(thisRes.error.message);
+    if (lastRes.error) throw new ActionError(lastRes.error.message);
+
+    const thisCash = (thisRes.data ?? []).find((r) => r.payment_method === "Cash");
+    const lastCash = (lastRes.data ?? []).find((r) => r.payment_method === "Cash");
+    const thisTotal = Number(thisCash?.total ?? 0);
+    const lastTotal = Number(lastCash?.total ?? 0);
+
+    return {
+      thisMonth: { total: thisTotal, txnCount: thisCash?.txn_count ?? 0 },
+      lastMonth: { total: lastTotal, txnCount: lastCash?.txn_count ?? 0 },
+      changePct: lastTotal > 0 ? percentChange(thisTotal, lastTotal) : null,
+    };
+  });
+}
+
+/** Daily totals for the spending calendar heatmap (spec section 8F, 33) — independent of the page's own period filter, driven by `monthsAgo`. */
 export async function getCalendarMonthData(monthsAgo: number) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { useHousehold } from "@/lib/context/household-context";
 import { getTodayRange, getLast7DaysRange, getLast30DaysRange, getMonthRange, getPreviousMonthRange } from "@/lib/date-utils";
 import type { CategoryWithChildren } from "@/lib/actions/categories";
 import type { ExpenseFilters } from "@/lib/actions/expenses";
+import { listMerchantsForHousehold } from "@/lib/actions/merchants";
+import type { Tables } from "@/types/database";
 
 const QUICK_RANGES = [
   { key: "today", label: "Today", get: getTodayRange },
@@ -39,10 +41,23 @@ export function ExpenseFiltersSheet({
 }) {
   const { userId, partner } = useHousehold();
   const [draft, setDraft] = useState<AppliedFilters>(filters);
+  const [merchants, setMerchants] = useState<Tables<"merchants">[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    listMerchantsForHousehold().then((result) => {
+      if (result.data) setMerchants(result.data);
+    });
+  }, [open]);
 
   function toggleCategory(id: string) {
     const current = draft.categoryIds ?? [];
     setDraft({ ...draft, categoryIds: current.includes(id) ? current.filter((c) => c !== id) : [...current, id] });
+  }
+
+  function toggleMerchant(id: string) {
+    const current = draft.merchantIds ?? [];
+    setDraft({ ...draft, merchantIds: current.includes(id) ? current.filter((m) => m !== id) : [...current, id] });
   }
 
   return (
@@ -117,6 +132,22 @@ export function ExpenseFiltersSheet({
                     {cat.name}
                   </label>
                 ))}
+              </div>
+            </div>
+
+            <div>
+              <Label>Merchants</Label>
+              <div className="mt-2 flex max-h-52 flex-col gap-1 overflow-y-auto rounded-lg border border-border p-2">
+                {merchants.length === 0 ? (
+                  <p className="px-1.5 py-1.5 text-xs text-muted-foreground">No merchants yet</p>
+                ) : (
+                  merchants.map((m) => (
+                    <label key={m.id} className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-sm">
+                      <Checkbox checked={(draft.merchantIds ?? []).includes(m.id)} onCheckedChange={() => toggleMerchant(m.id)} />
+                      {m.name}
+                    </label>
+                  ))
+                )}
               </div>
             </div>
 

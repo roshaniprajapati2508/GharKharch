@@ -16,10 +16,12 @@ import { FullLogo } from "@/components/shared/logo";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useHousehold } from "@/lib/context/household-context";
+import { useSearch } from "@/lib/context/search-context";
 
 export function TopBar() {
   const router = useRouter();
   const { displayName, avatarUrl, householdName } = useHousehold();
+  const { openSearch } = useSearch();
   const [signingOut, setSigningOut] = useState(false);
 
   async function signOut() {
@@ -38,13 +40,14 @@ export function TopBar() {
       <div className="hidden text-sm text-muted-foreground sm:block">{householdName}</div>
 
       <div className="flex items-center gap-1">
-        <Link
-          href="/expenses?focus=search"
+        <button
+          type="button"
+          onClick={openSearch}
           aria-label="Search expenses"
-          className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
         >
           <Search className="h-5 w-5" />
-        </Link>
+        </button>
 
         <DropdownMenu>
           <DropdownMenuTrigger className="ml-1 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">

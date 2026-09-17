@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { expenseFormSchema, type ExpenseFormInput } from "@/lib/validations/expense";
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
-import { getTodayISO, getCurrentKolkataTime } from "@/lib/date-utils";
+import { getTodayISO } from "@/lib/date-utils";
 import type { Tables } from "@/types/database";
 
 function normalizeItemName(name: string) {
@@ -78,7 +78,23 @@ function revalidateExpensePages() {
   revalidatePath("/reports");
 }
 
-export async function createExpense(rawInput: ExpenseFormInput) {
+/**
+ * `recurringRuleId` is an internal-only parameter (not part of the public
+ * expense form) — set exclusively by `logRecurringOccurrence` in
+ * recurring.ts when the user explicitly taps "Log this bill" on a recurring
+ * rule. It is never inferred or set automatically for a normal Add Expense
+ * submission (spec: "never silently create an expense" applies here too —
+ * the *tagging* as recurring must trace back to that one explicit action).
+ */
+/**
+ * `receiptPath` is an internal-only third parameter, additive on top of the
+ * existing (rawInput, recurringRuleId) signature so every existing caller
+ * keeps working unchanged. It is set only when the person actually attached
+ * or scanned a receipt image (add-expense-sheet.tsx) — the file itself is
+ * always uploaded client-side first (to the private `receipts` bucket, see
+ * migration 017), and only the resulting storage *path* is ever passed here.
+ */
+export async function createExpense(rawInput: ExpenseFormInput, recurringRuleId?: string, receiptPath?: string | null) {
   return runAction(async () => {
     const { supabase, userId, householdId } = await requireHouseholdContext();
     const input = expenseFormSchema.parse(rawInput);
@@ -99,8 +115,10 @@ export async function createExpense(rawInput: ExpenseFormInput) {
         card_id: input.card_id ?? null,
         upi_profile_id: input.upi_profile_id ?? null,
         bank_account_id: input.bank_account_id ?? null,
+        recurring_rule_id: recurringRuleId ?? null,
+        receipt_path: receiptPath ?? null,
         expense_date: input.expense_date,
-        expense_time: input.expense_time ?? `${getCurrentKolkataTime()}:00`,
+        expense_time: input.expense_time ?? null,
         notes: input.notes ?? null,
       })
       .select()
@@ -234,7 +252,6 @@ export async function duplicateExpense(id: string) {
         upi_profile_id: original.upi_profile_id,
         bank_account_id: original.bank_account_id,
         expense_date: getTodayISO(), // spec section 43: duplicate always lands on today
-        expense_time: `${getCurrentKolkataTime()}:00`,
         notes: original.notes,
       })
       .select()
@@ -253,6 +270,7 @@ export interface ExpenseFilters {
   categoryIds?: string[];
   paidBy?: string | "all";
   merchantId?: string;
+  merchantIds?: string[];
   paymentMethod?: string;
   minAmount?: number;
   maxAmount?: number;
@@ -260,7 +278,7 @@ export interface ExpenseFilters {
   limit?: number;
 }
 
-/** Enriched shape the UI actually renders - joined in JS, never via PostgREST embeds (see database.ts header). */
+/** Enriched shape the UI actually renders — joined in JS, never via PostgREST embeds (see database.ts header). */
 export type EnrichedExpense = Tables<"expenses"> & {
   category_name: string | null;
   category_icon: string | null;
@@ -268,6 +286,8 @@ export type EnrichedExpense = Tables<"expenses"> & {
   subcategory_name: string | null;
   merchant_name: string | null;
   payer_name: string;
+  /** Name of the recurring rule this expense was logged from (via `logRecurringOccurrence`), or null for a one-off expense. Powers the "Recurring" badge on expense rows. */
+  recurring_rule_name: string | null;
 };
 
 export async function getExpenses(filters: ExpenseFilters = {}) {
@@ -281,6 +301,7 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
     if (filters.categoryIds?.length) query = query.in("category_id", filters.categoryIds);
     if (filters.paidBy && filters.paidBy !== "all") query = query.eq("paid_by", filters.paidBy);
     if (filters.merchantId) query = query.eq("merchant_id", filters.merchantId);
+    if (filters.merchantIds?.length) query = query.in("merchant_id", filters.merchantIds);
     if (filters.paymentMethod) query = query.eq("payment_method", filters.paymentMethod);
     if (typeof filters.minAmount === "number") query = query.gte("amount", filters.minAmount);
     if (typeof filters.maxAmount === "number") query = query.lte("amount", filters.maxAmount);
@@ -304,16 +325,20 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
     const { data: expenses, error } = await query;
     if (error) throw new ActionError(error.message);
 
-    const [{ data: categories }, { data: merchants }, { data: members }, { data: profiles }] = await Promise.all([
+    const recurringRuleIds = Array.from(new Set((expenses ?? []).map((e) => e.recurring_rule_id).filter((id): id is string => !!id)));
+
+    const [{ data: categories }, { data: merchants }, { data: members }, { data: profiles }, { data: recurringRules }] = await Promise.all([
       supabase.from("categories").select("id, name, icon, color"),
       supabase.from("merchants").select("id, name"),
       supabase.from("household_members").select("user_id").eq("household_id", householdId),
       supabase.from("profiles").select("id, display_name"),
+      recurringRuleIds.length ? supabase.from("recurring_expenses").select("id, name").in("id", recurringRuleIds) : Promise.resolve({ data: [] as { id: string; name: string }[] }),
     ]);
 
     const categoryMap = new Map((categories ?? []).map((c) => [c.id, c]));
     const merchantMap = new Map((merchants ?? []).map((m) => [m.id, m.name]));
     const profileMap = new Map((profiles ?? []).map((p) => [p.id, p.display_name]));
+    const recurringRuleMap = new Map((recurringRules ?? []).map((r) => [r.id, r.name]));
     void members;
 
     const enriched: EnrichedExpense[] = (expenses ?? []).map((e) => {
@@ -327,9 +352,29 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
         subcategory_name: subcat?.name ?? null,
         merchant_name: e.merchant_id ? merchantMap.get(e.merchant_id) ?? null : null,
         payer_name: profileMap.get(e.paid_by) ?? "Someone",
+        recurring_rule_name: e.recurring_rule_id ? recurringRuleMap.get(e.recurring_rule_id) ?? null : null,
       };
     });
 
     return enriched;
+  });
+}
+
+/**
+ * Mints a short-lived signed URL for a receipt image (the `receipts` bucket
+ * is private — migration 017 — so there is no public URL to just read off
+ * the expense row). Re-checks the path's household prefix server-side before
+ * calling Storage, on top of the bucket's own RLS, so a stale/tampered path
+ * can never be used to probe another household's folder.
+ */
+export async function getReceiptSignedUrl(receiptPath: string) {
+  return runAction(async () => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    if (!receiptPath.startsWith(`${householdId}/`)) {
+      throw new ActionError("Receipt not found");
+    }
+    const { data, error } = await supabase.storage.from("receipts").createSignedUrl(receiptPath, 300);
+    if (error || !data) throw new ActionError(error?.message ?? "Couldn't load the receipt");
+    return data.signedUrl;
   });
 }

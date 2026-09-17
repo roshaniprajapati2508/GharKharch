@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Receipt, PieChart, FileBarChart, Settings, Plus } from "lucide-react";
+import { Home, Receipt, PieChart, FileBarChart, Settings, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FullLogo } from "@/components/shared/logo";
 import { Button } from "@/components/ui/button";
+import { useSearch } from "@/lib/context/search-context";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: Home },
@@ -15,14 +16,9 @@ const NAV_ITEMS = [
   { href: "/more", label: "More & Settings", icon: Settings },
 ] as const;
 
-// `sm` (≥640px) through just under `md` (≥768, e.g. a Galaxy Tab S4 in
-// portrait at 712px) gets a compact icon-only rail instead of the phone's
-// bottom nav (which hides at that same `sm` breakpoint - see bottom-nav.tsx)
-// or the full labeled sidebar - the same pattern used by Gmail, Slack, and
-// most enterprise apps for tablet-width screens, so a tablet always gets a
-// layout that uses its width instead of being stuck with the phone UI.
 export function SidebarNav({ onAddClick }: { onAddClick: () => void }) {
   const pathname = usePathname();
+  const { openSearch } = useSearch();
 
   return (
     <aside className="hidden w-20 shrink-0 flex-col items-center border-r border-border bg-card px-2 py-6 sm:flex md:w-64 md:items-stretch md:px-4">
@@ -33,13 +29,28 @@ export function SidebarNav({ onAddClick }: { onAddClick: () => void }) {
 
       <Button
         size="lg"
-        className="mb-6 w-full justify-center px-0 md:justify-center md:px-4"
+        className="mb-3 w-full justify-center px-0 md:justify-center md:px-4"
         onClick={onAddClick}
         aria-label="Add expense"
       >
         <Plus className="h-4 w-4 shrink-0" />
         <span className="hidden md:inline">Add Expense</span>
       </Button>
+
+      <button
+        type="button"
+        onClick={openSearch}
+        title="Search (⌘K)"
+        className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-border/80 bg-surface/80 p-2 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground md:justify-between md:px-3 md:py-2 cursor-pointer"
+      >
+        <div className="flex items-center gap-2">
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline">Search expenses…</span>
+        </div>
+        <kbd className="hidden rounded border border-border bg-card px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground md:inline-block">
+          ⌘K
+        </kbd>
+      </button>
 
       <nav className="flex flex-1 flex-col items-center gap-1 md:items-stretch" aria-label="Primary">
         {NAV_ITEMS.map((item) => {

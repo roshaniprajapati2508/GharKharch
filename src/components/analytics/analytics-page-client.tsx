@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { Sparkles, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -16,62 +18,56 @@ import { TopExpensesList } from "@/components/analytics/top-expenses-list";
 import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-context";
 import { getAnalyticsData, type AnalyticsPageData, type PersonFilter } from "@/lib/actions/analytics";
 import { getMonthRange, type DateRange } from "@/lib/date-utils";
-import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
 
-function getAnalyticsCacheKey(range: DateRange, person: PersonFilter) {
-  return `analytics_${range.start}_${range.end}_${person}`;
-}
+import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";
+
+const ANALYTICS_CACHE_KEY = "analytics_month_data";
 
 export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPageData | null }) {
   const { openAdd } = useAddExpense();
   const [period, setPeriod] = useState<QuickPeriod>("month");
-  const [range, setRange] = useState<DateRange>(initialData?.range ?? getMonthRange(0));
+  const [range, setRange] = useState<DateRange>(getMonthRange(0));
   const [person, setPerson] = useState<PersonFilter>("household");
-
   const [data, setData] = useState<AnalyticsPageData | null>(() => {
     if (initialData) {
-      setClientCachedData(getAnalyticsCacheKey(initialData.range, "household"), initialData);
+      setClientCachedData(ANALYTICS_CACHE_KEY, initialData);
       return initialData;
     }
-    return getClientCachedData<AnalyticsPageData>(getAnalyticsCacheKey(getMonthRange(0), "household"));
+    return getClientCachedData<AnalyticsPageData>(ANALYTICS_CACHE_KEY) ?? null;
   });
+  const [loading, setLoading] = useState(() => !initialData && !getClientCachedData<AnalyticsPageData>(ANALYTICS_CACHE_KEY));
 
-  const [loading, setLoading] = useState(false);
-
-  const load = useCallback(async (nextRange: DateRange, nextPerson: PersonFilter, forceFresh = false) => {
-    const cacheKey = getAnalyticsCacheKey(nextRange, nextPerson);
-    const cached = getClientCachedData<AnalyticsPageData>(cacheKey);
-
-    if (cached && !forceFresh) {
-      setData(cached);
-    } else if (!cached && !data) {
-      setLoading(true);
+  const load = useCallback(async (nextRange: DateRange, nextPerson: PersonFilter) => {
+    const isDefaultMonth = nextRange.start === getMonthRange(0).start && nextRange.end === getMonthRange(0).end && nextPerson === "household";
+    if (isDefaultMonth) {
+      const cached = getClientCachedData<AnalyticsPageData>(ANALYTICS_CACHE_KEY);
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+      }
     }
-
     const result = await getAnalyticsData({ range: nextRange, person: nextPerson });
-    setLoading(false);
-
     if (result.error !== null) {
       toast.error(result.error);
+      setLoading(false);
       return;
     }
-
-    setClientCachedData(cacheKey, result.data);
     setData(result.data);
-  }, [data]);
+    if (isDefaultMonth && result.data) {
+      setClientCachedData(ANALYTICS_CACHE_KEY, result.data);
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    if (!initialData && !data) {
-       
-      load(range, person);
-    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
+    load(range, person);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useOnExpenseSaved(
     useCallback(() => {
-      invalidateClientCache("analytics_");
-      load(range, person, true);
+      load(range, person);
     }, [load, range, person])
   );
 
@@ -93,6 +89,20 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
       <h1 className="text-2xl font-bold tracking-tight text-foreground">Analytics</h1>
 
       <DashboardFilters period={period} person={person} onPeriodChange={handlePeriodChange} onPersonChange={handlePersonChange} />
+
+      <Link
+        href="/analytics/intelligence"
+        className="flex items-center gap-2.5 rounded-xl border border-border bg-surface p-3.5"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-mint text-brand-primary">
+          <Sparkles className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground">Spending Intelligence</p>
+          <p className="text-xs text-muted-foreground">Peaks, pace, and what changed vs the previous period</p>
+        </div>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </Link>
 
       {loading && !data ? (
         <div className="flex flex-col gap-3">
@@ -145,7 +155,7 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
           </TabsContent>
 
           <TabsContent value="merchants">
-            <MerchantAnalyticsTab merchants={data.merchantBreakdown} />
+            <MerchantAnalyticsTab merchants={data.merchantBreakdown} range={data.range} />
           </TabsContent>
 
           <TabsContent value="items">
@@ -153,7 +163,7 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
           </TabsContent>
 
           <TabsContent value="payments">
-            <PaymentMethodAnalyticsTab methods={data.paymentMethodBreakdown} />
+            <PaymentMethodAnalyticsTab methods={data.paymentMethodBreakdown} range={data.range} />
           </TabsContent>
 
           <TabsContent value="calendar">

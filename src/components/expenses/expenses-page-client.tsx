@@ -10,41 +10,22 @@ import { ExpenseFiltersSheet, type AppliedFilters } from "@/components/expenses/
 import { ExpenseSearch } from "@/components/expenses/expense-search";
 import { AddExpenseSheet } from "@/components/shared/add-expense-sheet";
 import { getExpenses, softDeleteExpense, restoreExpense, duplicateExpense, type EnrichedExpense } from "@/lib/actions/expenses";
-import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/actions/categories";
+import type { CategoryWithChildren } from "@/lib/actions/categories";
 import { formatINR } from "@/lib/utils";
 import { toastUndo } from "@/lib/toast-helpers";
 import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
-import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
-
-const EXPENSES_CACHE_KEY = "expenses_default_list";
-const CATEGORIES_CACHE_KEY = "categories_tree";
 
 export function ExpensesPageClient({
   initialExpenses,
-  categories: initialCategories,
+  categories,
 }: {
-  initialExpenses?: EnrichedExpense[];
-  categories?: CategoryWithChildren[];
+  initialExpenses: EnrichedExpense[];
+  categories: CategoryWithChildren[];
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [expenses, setExpenses] = useState<EnrichedExpense[]>(() => {
-    if (initialExpenses && initialExpenses.length > 0) {
-      setClientCachedData(EXPENSES_CACHE_KEY, initialExpenses);
-      return initialExpenses;
-    }
-    return getClientCachedData<EnrichedExpense[]>(EXPENSES_CACHE_KEY) ?? initialExpenses ?? [];
-  });
-
-  const [categories, setCategories] = useState<CategoryWithChildren[]>(() => {
-    if (initialCategories && initialCategories.length > 0) {
-      setClientCachedData(CATEGORIES_CACHE_KEY, initialCategories);
-      return initialCategories;
-    }
-    return getClientCachedData<CategoryWithChildren[]>(CATEGORIES_CACHE_KEY) ?? initialCategories ?? [];
-  });
-
+  const [expenses, setExpenses] = useState(initialExpenses);
   const [filters, setFilters] = useState<AppliedFilters>({});
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(searchParams.get("focus") === "search");
@@ -53,7 +34,7 @@ export function ExpensesPageClient({
 
   useEffect(() => {
     if (searchParams.get("focus") === "search") {
-       
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- opening the search sheet based on the initial URL param
       setSearchOpen(true);
       router.replace("/expenses");
     }
@@ -69,33 +50,9 @@ export function ExpensesPageClient({
       return;
     }
     setExpenses(result.data);
-    if (Object.keys(nextFilters).length === 0) {
-      setClientCachedData(EXPENSES_CACHE_KEY, result.data);
-    }
   }, []);
 
-  useEffect(() => {
-    if (categories.length === 0) {
-      listCategoriesForHousehold().then((res) => {
-        if (res.data?.tree) {
-          setCategories(res.data.tree);
-          setClientCachedData(CATEGORIES_CACHE_KEY, res.data.tree);
-        }
-      });
-    }
-    if (expenses.length === 0 && !initialExpenses) {
-       
-      refetch({});
-    }
-  }, [categories.length, expenses.length, initialExpenses, refetch]);
-
-  useOnExpenseSaved(useCallback(() => {
-    invalidateClientCache("expenses_");
-    invalidateClientCache("dashboard_");
-    invalidateClientCache("analytics_");
-    invalidateClientCache("report_");
-    refetch(filters);
-  }, [refetch, filters]));
+  useOnExpenseSaved(useCallback(() => refetch(filters), [refetch, filters]));
 
   function applyFilters(next: AppliedFilters) {
     setFilters(next);
@@ -114,10 +71,6 @@ export function ExpensesPageClient({
 
   async function handleDelete(expense: EnrichedExpense) {
     setExpenses((list) => list.filter((e) => e.id !== expense.id));
-    invalidateClientCache("expenses_");
-    invalidateClientCache("dashboard_");
-    invalidateClientCache("analytics_");
-    invalidateClientCache("report_");
     const result = await softDeleteExpense(expense.id);
     if (result.error !== null) {
       toast.error(result.error);
@@ -126,21 +79,11 @@ export function ExpensesPageClient({
     }
     toastUndo(`${formatINR(expense.amount)} expense deleted`, async () => {
       const restored = await restoreExpense(expense.id);
-      if (!restored.error) {
-        invalidateClientCache("expenses_");
-        invalidateClientCache("dashboard_");
-        invalidateClientCache("analytics_");
-        invalidateClientCache("report_");
-        setExpenses((list) => [expense, ...list]);
-      }
+      if (!restored.error) setExpenses((list) => [expense, ...list]);
     });
   }
 
   async function handleDuplicate(expense: EnrichedExpense) {
-    invalidateClientCache("expenses_");
-    invalidateClientCache("dashboard_");
-    invalidateClientCache("analytics_");
-    invalidateClientCache("report_");
     const result = await duplicateExpense(expense.id);
     if (result.error !== null) {
       toast.error(result.error);
@@ -161,6 +104,9 @@ export function ExpensesPageClient({
     activeChips.push({ key: "categoryIds", label: `${filters.categoryIds.length} categor${filters.categoryIds.length > 1 ? "ies" : "y"}` });
   }
   if (filters.paidBy && filters.paidBy !== "all") activeChips.push({ key: "paidBy", label: "Person" });
+  if (filters.merchantIds?.length) {
+    activeChips.push({ key: "merchantIds", label: `${filters.merchantIds.length} merchant${filters.merchantIds.length > 1 ? "s" : ""}` });
+  }
   if (typeof filters.minAmount === "number" || typeof filters.maxAmount === "number") activeChips.push({ key: "minAmount", label: "Amount" });
 
   return (
@@ -199,19 +145,7 @@ export function ExpensesPageClient({
       )}
 
       <ExpenseFiltersSheet open={filtersOpen} onOpenChange={setFiltersOpen} categories={categories} filters={filters} onApply={applyFilters} />
-      <ExpenseSearch
-        open={searchOpen}
-        onOpenChange={setSearchOpen}
-        onEdit={(exp) => {
-          setSearchOpen(false);
-          setEditTarget(exp);
-        }}
-        onDuplicate={(exp) => {
-          setSearchOpen(false);
-          handleDuplicate(exp);
-        }}
-        onDelete={handleDelete}
-      />
+      <ExpenseSearch open={searchOpen} onOpenChange={setSearchOpen} />
       <AddExpenseSheet
         open={!!editTarget}
         onOpenChange={(open) => !open && setEditTarget(null)}

@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Pencil, Copy, Trash2, MessageSquarePlus, MoreVertical } from "lucide-react";
+import { Pencil, Copy, Trash2, MessageSquarePlus, MoreVertical, Repeat, Sparkles, Paperclip } from "lucide-react";
 import { CategoryIcon } from "@/lib/icon-map";
-import { formatINR, cn } from "@/lib/utils";
-import { formatExpenseTime } from "@/lib/date-utils";
+import { formatINR } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,12 +22,16 @@ export function ExpenseRow({
   onDuplicate,
   onDelete,
   onAddNote,
+  onAnalyze,
+  onViewReceipt,
 }: {
   expense: EnrichedExpense;
   onEdit: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onAddNote: () => void;
+  onAnalyze?: () => void;
+  onViewReceipt?: () => void;
 }) {
   const [dragX, setDragX] = useState(0);
   const startX = useRef<number | null>(null);
@@ -50,7 +54,7 @@ export function ExpenseRow({
     setDragX((x) => (x < -SWIPE_REVEAL / 2 ? -SWIPE_REVEAL : 0));
   }
 
-  const timeLabel = formatExpenseTime(expense.expense_time, expense.created_at);
+  const timeLabel = expense.expense_time ? expense.expense_time.slice(0, 5) : null;
 
   return (
     <div className="relative overflow-hidden rounded-xl">
@@ -88,7 +92,32 @@ export function ExpenseRow({
         <CategoryIcon icon={expense.category_icon} color={expense.category_color} />
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">{expense.merchant_name ?? expense.item_name}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="truncate text-sm font-medium text-foreground">{expense.merchant_name ?? expense.item_name}</p>
+            {expense.recurring_rule_id && (
+              <span
+                className="flex shrink-0 items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                title={expense.recurring_rule_name ? `Logged from recurring: ${expense.recurring_rule_name}` : "Logged from a recurring expense"}
+              >
+                <Repeat className="h-2.5 w-2.5" />
+                Recurring
+              </span>
+            )}
+            {expense.receipt_path && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewReceipt?.();
+                }}
+                className="flex shrink-0 items-center text-muted-foreground"
+                aria-label="View receipt"
+                title="Receipt attached — tap to view"
+              >
+                <Paperclip className="h-3 w-3" />
+              </button>
+            )}
+          </div>
           <p className="truncate text-xs text-muted-foreground">
             {expense.category_name ?? "Uncategorized"}
             {expense.subcategory_name ? ` › ${expense.subcategory_name}` : ""} · {expense.payer_name}
@@ -112,6 +141,11 @@ export function ExpenseRow({
               <DropdownMenuItem onClick={onAddNote}>
                 <MessageSquarePlus className="h-4 w-4" /> {expense.notes ? "Edit note" : "Add note"}
               </DropdownMenuItem>
+              {onAnalyze && (
+                <DropdownMenuItem onClick={onAnalyze}>
+                  <Sparkles className="h-4 w-4" /> Analyze
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDelete} className="text-destructive">
                 <Trash2 className="h-4 w-4" /> Delete

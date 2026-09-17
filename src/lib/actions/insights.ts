@@ -1,6 +1,6 @@
 "use server";
 
-// "Always current" dashboard intelligence - deliberately separate from
+// "Always current" dashboard intelligence — deliberately separate from
 // analytics.ts (which is period/range driven for the Analytics screen). Every
 // function here answers "what's true right now" rather than "what happened
 // in the filter range the user picked", so each one computes its own dates
@@ -21,7 +21,7 @@ export interface DailyWeeklySnapshot {
   todayTotal: number;
   todayCount: number;
   weekTotal: number;
-  /** % change vs the equivalent elapsed portion of the previous week - null when the previous week has no data to compare against. */
+  /** % change vs the equivalent elapsed portion of the previous week — null when the previous week has no data to compare against. */
   weekChangePct: number | null;
 }
 
@@ -35,7 +35,7 @@ export async function getDailyWeeklySnapshot() {
     const daysElapsed = daysBetweenISO(week.start, today);
     const prevWeekStart = addDaysISO(week.start, -7);
     const prevWeekEnd = addDaysISO(week.end, -7);
-    // The comparable portion of last week - same number of elapsed days from its own start - so a
+    // The comparable portion of last week — same number of elapsed days from its own start — so a
     // partial current week is never compared against a full previous week (that would be misleading).
     const prevComparableEnd = addDaysISO(prevWeekStart, daysElapsed - 1);
 
@@ -74,7 +74,7 @@ export interface HouseholdForecast {
 }
 
 /**
- * Household-wide current-month projection - simple current-pace extrapolation
+ * Household-wide current-month projection — simple current-pace extrapolation
  * (spentSoFar / daysElapsed * daysInMonth), mirroring the per-category
  * projection already in budgets.ts (`projectSpend`) but for the whole
  * household rather than one category. Returns null early in the month (days
@@ -123,7 +123,7 @@ export interface SpendingChange {
 
 export interface SpendingChangesResult {
   changes: SpendingChange[];
-  /** Neutral, factual one-liner naming where the money moved - never a claimed cause. */
+  /** Neutral, factual one-liner naming where the money moved — never a claimed cause. */
   summary: string;
 }
 
@@ -182,7 +182,7 @@ export async function getSpendingChanges() {
       changePct,
     }));
 
-    // Name where the money moved, never why - increases and decreases are described in strictly neutral terms.
+    // Name where the money moved, never why — increases and decreases are described in strictly neutral terms.
     const topMover = top5[0];
     const sameDirection = (top5.some((c) => c.diff !== 0) ? top5 : []).filter((c) => Math.sign(c.diff) === Math.sign(topMover.diff) && c.diff !== 0);
     const names = sameDirection.slice(0, 2).map((c) => c.category_name);
@@ -212,11 +212,11 @@ function escapeIlike(value: string): string {
 /**
  * Past purchase history for one item name (case-insensitive exact match),
  * based on the household's last up to 10 purchases of it. `typicalLow`/
- * `typicalHigh` are simply the min/max of that recent history - a
+ * `typicalHigh` are simply the min/max of that recent history — a
  * percentile would be more robust on a larger sample, but with at most 10
  * points min/max is simpler, easy to explain to the user ("between what
  * you've paid before"), and doesn't need an interpolation choice. Returns
- * null below 2 past purchases - too little to say anything meaningful.
+ * null below 2 past purchases — too little to say anything meaningful.
  */
 export async function getItemPriceMemory(itemName: string) {
   return runAction(async (): Promise<ItemPriceMemory | null> => {
@@ -246,5 +246,67 @@ export async function getItemPriceMemory(itemName: string) {
       typicalHigh: Math.max(...amounts),
       count: rows.length,
     };
+  });
+}
+
+export interface PriceChangeFlag {
+  direction: "higher" | "lower" | "stable";
+  /** Average of the household's own prior purchases of this item (excluding the most recent one). */
+  previousTypical: number;
+  /** The household's most recent purchase amount for this item. */
+  recent: number;
+}
+
+// How far the most recent purchase has to move from the prior average before
+// it's called out as "higher"/"lower" rather than "stable" — chosen as a
+// round, easily-explained number that filters out ordinary price wobble
+// (a slightly bigger vegetable bag, a different pack size) without being so
+// wide that a real, sustained price change goes unmentioned. Documented here
+// rather than buried in a magic number.
+const PRICE_CHANGE_THRESHOLD = 0.10;
+// Needs the most recent purchase plus at least this many prior ones before
+// saying anything — fewer than that and "typical" isn't a meaningful idea yet.
+const MIN_PRIOR_PURCHASES = 3;
+
+/**
+ * Compares the household's most recent purchase of an item against its own
+ * prior typical amount (spec 2b) — a purchase-history observation only, never
+ * a claimed market price change. Reuses the same bounded, per-item purchase
+ * query `getItemPriceMemory` already runs (last up to 10 purchases, newest
+ * first) rather than adding new SQL; it just also needs the *un-collapsed*
+ * per-purchase amounts (not `getItemPriceMemory`'s min/max), so it queries
+ * directly instead of calling that action and losing the ordering.
+ */
+export async function detectPriceChange(itemName: string) {
+  return runAction(async (): Promise<PriceChangeFlag | null> => {
+    const trimmed = itemName.trim();
+    if (!trimmed) return null;
+
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { data, error } = await supabase
+      .from("expenses")
+      .select("amount, expense_date, created_at")
+      .eq("household_id", householdId)
+      .is("deleted_at", null)
+      .ilike("item_name", escapeIlike(trimmed))
+      .order("expense_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (error) throw new ActionError(error.message);
+
+    const rows = data ?? [];
+    if (rows.length < MIN_PRIOR_PURCHASES + 1) return null; // not enough prior history to call anything "typical" yet
+
+    const amounts = rows.map((r) => Number(r.amount));
+    const recent = amounts[0];
+    const priorPurchases = amounts.slice(1);
+    const previousTypical = priorPurchases.reduce((sum, a) => sum + a, 0) / priorPurchases.length;
+    if (previousTypical <= 0) return null;
+
+    const change = (recent - previousTypical) / previousTypical;
+    const direction: PriceChangeFlag["direction"] =
+      Math.abs(change) < PRICE_CHANGE_THRESHOLD ? "stable" : change > 0 ? "higher" : "lower";
+
+    return { direction, previousTypical, recent };
   });
 }

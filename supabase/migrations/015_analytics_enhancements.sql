@@ -3,7 +3,7 @@
 -- 006_analytics_functions.sql: every function is SQL, STABLE, and runs with
 -- the CALLER's privileges (Postgres default SECURITY INVOKER), so RLS on
 -- `expenses` still applies even though p_household_id is also checked
--- defensively. Every function returns already-aggregated rows - never raw
+-- defensively. Every function returns already-aggregated rows — never raw
 -- expense sets.
 
 -- ---------------------------------------------------------

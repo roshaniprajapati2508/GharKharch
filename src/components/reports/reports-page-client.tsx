@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Download, FileJson, Printer } from "lucide-react";
+import { Download, FileJson, FileDown, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { MonthlyReportView } from "@/components/reports/monthly-report-view";
 import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-context";
+import { useHousehold } from "@/lib/context/household-context";
 import { getReportData, exportExpensesCsv, exportExpensesJson, type ReportData } from "@/lib/actions/reports";
+import { downloadReportPdf } from "@/lib/pdf/report-pdf";
 import {
   getTodayRange,
   getWeekRange,
@@ -17,7 +19,6 @@ import {
   getCustomDateRange,
   type DateRange,
 } from "@/lib/date-utils";
-import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
 
 type ReportPeriod = "today" | "week" | "month" | "lastMonth" | "custom";
 
@@ -28,64 +29,60 @@ const PERIODS: { key: ReportPeriod; label: string; resolve: () => DateRange }[] 
   { key: "lastMonth", label: "Last month", resolve: getPreviousMonthRange },
 ];
 
-function getReportCacheKey(range: DateRange) {
-  return `report_${range.start}_${range.end}`;
-}
+import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";
+
+const REPORT_CACHE_KEY = "report_month_data";
 
 export function ReportsPageClient({ initialData }: { initialData?: ReportData | null }) {
   const { openAdd } = useAddExpense();
+  const { userId, displayName, partner } = useHousehold();
   const [period, setPeriod] = useState<ReportPeriod>("month");
-  const [range, setRange] = useState<DateRange>(initialData?.range ?? getMonthRange(0));
-
+  const [range, setRange] = useState<DateRange>(getMonthRange(0));
   const [data, setData] = useState<ReportData | null>(() => {
     if (initialData) {
-      setClientCachedData(getReportCacheKey(initialData.range), initialData);
+      setClientCachedData(REPORT_CACHE_KEY, initialData);
       return initialData;
     }
-    return getClientCachedData<ReportData>(getReportCacheKey(getMonthRange(0)));
+    return getClientCachedData<ReportData>(REPORT_CACHE_KEY) ?? null;
   });
-
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !initialData && !getClientCachedData<ReportData>(REPORT_CACHE_KEY));
   const [exporting, setExporting] = useState(false);
   const [exportingJson, setExportingJson] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
-  const load = useCallback(async (nextRange: DateRange, forceFresh = false) => {
-    const cacheKey = getReportCacheKey(nextRange);
-    const cached = getClientCachedData<ReportData>(cacheKey);
-
-    if (cached && !forceFresh) {
-      setData(cached);
-    } else if (!cached && !data) {
-      setLoading(true);
+  const load = useCallback(async (nextRange: DateRange) => {
+    const isDefaultMonth = nextRange.start === getMonthRange(0).start && nextRange.end === getMonthRange(0).end;
+    if (isDefaultMonth) {
+      const cached = getClientCachedData<ReportData>(REPORT_CACHE_KEY);
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+      }
     }
-
     const result = await getReportData(nextRange);
-    setLoading(false);
-
     if (result.error !== null) {
       toast.error(result.error);
+      setLoading(false);
       return;
     }
-
-    setClientCachedData(cacheKey, result.data);
     setData(result.data);
-  }, [data]);
+    if (isDefaultMonth && result.data) {
+      setClientCachedData(REPORT_CACHE_KEY, result.data);
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    if (!initialData && !data) {
-       
-      load(range);
-    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
+    load(range);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useOnExpenseSaved(
     useCallback(() => {
-      invalidateClientCache("report_");
-      load(range, true);
+      load(range);
     }, [load, range])
   );
 
@@ -137,6 +134,12 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
     toast.success("JSON downloaded");
   }
 
+  function handleDownloadPdf() {
+    if (!data) return;
+    downloadReportPdf(data, { userId, displayName, partner: partner ? { id: partner.id, displayName: partner.displayName } : null });
+    toast.success("PDF downloaded");
+  }
+
   const hasActivity = data ? data.summary.txn_count > 0 : false;
 
   return (
@@ -151,8 +154,11 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
             <Button variant="outline" size="sm" onClick={handleExportJson} disabled={exportingJson}>
               <FileJson className="h-4 w-4" /> JSON
             </Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
+              <FileDown className="h-4 w-4" /> PDF
+            </Button>
             <Button variant="outline" size="sm" onClick={() => window.print()}>
-              <Printer className="h-4 w-4" /> PDF
+              <Printer className="h-4 w-4" /> Print
             </Button>
           </div>
         )}

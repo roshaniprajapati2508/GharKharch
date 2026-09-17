@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import { dayGroupLabel } from "@/lib/date-utils";
 import { formatINR } from "@/lib/utils";
 import { ExpenseRow } from "@/components/expenses/expense-row";
+import { AnalyzeExpenseSheet } from "@/components/expenses/analyze-expense-sheet";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { updateExpenseNotes } from "@/lib/actions/expenses";
+import { updateExpenseNotes, getReceiptSignedUrl } from "@/lib/actions/expenses";
 import { toast } from "sonner";
 import type { EnrichedExpense } from "@/lib/actions/expenses";
 
@@ -28,6 +29,17 @@ export function ExpenseList({
   const [noteTarget, setNoteTarget] = useState<EnrichedExpense | null>(null);
   const [noteValue, setNoteValue] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [analyzeTarget, setAnalyzeTarget] = useState<EnrichedExpense | null>(null);
+
+  async function viewReceipt(expense: EnrichedExpense) {
+    if (!expense.receipt_path) return;
+    const result = await getReceiptSignedUrl(expense.receipt_path);
+    if (result.error !== null) {
+      toast.error(result.error);
+      return;
+    }
+    window.open(result.data, "_blank", "noopener,noreferrer");
+  }
 
   const groups = useMemo(() => {
     const map = new Map<string, { label: string; total: number; items: EnrichedExpense[] }>();
@@ -60,7 +72,7 @@ export function ExpenseList({
     return (
       <EmptyState
         title="Your household spending story starts here."
-        description="Once you add an expense, GharKharch starts building your spending picture - automatically."
+        description="Once you add an expense, GharKharch starts building your spending picture — automatically."
         ctaLabel={onAdd ? "Add your first expense" : undefined}
         onCta={onAdd}
         chips={["Milk", "Groceries", "Petrol", "Shopping"]}
@@ -89,11 +101,15 @@ export function ExpenseList({
                   setNoteTarget(e);
                   setNoteValue(e.notes ?? "");
                 }}
+                onAnalyze={() => setAnalyzeTarget(e)}
+                onViewReceipt={() => viewReceipt(e)}
               />
             ))}
           </div>
         </div>
       ))}
+
+      <AnalyzeExpenseSheet open={!!analyzeTarget} onOpenChange={(open) => !open && setAnalyzeTarget(null)} expense={analyzeTarget} />
 
       <Dialog open={!!noteTarget} onOpenChange={(open) => !open && setNoteTarget(null)}>
         <DialogContent>

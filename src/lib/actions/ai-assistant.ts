@@ -1,18 +1,19 @@
 "use server";
 
-// "Ask GharKharch" - the full pipeline from spec sections 46-47:
+// "Ask GharKharch" — the full pipeline from spec sections 46-47:
 //   User question -> Intent detection -> Safe query builder -> Database
 //   aggregation -> Structured result -> AI explanation
 // This is the only file that runs stage 3 (it calls the same SQL analytics
-// RPCs the Dashboard/Analytics screens use - never a raw, unscoped query),
+// RPCs the Dashboard/Analytics screens use — never a raw, unscoped query),
 // and it is the only place stage 1-2 (lib/ai/financial-query.ts) and stage
 // 4-5 (lib/ai/insight-generator.ts) meet. The `facts` object returned
-// alongside the narration is exactly what was given to the AI to explain -
+// alongside the narration is exactly what was given to the AI to explain —
 // surfacing it in the UI lets the user verify the AI didn't add anything.
 
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
 import { listCategoriesForHousehold } from "@/lib/actions/categories";
 import { listMerchantsForHousehold } from "@/lib/actions/merchants";
+import { getRecurringSummary } from "@/lib/actions/recurring";
 import { detectIntent, type QueryIntent } from "@/lib/ai/financial-query";
 import { explainFinancialAnswer, type AiAnswer } from "@/lib/ai/insight-generator";
 import { getPreviousComparableRange } from "@/lib/date-utils";
@@ -165,7 +166,7 @@ async function resolveIntent(
     case "item_average": {
       // expense_patterns rows are already per-item aggregates (spec section
       // 88: never re-derive an average from raw expense rows in JS when the
-      // DB already tracks one) - one item can span several merchants/
+      // DB already tracks one) — one item can span several merchants/
       // categories, so combine them with a usage-weighted average.
       const rows = ctx.namedPatterns.filter((p) => p.item_name.toLowerCase() === intent.itemName.toLowerCase());
       const totalUsage = rows.reduce((sum, r) => sum + r.usage_count, 0);
@@ -176,6 +177,78 @@ async function resolveIntent(
             ? `You typically spend around ${formatINR(weightedAvg)} on ${intent.itemName}, based on ${totalUsage} past purchase${totalUsage === 1 ? "" : "s"}.`
             : `Not enough history yet to average ${intent.itemName}.`,
         facts: { itemName: intent.itemName, averageAmount: weightedAvg, sampleSize: totalUsage },
+      };
+    }
+
+    case "most_frequent_items": {
+      // get_item_analytics is already ordered by usage internally (spec
+      // section 88: never re-derive this in JS) — sort defensively by
+      // txn_count here too since the RPC's contract doesn't promise an order.
+      const { data, error } = await supabase.rpc("get_item_analytics", {
+        p_household_id: householdId,
+        p_start: intent.period.start,
+        p_end: intent.period.end,
+        p_limit: intent.limit,
+      });
+      if (error) throw new ActionError(error.message);
+      const sorted = [...(data ?? [])].sort((a, b) => b.txn_count - a.txn_count).slice(0, intent.limit);
+      const list = sorted.map((r) => `${r.item_name} (${r.txn_count}x)`).join(", ");
+      return {
+        deterministicAnswer:
+          sorted.length > 0
+            ? `Your ${sorted.length} most frequent expense${sorted.length === 1 ? "" : "s"} ${intent.periodLabel} ${sorted.length === 1 ? "is" : "are"}: ${list}.`
+            : `No expenses recorded ${intent.periodLabel}.`,
+        facts: { period: intent.periodLabel, items: sorted.map((r) => ({ name: r.item_name, txnCount: r.txn_count, total: Number(r.total) })) },
+      };
+    }
+
+    case "amount_threshold": {
+      // No existing analytics RPC filters by amount, so this queries
+      // `expenses` directly — still fully household- and RLS-scoped via the
+      // same `supabase` client every other action here uses, never a raw
+      // unscoped query.
+      let query = supabase
+        .from("expenses")
+        .select("id, item_name, amount, expense_date")
+        .eq("household_id", householdId)
+        .is("deleted_at", null)
+        .gte("expense_date", intent.period.start)
+        .lte("expense_date", intent.period.end);
+      query = intent.direction === "above" ? query.gt("amount", intent.amount) : query.lt("amount", intent.amount);
+      const { data, error } = await query.order("amount", { ascending: false }).limit(50);
+      if (error) throw new ActionError(error.message);
+      const rows = data ?? [];
+      const total = rows.reduce((sum, r) => sum + Number(r.amount), 0);
+      return {
+        deterministicAnswer:
+          rows.length > 0
+            ? `${rows.length} expense${rows.length === 1 ? "" : "s"} ${intent.direction} ${formatINR(intent.amount)} ${intent.periodLabel}, totaling ${formatINR(total)}.`
+            : `No expenses ${intent.direction} ${formatINR(intent.amount)} ${intent.periodLabel}.`,
+        facts: {
+          period: intent.periodLabel,
+          direction: intent.direction,
+          threshold: intent.amount,
+          count: rows.length,
+          total,
+          items: rows.slice(0, 10).map((r) => ({ name: r.item_name, amount: Number(r.amount), date: r.expense_date })),
+        },
+      };
+    }
+
+    case "recurring_list": {
+      const summaryResult = await getRecurringSummary();
+      if (summaryResult.error !== null) throw new ActionError(summaryResult.error);
+      const active = summaryResult.data.upcoming;
+      const names = active.map((r) => `${r.name} (${formatINR(r.amount)}/${r.frequency})`).join(", ");
+      return {
+        deterministicAnswer:
+          active.length > 0
+            ? `You have ${active.length} active recurring expense${active.length === 1 ? "" : "s"}: ${names}. That's about ${formatINR(summaryResult.data.monthlyTotal)}/month.`
+            : "You don't have any active recurring expenses set up yet.",
+        facts: {
+          monthlyTotal: summaryResult.data.monthlyTotal,
+          recurring: active.map((r) => ({ name: r.name, amount: Number(r.amount), frequency: r.frequency, nextDueDate: r.next_due_date })),
+        },
       };
     }
 

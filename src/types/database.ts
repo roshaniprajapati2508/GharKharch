@@ -171,7 +171,7 @@ export interface Database {
           item_name: string;
           category_id: string;
           subcategory_id: string | null;
-          payment_method: string | null; // free text, matches a payment_methods.name (see migration 005) - not a fixed enum
+          payment_method: string | null; // free text, matches a payment_methods.name (see migration 005) — not a fixed enum
           card_id: string | null;
           upi_profile_id: string | null;
           bank_account_id: string | null;
@@ -180,6 +180,8 @@ export interface Database {
           notes: string | null;
           is_recurring: boolean;
           recurring_rule_id: string | null;
+          /** Storage object path inside the private `receipts` bucket (e.g. "{household_id}/{uuid}.jpg"), or null — never a URL, since the bucket is private and a stored URL would go stale (migration 017). */
+          receipt_path: string | null;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -517,6 +519,40 @@ export interface Database {
           merchant_id: string | null;
           paid_by: string;
         }[];
+      };
+      get_category_monthly_trend: {
+        Args: { p_household_id: string; p_category_id: string; p_months?: number };
+        Returns: { month: string; total: string }[];
+      };
+      get_merchant_category_share: {
+        Args: { p_household_id: string; p_merchant_id: string; p_start: string; p_end: string };
+        Returns: {
+          category_id: string;
+          category_name: string;
+          merchant_total_in_category: string;
+          category_total: string;
+          category_share_pct: string;
+        }[];
+      };
+      get_spending_by_weekday: {
+        Args: { p_household_id: string; p_start: string; p_end: string };
+        Returns: { weekday_num: number; total: string; txn_count: number }[];
+      };
+      get_expense_type_breakdown: {
+        Args: { p_household_id: string; p_start: string; p_end: string };
+        Returns: { expense_type: string; total: string; txn_count: number; share_pct: string }[];
+      };
+      get_recurring_vs_oneoff: {
+        Args: { p_household_id: string; p_start: string; p_end: string };
+        Returns: { recurring_total: string; recurring_count: number; oneoff_total: string; oneoff_count: number }[];
+      };
+      get_card_breakdown: {
+        Args: { p_household_id: string; p_start: string; p_end: string };
+        Returns: { card_id: string; card_label: string; last4: string | null; total: string; txn_count: number }[];
+      };
+      get_upi_breakdown: {
+        Args: { p_household_id: string; p_start: string; p_end: string };
+        Returns: { upi_profile_id: string; label: string; upi_app: string; total: string; txn_count: number }[];
       };
       get_item_weekday_affinity: {
         Args: { p_household_id: string; p_weekday: number; p_lookback_days?: number; p_min_txn?: number };

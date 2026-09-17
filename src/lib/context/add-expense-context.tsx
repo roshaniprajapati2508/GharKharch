@@ -2,10 +2,13 @@
 
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
 import { AddExpenseSheet } from "@/components/shared/add-expense-sheet";
+import { ShoppingModeSheet } from "@/components/shared/shopping-mode-sheet";
 
 interface AddExpenseContextValue {
   /** Opens the single global "Add Expense" sheet from anywhere in the app (empty states, quick actions, nav). */
   openAdd: () => void;
+  /** Opens the global "Shopping mode" sheet — several quick line items in one sitting (spec section 1). Reachable from inside the Add Expense sheet itself (see its header link) as well as from here directly. */
+  openShopping: () => void;
   /** Registers a callback fired after the global sheet successfully saves a new expense. Returns an unsubscribe function. */
   subscribeSaved: (fn: () => void) => () => void;
 }
@@ -20,7 +23,7 @@ export function useAddExpense() {
 
 /**
  * Lets the current page refetch its own data whenever the global Add Expense
- * sheet (floating "+" button, bottom nav) saves - without this, a page whose
+ * sheet (floating "+" button, bottom nav) saves — without this, a page whose
  * data was fetched once via a server action (rather than Next's cache) would
  * only reflect an expense added through the global sheet after a manual reload.
  */
@@ -45,9 +48,11 @@ export function useOnExpenseSaved(callback: () => void) {
  */
 export function AddExpenseProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [shoppingOpen, setShoppingOpen] = useState(false);
   const listeners = useRef(new Set<() => void>());
 
   const openAdd = useCallback(() => setOpen(true), []);
+  const openShopping = useCallback(() => setShoppingOpen(true), []);
 
   const subscribeSaved = useCallback((fn: () => void) => {
     listeners.current.add(fn);
@@ -61,9 +66,18 @@ export function AddExpenseProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   return (
-    <AddExpenseContext.Provider value={{ openAdd, subscribeSaved }}>
+    <AddExpenseContext.Provider value={{ openAdd, openShopping, subscribeSaved }}>
       {children}
-      <AddExpenseSheet open={open} onOpenChange={setOpen} onSaved={notifySaved} />
+      <AddExpenseSheet
+        open={open}
+        onOpenChange={setOpen}
+        onSaved={notifySaved}
+        onOpenShoppingMode={() => {
+          setOpen(false);
+          setShoppingOpen(true);
+        }}
+      />
+      <ShoppingModeSheet open={shoppingOpen} onOpenChange={setShoppingOpen} onSaved={notifySaved} />
     </AddExpenseContext.Provider>
   );
 }

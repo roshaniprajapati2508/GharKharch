@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, Plus, Pencil, Trash2, Repeat, PauseCircle, PlayCircle } from "lucide-react";
+import { ChevronLeft, Plus, Pencil, Trash2, Repeat, PauseCircle, PlayCircle, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/lib/icon-map";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
+import { PaidBySelector, ExpenseTypeSelector } from "@/components/expenses/person-selector";
+import { useHousehold } from "@/lib/context/household-context";
+import { getTodayISO } from "@/lib/date-utils";
 import {
   listRecurringExpenses,
   getRecurringSummary,
@@ -18,12 +21,13 @@ import {
   updateRecurringExpense,
   setRecurringActive,
   deleteRecurringExpense,
+  logRecurringOccurrence,
   type RecurringWithCategory,
   type RecurringSummary,
 } from "@/lib/actions/recurring";
 import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/actions/categories";
 import { formatINR } from "@/lib/utils";
-import type { RecurringFrequency } from "@/types/database";
+import type { RecurringFrequency, ExpenseType } from "@/types/database";
 
 const ROW_MOTION = {
   layout: true as const,
@@ -54,54 +58,37 @@ function emptyForm(): FormState {
   return { id: null, name: "", amount: "", categoryId: "", frequency: "monthly", nextDueDate: "" };
 }
 
-import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
-
-type RecurringCachePayload = {
-  rules: RecurringWithCategory[];
-  summary: RecurringSummary | null;
-  categoryTree: CategoryWithChildren[];
-};
+type LogFormState = { amount: string; paidBy: string; expenseType: ExpenseType; date: string };
 
 export default function RecurringExpensesPage() {
-  const [rules, setRules] = useState<RecurringWithCategory[]>(() => {
-    return getClientCachedData<RecurringCachePayload>("recurring_data")?.rules ?? [];
-  });
-  const [summary, setSummary] = useState<RecurringSummary | null>(() => {
-    return getClientCachedData<RecurringCachePayload>("recurring_data")?.summary ?? null;
-  });
-  const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>(() => {
-    return getClientCachedData<RecurringCachePayload>("recurring_data")?.categoryTree ?? [];
-  });
-  const [loading, setLoading] = useState(() => !getClientCachedData<RecurringCachePayload>("recurring_data"));
+  const { userId } = useHousehold();
+  const [rules, setRules] = useState<RecurringWithCategory[]>([]);
+  const [summary, setSummary] = useState<RecurringSummary | null>(null);
+  const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<RecurringWithCategory | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [logTarget, setLogTarget] = useState<RecurringWithCategory | null>(null);
+  const [logForm, setLogForm] = useState<LogFormState | null>(null);
+  const [logging, setLogging] = useState(false);
 
   async function load() {
-    if (rules.length === 0) setLoading(true);
+    setLoading(true);
     const [rulesResult, summaryResult, categoriesResult] = await Promise.all([
       listRecurringExpenses(),
       getRecurringSummary(),
       listCategoriesForHousehold(),
     ]);
-    const nextRules = rulesResult.data ?? [];
-    const nextSummary = summaryResult.data ?? null;
-    const nextTree = categoriesResult.data?.tree ?? [];
-
-    if (rulesResult.data) setRules(nextRules);
-    if (summaryResult.data) setSummary(nextSummary);
-    if (categoriesResult.data) setCategoryTree(nextTree);
-
-    setClientCachedData("recurring_data", {
-      rules: nextRules,
-      summary: nextSummary,
-      categoryTree: nextTree,
-    });
+    if (rulesResult.data) setRules(rulesResult.data);
+    if (summaryResult.data) setSummary(summaryResult.data);
+    if (categoriesResult.data) setCategoryTree(categoriesResult.data.tree);
     setLoading(false);
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
     load();
   }, []);
 
@@ -151,7 +138,6 @@ export default function RecurringExpensesPage() {
       return;
     }
     toast.success(form.id ? "Recurring expense updated" : "Recurring expense added");
-    invalidateClientCache("recurring_data");
     setForm(null);
     load();
   }
@@ -165,7 +151,44 @@ export default function RecurringExpensesPage() {
       return;
     }
     toast.success(r.active ? `${r.name} paused` : `${r.name} resumed`);
-    invalidateClientCache("recurring_data");
+    load();
+  }
+
+  // "Log this bill" (spec: never a one-tap silent log — the person must be
+  // able to review/adjust the amount, since real bill amounts drift). A
+  // small inline confirm rather than reusing AddExpenseSheet's
+  // duplicateFrom: that prop expects an EnrichedExpense (a full past
+  // expense row with id/created_at/etc.), which a recurring RULE isn't —
+  // building a fake one would be more surface area than this focused form,
+  // which only needs the handful of fields logRecurringOccurrence actually
+  // takes.
+  function openLog(r: RecurringWithCategory) {
+    setLogTarget(r);
+    setLogForm({ amount: String(r.amount), paidBy: userId, expenseType: "household", date: r.next_due_date ?? getTodayISO() });
+  }
+
+  async function handleLogSubmit() {
+    if (!logTarget || !logForm) return;
+    const amount = parseFloat(logForm.amount);
+    if (!amount || amount <= 0) {
+      toast.error("Enter an amount");
+      return;
+    }
+    setLogging(true);
+    const result = await logRecurringOccurrence(logTarget.id, {
+      amount,
+      paid_by: logForm.paidBy,
+      expense_type: logForm.expenseType,
+      expense_date: logForm.date,
+    });
+    setLogging(false);
+    if (result.error !== null) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(`${logTarget.name} logged · ${formatINR(amount)}`);
+    setLogTarget(null);
+    setLogForm(null);
     load();
   }
 
@@ -177,7 +200,6 @@ export default function RecurringExpensesPage() {
       return;
     }
     toast.success("Recurring expense removed");
-    invalidateClientCache("recurring_data");
     setRemoveTarget(null);
     load();
   }
@@ -185,13 +207,13 @@ export default function RecurringExpensesPage() {
   return (
     <div className="flex flex-col gap-5 pb-10">
       <div className="flex items-center gap-2">
-        <Link href="/more" prefetch={true} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
+        <Link href="/more" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <h1 className="text-xl font-bold tracking-tight text-foreground">Recurring expenses</h1>
       </div>
       <p className="-mt-3 text-xs text-muted-foreground">
-        Track rent, subscriptions, EMIs and other bills that repeat. GharKharch will never log an expense on its own from these - they&apos;re just bookkeeping for what to expect.
+        Track rent, subscriptions, EMIs and other bills that repeat. GharKharch will never log an expense on its own from these — they&apos;re just bookkeeping for what to expect.
       </p>
 
       {!loading && summary && summary.upcoming.length > 0 && (
@@ -220,6 +242,14 @@ export default function RecurringExpensesPage() {
                   </p>
                 </div>
                 <p className="shrink-0 text-sm font-semibold text-foreground">{formatINR(r.amount)}</p>
+                <button
+                  type="button"
+                  onClick={() => openLog(r)}
+                  className="flex shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-secondary px-2.5 py-1.5 text-xs font-medium text-secondary-foreground"
+                >
+                  <Receipt className="h-3.5 w-3.5" />
+                  Log
+                </button>
               </div>
             ))}
           </div>
@@ -322,7 +352,7 @@ export default function RecurringExpensesPage() {
                       <option value={top.id}>{top.name}</option>
                       {top.children.map((child) => (
                         <option key={child.id} value={child.id}>
-                          {"- " + child.name}
+                          {"— " + child.name}
                         </option>
                       ))}
                     </Fragment>
@@ -371,11 +401,69 @@ export default function RecurringExpensesPage() {
         </div>
       )}
 
+      {logTarget && logForm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setLogTarget(null)}>
+          <div className="safe-bottom w-full max-w-md rounded-t-2xl bg-card p-5 sm:rounded-2xl sm:pb-5" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-1 text-lg font-semibold text-foreground">Log this bill</h2>
+            <p className="mb-4 text-xs text-muted-foreground">
+              Adds a real expense for {logTarget.name} and moves its next due date forward. Review the amount before saving — prices change.
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <Label className="text-xs">Amount</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  autoFocus
+                  value={logForm.amount}
+                  onChange={(e) => setLogForm((f) => (f ? { ...f, amount: e.target.value } : f))}
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs">Date</Label>
+                <Input
+                  type="date"
+                  value={logForm.date}
+                  onChange={(e) => setLogForm((f) => (f ? { ...f, date: e.target.value } : f))}
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs">Paid by</Label>
+                <div className="mt-1.5">
+                  <PaidBySelector value={logForm.paidBy} onChange={(v) => setLogForm((f) => (f ? { ...f, paidBy: v } : f))} />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">Expense type</Label>
+                <div className="mt-1.5">
+                  <ExpenseTypeSelector value={logForm.expenseType} onChange={(v) => setLogForm((f) => (f ? { ...f, expenseType: v } : f))} />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setLogTarget(null)}>
+                Cancel
+              </Button>
+              <Button className="flex-1" loading={logging} onClick={handleLogSubmit}>
+                Log this bill
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ConfirmationDialog
         open={!!removeTarget}
         onOpenChange={(open) => !open && setRemoveTarget(null)}
         title={`Remove "${removeTarget?.name}"?`}
-        description="Past expenses already logged from this rule keep their amount and category - they just won't be tagged as recurring anymore."
+        description="Past expenses already logged from this rule keep their amount and category — they just won't be tagged as recurring anymore."
         confirmLabel="Remove"
         destructive
         onConfirm={handleDelete}

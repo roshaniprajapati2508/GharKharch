@@ -1,12 +1,17 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { CategoryIcon } from "@/lib/icon-map";
 import { cn, formatINR, percentChange } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Sparkline } from "@/components/analytics/merchant-analytics-tab";
+import { getCategoryMonthlyTrend } from "@/lib/actions/analytics";
 import type { Database } from "@/types/database";
 
 type CategoryBreakdownRow = Database["public"]["Functions"]["get_category_breakdown"]["Returns"][number];
 
-/** Category analytics (spec section 24): total, %, count, avg, highest/lowest, and trend vs the previous period. */
+/** Category analytics (spec section 24): total, %, count, avg, highest/lowest, trend vs the previous period, and a trailing monthly trend sparkline. */
 export function CategoryAnalyticsTab({
   categories,
   previousCategories,
@@ -16,6 +21,26 @@ export function CategoryAnalyticsTab({
   previousCategories: CategoryBreakdownRow[];
   grandTotal: number;
 }) {
+  const [trends, setTrends] = useState<Map<string, number[]>>(new Map());
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTrends() {
+      const entries = await Promise.all(
+        categories.map(async (c) => {
+          const result = await getCategoryMonthlyTrend(c.category_id, 6);
+          const values = result.data ? result.data.map((row) => parseFloat(row.total)) : [];
+          return [c.category_id, values] as const;
+        })
+      );
+      if (!cancelled) setTrends(new Map(entries));
+    }
+    if (categories.length > 0) loadTrends();
+    return () => {
+      cancelled = true;
+    };
+  }, [categories]);
+
   if (categories.length === 0) {
     return <EmptyState title="No category spending yet" description="Categorized expenses in this period will show up here." variant="chart" />;
   }
@@ -40,6 +65,7 @@ export function CategoryAnalyticsTab({
                   {cat.txn_count} transaction{cat.txn_count === 1 ? "" : "s"} · {pct.toFixed(0)}%
                 </p>
               </div>
+              <Sparkline values={trends.get(cat.category_id) ?? []} />
               <div className="shrink-0 text-right">
                 <p className="text-sm font-bold text-foreground">{formatINR(total)}</p>
                 {change !== null && (

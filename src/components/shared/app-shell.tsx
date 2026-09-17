@@ -9,6 +9,7 @@ import { InstallPrompt } from "@/components/shared/install-prompt";
 import { ServiceWorkerRegistrar } from "@/components/shared/service-worker-registrar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { AddExpenseProvider, useAddExpense } from "@/lib/context/add-expense-context";
+import { SearchProvider } from "@/lib/context/search-context";
 import { OfflineProvider } from "@/lib/context/offline-context";
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
@@ -58,9 +59,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <MotionConfig reducedMotion="user">
       <OfflineProvider>
         <AddExpenseProvider>
-          <ServiceWorkerRegistrar />
-          <AppShellInner>{children}</AppShellInner>
-          <InstallPrompt />
+          <SearchProvider>
+            <ServiceWorkerRegistrar />
+            <AppShellInner>{children}</AppShellInner>
+            <InstallPrompt />
+          </SearchProvider>
         </AddExpenseProvider>
       </OfflineProvider>
     </MotionConfig>
