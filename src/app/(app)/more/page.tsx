@@ -183,7 +183,7 @@ export default function MorePage() {
         <SectionLabel icon={Sparkles}>App</SectionLabel>
         <Card>
           <CardContent className="flex flex-col divide-y divide-border p-0">
-            <MenuLink href="/more/ask" icon={Sparkles} label="Ask GharKharch" />
+            <MenuLink href="/more/ask" icon={Sparkles} label="Ask GharKharch A.I" />
           </CardContent>
         </Card>
       </div>

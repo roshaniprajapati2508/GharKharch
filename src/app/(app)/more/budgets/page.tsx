@@ -14,6 +14,7 @@ import { listBudgetsForMonth, upsertBudget, deleteBudget, type BudgetWithProgres
 import { toPeriodMonth } from "@/lib/date-utils";
 import { listCategoriesForHousehold } from "@/lib/actions/categories";
 import { formatINR } from "@/lib/utils";
+import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
 import type { Tables } from "@/types/database";
 
 const ROW_MOTION = {
@@ -45,23 +46,40 @@ const EMPTY_FORM: FormState = { id: null, categoryId: null, amount: "" };
 
 export default function BudgetsPage() {
   const [periodMonth, setPeriodMonth] = useState(() => toPeriodMonth(new Date()));
-  const [budgets, setBudgets] = useState<BudgetWithProgress[]>([]);
-  const [categories, setCategories] = useState<Tables<"categories">[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [budgets, setBudgets] = useState<BudgetWithProgress[]>(() => {
+    return getClientCachedData<BudgetWithProgress[]>(`budgets_${toPeriodMonth(new Date())}`) ?? [];
+  });
+  const [categories, setCategories] = useState<Tables<"categories">[]>(() => {
+    return getClientCachedData<Tables<"categories">[]>("categories_flat_budget") ?? [];
+  });
+  const [loading, setLoading] = useState(() => !getClientCachedData<BudgetWithProgress[]>(`budgets_${toPeriodMonth(new Date())}`));
   const [form, setForm] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<BudgetWithProgress | null>(null);
 
   async function load(month: string) {
-    setLoading(true);
+    const cachedBudgets = getClientCachedData<BudgetWithProgress[]>(`budgets_${month}`);
+    if (cachedBudgets) {
+      setBudgets(cachedBudgets);
+      setLoading(false);
+    } else if (budgets.length === 0) {
+      setLoading(true);
+    }
+
     const [budgetsResult, categoriesResult] = await Promise.all([listBudgetsForMonth(month), listCategoriesForHousehold()]);
-    if (budgetsResult.data) setBudgets(budgetsResult.data);
-    if (categoriesResult.data) setCategories(categoriesResult.data.flat.filter((c) => !c.parent_id));
+    if (budgetsResult.data) {
+      setBudgets(budgetsResult.data);
+      setClientCachedData(`budgets_${month}`, budgetsResult.data);
+    }
+    if (categoriesResult.data) {
+      const flat = categoriesResult.data.flat.filter((c) => !c.parent_id);
+      setCategories(flat);
+      setClientCachedData("categories_flat_budget", flat);
+    }
     setLoading(false);
   }
 
   useEffect(() => {
-     
     load(periodMonth);
   }, [periodMonth]);
 
@@ -96,6 +114,7 @@ export default function BudgetsPage() {
       return;
     }
     toast.success(form.id ? "Budget updated" : "Budget added");
+    invalidateClientCache("budgets_");
     setForm(null);
     load(periodMonth);
   }
@@ -108,6 +127,7 @@ export default function BudgetsPage() {
       return;
     }
     toast.success("Budget removed");
+    invalidateClientCache("budgets_");
     setRemoveTarget(null);
     load(periodMonth);
   }

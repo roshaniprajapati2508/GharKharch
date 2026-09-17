@@ -111,7 +111,7 @@ export function CategoryPickerView({
                   key={icon}
                   type="button"
                   onClick={() => setNewIcon(icon)}
-                  className={cn("rounded-lg p-1", newIcon === icon && "ring-2 ring-primary")}
+                  className={cn("flex aspect-square items-center justify-center rounded-lg p-0.5 transition-transform active:scale-95", newIcon === icon && "ring-2 ring-primary ring-offset-1")}
                 >
                   <CategoryIcon icon={icon} color={newColor} className="flex h-9 w-9 items-center justify-center rounded-lg" />
                 </button>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ChevronRight, Store, Sparkles } from "lucide-react";
+import { ChevronRight, ChevronLeft, Store, Sparkles } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -15,12 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AmountInput } from "@/components/expenses/amount-input";
-import { CategoryPicker, type CategorySelection } from "@/components/expenses/category-picker";
-import { MerchantPicker } from "@/components/expenses/merchant-picker";
+import { CategoryPickerView, type CategorySelection } from "@/components/expenses/category-picker";
+import { MerchantPickerView } from "@/components/expenses/merchant-picker";
 import { PaidBySelector, ExpenseTypeSelector } from "@/components/expenses/person-selector";
 import { PaymentMethodSelect, CardQuickPicker, UpiQuickPicker, BankQuickPicker } from "@/components/expenses/payment-method-select";
-import { DateTimeFields, MoreOptionsDisclosure, NotesField } from "@/components/expenses/date-time-fields";
+import { DateTimeFields, NotesField } from "@/components/expenses/date-time-fields";
 import { QuickAddBar } from "@/components/shared/quick-add-bar";
+import { CategoryIcon } from "@/lib/icon-map";
 import { useHousehold } from "@/lib/context/household-context";
 import { getTodayISO } from "@/lib/date-utils";
 import { createExpense, updateExpense, type EnrichedExpense } from "@/lib/actions/expenses";
@@ -37,8 +38,8 @@ import { isOffline, isNetworkError, queueExpense } from "@/lib/offline/offline-q
 import { useOffline } from "@/lib/context/offline-context";
 import { useQuickAddSave } from "@/lib/hooks/use-quick-add-save";
 import { parseQuickEntry } from "@/lib/expense-intelligence/nl-parser";
+import { cn, formatINR } from "@/lib/utils";
 import type { Tables, ExpenseType } from "@/types/database";
-import { formatINR } from "@/lib/utils";
 
 interface AddExpenseSheetProps {
   open: boolean;
@@ -48,6 +49,8 @@ interface AddExpenseSheetProps {
   onOptimisticAdd?: (expense: Tables<"expenses">) => void;
   onSaved?: (expense: Tables<"expenses">) => void;
 }
+
+type SheetView = "form" | "category" | "merchant";
 
 function emptyState(userId: string) {
   return {
@@ -72,11 +75,10 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   const { refreshPendingCount } = useOffline();
   const isEditing = !!editExpense;
 
+  const [sheetView, setSheetView] = useState<SheetView>("form");
   const [form, setForm] = useState(() => emptyState(userId));
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [amountTouched, setAmountTouched] = useState(false);
-  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
-  const [merchantPickerOpen, setMerchantPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loadingRefs, setLoadingRefs] = useState(true);
 
@@ -338,146 +340,248 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
   }
 
   return (
-    <>
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[94vh]">
-          <DrawerHeader>
-            <DrawerTitle>{isEditing ? "Edit Expense" : "Add Expense"}</DrawerTitle>
-            <DrawerDescription className="sr-only">Enter the amount, item, and who it&apos;s for.</DrawerDescription>
-          </DrawerHeader>
-
-          {!isEditing && <QuickAddBar chips={quickAddChips} onPick={handleQuickAdd} disabled={savingChip !== null || loadingRefs} />}
-
-          {!isEditing && (
-            <div className="px-5">
-              {!nlEntryOpen ? (
-                <button
-                  type="button"
-                  onClick={() => setNlEntryOpen(true)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-primary"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Type it out instead - e.g. &quot;Milk 60&quot; or &quot;Croma 18999 card&quot;
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <Input
-                    autoFocus
-                    value={nlText}
-                    onChange={(e) => setNlText(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && applyNaturalLanguageEntry()}
-                    placeholder="Milk 60, Vegetables 240 cash…"
-                    className="flex-1"
-                  />
-                  <Button type="button" onClick={applyNaturalLanguageEntry} disabled={!nlText.trim()}>
-                    Parse
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="flex-1 overflow-y-auto px-5">
-            {/* No autoFocus here: popping the keyboard the instant this sheet
-                opens (while it's still animating up) made the viewport jump
-                around jarringly on mobile - let the person tap in when
-                they're ready instead. */}
-            <AmountInput
-              value={form.amount}
-              onChange={(v) => {
-                setForm((f) => ({ ...f, amount: v }));
-                setAmountTouched(true);
-              }}
-            />
-
-            {priceMemory && (
-              <button
-                type="button"
-                onClick={applyPriceMemory}
-                className="mb-4 flex w-full items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-xs text-brand-primary"
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[94vh]">
+        <DrawerHeader>
+          <div className="flex items-center gap-2">
+            {sheetView !== "form" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="-ml-2 h-8 w-8"
+                onClick={() => setSheetView("form")}
+                aria-label="Back to form"
               >
-                <span>
-                  Last {formatINR(priceMemory.last)} · Typical {formatINR(priceMemory.typicalLow)}-{formatINR(priceMemory.typicalHigh)}
-                </span>
-                <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-brand-primary">Use {formatINR(priceMemory.last)}</span>
-              </button>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <DrawerTitle>
+              {sheetView === "category"
+                ? "Choose Category"
+                : sheetView === "merchant"
+                ? "Choose Merchant"
+                : isEditing
+                ? "Edit Expense"
+                : "Add Expense"}
+            </DrawerTitle>
+          </div>
+          <DrawerDescription className="sr-only">Enter the amount, item, and expense details.</DrawerDescription>
+        </DrawerHeader>
+
+        {sheetView === "category" ? (
+          <div className="flex-1 overflow-hidden">
+            <CategoryPickerView
+              tree={categoryTree}
+              onSelect={(selection) => {
+                setForm((f) => ({ ...f, category: selection }));
+                setCategoryTouched(true);
+                setSheetView("form");
+              }}
+              onCategoryCreated={(cat) => setCategoryTree((t) => [...t, cat])}
+              onBack={() => setSheetView("form")}
+            />
+          </div>
+        ) : sheetView === "merchant" ? (
+          <div className="flex-1 overflow-hidden">
+            <MerchantPickerView
+              merchants={merchants}
+              onSelect={(m) => {
+                applyMerchant(m);
+                setSheetView("form");
+              }}
+              onMerchantCreated={(m) => setMerchants((list) => [...list, m])}
+              onBack={() => setSheetView("form")}
+            />
+          </div>
+        ) : (
+          <>
+            {!isEditing && <QuickAddBar chips={quickAddChips} onPick={handleQuickAdd} disabled={savingChip !== null || loadingRefs} />}
+
+            {!isEditing && (
+              <div className="px-5">
+                {!nlEntryOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setNlEntryOpen(true)}
+                    className="flex items-center gap-1.5 text-xs font-medium text-primary"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Type it out instead - e.g. &quot;Milk 60&quot; or &quot;Croma 18999 card&quot;
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      autoFocus
+                      value={nlText}
+                      onChange={(e) => setNlText(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && applyNaturalLanguageEntry()}
+                      placeholder="Milk 60, Vegetables 240 cash…"
+                      className="flex-1"
+                    />
+                    <Button type="button" onClick={applyNaturalLanguageEntry} disabled={!nlText.trim()}>
+                      Parse
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
 
-            <div className="flex flex-col gap-4 pb-4">
-              <div>
-                <Label htmlFor="item-name">Item / Merchant</Label>
-                <div className="mt-1.5 flex gap-2">
-                  <Input
-                    id="item-name"
-                    value={form.itemName}
-                    onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value, merchant: null }))}
-                    placeholder="e.g. Milk, Zudio, Petrol"
-                    className="flex-1"
-                  />
-                  <Button type="button" variant="outline" size="icon" onClick={() => setMerchantPickerOpen(true)} aria-label="Browse merchants">
-                    <Store className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+            <div className="flex-1 overflow-y-auto px-5">
+              <AmountInput
+                value={form.amount}
+                onChange={(v) => {
+                  setForm((f) => ({ ...f, amount: v }));
+                  setAmountTouched(true);
+                }}
+              />
 
-              {merchantHint && (
+              {priceMemory && (
                 <button
                   type="button"
-                  onClick={() => applyMerchant(merchantHint)}
-                  className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-left text-sm text-foreground"
+                  onClick={applyPriceMemory}
+                  className="mb-4 flex w-full items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-xs text-brand-primary"
                 >
                   <span>
-                    Did you mean <strong>{merchantHint.name}</strong>?
+                    Last {formatINR(priceMemory.last)} · Typical {formatINR(priceMemory.typicalLow)}-{formatINR(priceMemory.typicalHigh)}
                   </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-brand-primary">Use {formatINR(priceMemory.last)}</span>
                 </button>
               )}
 
-              {suggestion && (
-                <button
-                  type="button"
-                  onClick={applySuggestion}
-                  className="flex items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-sm text-brand-primary"
-                >
-                  <span className="min-w-0">
-                    <span className="block">
-                      Category: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> - tap to apply
-                    </span>
-                    <span className="block truncate text-xs opacity-80">{suggestion.reason}</span>
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0" />
-                </button>
-              )}
-
-              <div>
-                <Label>Category</Label>
-                <button
-                  type="button"
-                  onClick={() => setCategoryPickerOpen(true)}
-                  className="mt-1.5 flex h-12 w-full items-center gap-3 rounded-md border border-input bg-surface px-3.5 text-left"
-                >
-                  {form.category ? (
-                    <>
-                      <span className="text-sm font-medium text-foreground">
-                        {form.category.categoryName}
-                        {form.category.subcategoryName ? ` · ${form.category.subcategoryName}` : ""}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">Choose a category</span>
-                  )}
-                  <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
-                </button>
-              </div>
-
-              <div>
-                <Label>Paid by</Label>
-                <div className="mt-1.5">
-                  <PaidBySelector value={form.paidBy} onChange={(v) => setForm((f) => ({ ...f, paidBy: v }))} />
+              <div className="flex flex-col gap-4 pb-4">
+                {/* Item / Merchant */}
+                <div>
+                  <Label htmlFor="item-name">Item / Merchant</Label>
+                  <div className="mt-1.5 flex gap-2">
+                    <Input
+                      id="item-name"
+                      value={form.itemName}
+                      onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value, merchant: null }))}
+                      placeholder="e.g. Milk, Zudio, Petrol"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setSheetView("merchant")}
+                      aria-label="Browse merchants"
+                      title="Browse merchants"
+                    >
+                      <Store className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
 
-              <MoreOptionsDisclosure>
+                {merchantHint && (
+                  <button
+                    type="button"
+                    onClick={() => applyMerchant(merchantHint)}
+                    className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-left text-sm text-foreground"
+                  >
+                    <span>
+                      Did you mean <strong>{merchantHint.name}</strong>?
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </button>
+                )}
+
+                {suggestion && (
+                  <button
+                    type="button"
+                    onClick={applySuggestion}
+                    className="flex items-center justify-between gap-2 rounded-lg bg-brand-mint px-3 py-2 text-left text-sm text-brand-primary"
+                  >
+                    <span className="min-w-0">
+                      <span className="block">
+                        Category: <strong>{suggestion.subcategoryName ?? suggestion.categoryName}</strong> — tap to apply
+                      </span>
+                      <span className="block truncate text-xs opacity-80">{suggestion.reason}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0" />
+                  </button>
+                )}
+
+                {/* Category Selection */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label>Category</Label>
+                    <button
+                      type="button"
+                      onClick={() => setSheetView("category")}
+                      className="text-xs font-medium text-primary hover:underline"
+                    >
+                      Browse all
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSheetView("category")}
+                    className={cn(
+                      "mt-1.5 flex h-12 w-full items-center gap-3 rounded-xl border px-3 text-left transition-colors",
+                      form.category ? "border-primary/50 bg-secondary/30" : "border-input bg-surface hover:bg-muted"
+                    )}
+                  >
+                    {form.category ? (
+                      <>
+                        <span className="text-sm font-medium text-foreground">
+                          {form.category.categoryName}
+                          {form.category.subcategoryName ? ` · ${form.category.subcategoryName}` : ""}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Choose a category</span>
+                    )}
+                    <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
+                  </button>
+
+                  {/* Quick popular category chips */}
+                  {categoryTree.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {categoryTree.slice(0, 6).map((cat) => {
+                        const isSelected = form.category?.categoryId === cat.id;
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              setForm((f) => ({
+                                ...f,
+                                category: {
+                                  categoryId: cat.id,
+                                  subcategoryId: null,
+                                  categoryName: cat.name,
+                                  subcategoryName: null,
+                                },
+                              }));
+                              setCategoryTouched(true);
+                            }}
+                            className={cn(
+                              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                              isSelected
+                                ? "border-primary bg-secondary font-semibold text-secondary-foreground"
+                                : "border-border bg-surface text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                          >
+                            <CategoryIcon icon={cat.icon} color={cat.color} className="flex h-4 w-4 shrink-0 items-center justify-center rounded" />
+                            <span>{cat.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Paid By */}
+                <div>
+                  <Label>Paid by</Label>
+                  <div className="mt-1.5">
+                    <PaidBySelector value={form.paidBy} onChange={(v) => setForm((f) => ({ ...f, paidBy: v }))} />
+                  </div>
+                </div>
+
+                {/* Expense Type */}
                 <div>
                   <Label>Expense type</Label>
                   <div className="mt-1.5">
@@ -485,6 +589,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                   </div>
                 </div>
 
+                {/* Date & Time */}
                 <DateTimeFields
                   date={form.date}
                   time={form.time}
@@ -492,6 +597,7 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                   onTimeChange={(v) => setForm((f) => ({ ...f, time: v }))}
                 />
 
+                {/* Payment Method */}
                 <div>
                   <Label>Payment method</Label>
                   <div className="mt-1.5">
@@ -515,38 +621,20 @@ export function AddExpenseSheet({ open, onOpenChange, editExpense, duplicateFrom
                   <BankQuickPicker accounts={bankAccounts} value={form.bankAccountId} onChange={(v) => setForm((f) => ({ ...f, bankAccountId: v }))} />
                 )}
 
+                {/* Notes */}
                 <NotesField value={form.notes} onChange={(v) => setForm((f) => ({ ...f, notes: v }))} />
-              </MoreOptionsDisclosure>
+              </div>
             </div>
-          </div>
 
-          <DrawerFooter>
-            <Button size="lg" onClick={handleSubmit} loading={submitting}>
-              {isEditing ? "Save changes" : "Save"}
-            </Button>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
-
-      <CategoryPicker
-        open={categoryPickerOpen}
-        onOpenChange={setCategoryPickerOpen}
-        tree={categoryTree}
-        onSelect={(selection) => {
-          setForm((f) => ({ ...f, category: selection }));
-          setCategoryTouched(true);
-        }}
-        onCategoryCreated={(cat) => setCategoryTree((t) => [...t, cat])}
-      />
-
-      <MerchantPicker
-        open={merchantPickerOpen}
-        onOpenChange={setMerchantPickerOpen}
-        merchants={merchants}
-        onSelect={applyMerchant}
-        onMerchantCreated={(m) => setMerchants((list) => [...list, m])}
-      />
-    </>
+            <DrawerFooter className="border-t border-border/50 bg-background/80 pt-3 backdrop-blur">
+              <Button size="lg" className="h-12 w-full text-base font-semibold" onClick={handleSubmit} loading={submitting}>
+                {isEditing ? "Save changes" : "Save Expense"}
+              </Button>
+            </DrawerFooter>
+          </>
+        )}
+      </DrawerContent>
+    </Drawer>
   );
 }
 

@@ -27,6 +27,7 @@ import {
   deactivateBankAccount,
   listCardCatalogue,
 } from "@/lib/actions/payment-instruments";
+import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
 import type { Tables } from "@/types/database";
 
 // Shared enter/exit for every list row below (add/edit/remove should read as
@@ -76,7 +77,9 @@ export default function PaymentMethodsSettingsPage() {
 }
 
 function MethodsTab() {
-  const [methods, setMethods] = useState<Tables<"payment_methods">[]>([]);
+  const [methods, setMethods] = useState<Tables<"payment_methods">[]>(() => {
+    return getClientCachedData<Tables<"payment_methods">[]>("payment_methods_list") ?? [];
+  });
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<Tables<"payment_methods"> | null>(null);
@@ -86,10 +89,12 @@ function MethodsTab() {
 
   async function load() {
     const result = await listPaymentMethodsForHousehold();
-    if (result.data) setMethods(result.data);
+    if (result.data) {
+      setMethods(result.data);
+      setClientCachedData("payment_methods_list", result.data);
+    }
   }
   useEffect(() => {
-     
     load();
   }, []);
 
@@ -201,8 +206,12 @@ function MethodsTab() {
 const EMPTY_CARD_FORM = { custom_name: "", issuer_id: "", last4: "", card_type: "credit" as "credit" | "debit" | "prepaid" };
 
 function CardsTab() {
-  const [cards, setCards] = useState<Tables<"user_cards">[]>([]);
-  const [issuers, setIssuers] = useState<Tables<"card_issuers">[]>([]);
+  const [cards, setCards] = useState<Tables<"user_cards">[]>(() => {
+    return getClientCachedData<Tables<"user_cards">[]>("user_cards_list") ?? [];
+  });
+  const [issuers, setIssuers] = useState<Tables<"card_issuers">[]>(() => {
+    return getClientCachedData<Tables<"card_issuers">[]>("card_issuers_list") ?? [];
+  });
   const [form, setForm] = useState(EMPTY_CARD_FORM);
   const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -211,11 +220,16 @@ function CardsTab() {
 
   async function load() {
     const [cardsResult, catalogueResult] = await Promise.all([listUserCards(), listCardCatalogue()]);
-    if (cardsResult.data) setCards(cardsResult.data);
-    if (catalogueResult.data) setIssuers(catalogueResult.data.issuers);
+    if (cardsResult.data) {
+      setCards(cardsResult.data);
+      setClientCachedData("user_cards_list", cardsResult.data);
+    }
+    if (catalogueResult.data) {
+      setIssuers(catalogueResult.data.issuers);
+      setClientCachedData("card_issuers_list", catalogueResult.data.issuers);
+    }
   }
   useEffect(() => {
-     
     load();
   }, []);
 
@@ -239,6 +253,7 @@ function CardsTab() {
     setSaving(false);
     if (result.error !== null) return toast.error(result.error);
     toast.success(editingId ? "Card updated" : "Card added");
+    invalidateClientCache("user_cards_list");
     closeForm();
     load();
   }
@@ -251,6 +266,7 @@ function CardsTab() {
       return;
     }
     toast.success(`"${removeTarget.custom_name}" removed`);
+    invalidateClientCache("user_cards_list");
     load();
   }
 
@@ -349,7 +365,9 @@ function CardsTab() {
 }
 
 function UpiTab() {
-  const [profiles, setProfiles] = useState<Tables<"upi_profiles">[]>([]);
+  const [profiles, setProfiles] = useState<Tables<"upi_profiles">[]>(() => {
+    return getClientCachedData<Tables<"upi_profiles">[]>("upi_profiles_list") ?? [];
+  });
   const [label, setLabel] = useState("");
   const [saving, setSaving] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<Tables<"upi_profiles"> | null>(null);
@@ -359,10 +377,12 @@ function UpiTab() {
 
   async function load() {
     const result = await listUpiProfiles();
-    if (result.data) setProfiles(result.data);
+    if (result.data) {
+      setProfiles(result.data);
+      setClientCachedData("upi_profiles_list", result.data);
+    }
   }
   useEffect(() => {
-     
     load();
   }, []);
 
@@ -374,6 +394,7 @@ function UpiTab() {
     if (result.error !== null) return toast.error(result.error);
     toast.success("UPI profile added");
     setLabel("");
+    invalidateClientCache("upi_profiles_list");
     load();
   }
 
@@ -387,6 +408,7 @@ function UpiTab() {
       return;
     }
     toast.success(`Renamed to "${result.data.label}"`);
+    invalidateClientCache("upi_profiles_list");
     setEditTarget(null);
     load();
   }
@@ -399,6 +421,7 @@ function UpiTab() {
       return;
     }
     toast.success(`"${removeTarget.label}" removed`);
+    invalidateClientCache("upi_profiles_list");
     load();
   }
 
@@ -468,7 +491,9 @@ function UpiTab() {
 }
 
 function BanksTab() {
-  const [accounts, setAccounts] = useState<Tables<"bank_accounts">[]>([]);
+  const [accounts, setAccounts] = useState<Tables<"bank_accounts">[]>(() => {
+    return getClientCachedData<Tables<"bank_accounts">[]>("bank_accounts_list") ?? [];
+  });
   const [bankName, setBankName] = useState("");
   const [last4, setLast4] = useState("");
   const [saving, setSaving] = useState(false);
@@ -480,10 +505,12 @@ function BanksTab() {
 
   async function load() {
     const result = await listBankAccounts();
-    if (result.data) setAccounts(result.data);
+    if (result.data) {
+      setAccounts(result.data);
+      setClientCachedData("bank_accounts_list", result.data);
+    }
   }
   useEffect(() => {
-     
     load();
   }, []);
 
@@ -496,6 +523,7 @@ function BanksTab() {
     toast.success("Bank account added");
     setBankName("");
     setLast4("");
+    invalidateClientCache("bank_accounts_list");
     load();
   }
 
@@ -509,6 +537,7 @@ function BanksTab() {
       return;
     }
     toast.success(`"${result.data.bank_name}" updated`);
+    invalidateClientCache("bank_accounts_list");
     setEditTarget(null);
     load();
   }
@@ -521,6 +550,7 @@ function BanksTab() {
       return;
     }
     toast.success(`"${removeTarget.bank_name}" removed`);
+    invalidateClientCache("bank_accounts_list");
     load();
   }
 

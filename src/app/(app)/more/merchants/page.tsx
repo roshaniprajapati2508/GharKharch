@@ -22,11 +22,14 @@ import {
   removeMerchantAlias,
   setMerchantParent,
 } from "@/lib/actions/merchants";
+import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
 import type { Tables } from "@/types/database";
 
 export default function MerchantsSettingsPage() {
-  const [merchants, setMerchants] = useState<Tables<"merchants">[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [merchants, setMerchants] = useState<Tables<"merchants">[]>(() => {
+    return getClientCachedData<Tables<"merchants">[]>("merchants_list") ?? [];
+  });
+  const [loading, setLoading] = useState(() => !getClientCachedData<Tables<"merchants">[]>("merchants_list"));
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -44,14 +47,16 @@ export default function MerchantsSettingsPage() {
   const [hiding, setHiding] = useState(false);
 
   async function load() {
-    setLoading(true);
+    if (merchants.length === 0) setLoading(true);
     const result = await listMerchantsForHousehold();
-    if (result.data) setMerchants(result.data);
+    if (result.data) {
+      setMerchants(result.data);
+      setClientCachedData("merchants_list", result.data);
+    }
     setLoading(false);
   }
 
   useEffect(() => {
-     
     load();
   }, []);
 

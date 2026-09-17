@@ -74,18 +74,24 @@ export function IconColorPicker({
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search icons…" className="h-8 pl-8 text-xs" />
             </div>
-            <div className="grid max-h-40 grid-cols-7 gap-1 overflow-y-auto">
-              {filteredIcons.map((i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => onIconChange(i)}
-                  className={cn("rounded-lg p-0.5", icon === i && "ring-2 ring-primary")}
-                  aria-label={i}
-                >
-                  <CategoryIcon icon={i} color={color} className="flex h-8 w-8 items-center justify-center rounded-lg" />
-                </button>
-              ))}
+            <div className="grid max-h-44 grid-cols-7 gap-1.5 overflow-y-auto p-1">
+              {filteredIcons.map((i) => {
+                const isSelected = icon === i;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => onIconChange(i)}
+                    className={cn(
+                      "flex aspect-square w-full items-center justify-center rounded-lg transition-transform active:scale-95",
+                      isSelected && "ring-2 ring-primary ring-offset-1"
+                    )}
+                    aria-label={i}
+                  >
+                    <CategoryIcon icon={i} color={color} className="flex h-full w-full items-center justify-center rounded-lg" />
+                  </button>
+                );
+              })}
               {filteredIcons.length === 0 && <p className="col-span-7 py-4 text-center text-xs text-muted-foreground">No icons match.</p>}
             </div>
           </div>

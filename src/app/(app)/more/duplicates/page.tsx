@@ -27,6 +27,8 @@ import {
   type DuplicateGroup,
 } from "@/lib/actions/duplicates";
 
+import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
+
 type Kind = "category" | "merchant";
 
 interface MergeTarget {
@@ -35,21 +37,30 @@ interface MergeTarget {
 }
 
 export default function FindDuplicatesPage() {
-  const [categoryGroups, setCategoryGroups] = useState<DuplicateGroup[]>([]);
-  const [merchantGroups, setMerchantGroups] = useState<DuplicateGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categoryGroups, setCategoryGroups] = useState<DuplicateGroup[]>(() => getClientCachedData<DuplicateGroup[]>("duplicates_categories") || []);
+  const [merchantGroups, setMerchantGroups] = useState<DuplicateGroup[]>(() => getClientCachedData<DuplicateGroup[]>("duplicates_merchants") || []);
+  const [loading, setLoading] = useState(() => !getClientCachedData<DuplicateGroup[]>("duplicates_categories") && !getClientCachedData<DuplicateGroup[]>("duplicates_merchants"));
   const [target, setTarget] = useState<MergeTarget | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    const cachedCats = getClientCachedData<DuplicateGroup[]>("duplicates_categories");
+    const cachedMerchs = getClientCachedData<DuplicateGroup[]>("duplicates_merchants");
+    if (!cachedCats && !cachedMerchs) {
+      setLoading(true);
+    }
     const [cats, merchs] = await Promise.all([findDuplicateCategories(), findDuplicateMerchants()]);
-    if (cats.data) setCategoryGroups(cats.data);
-    if (merchs.data) setMerchantGroups(merchs.data);
+    if (cats.data) {
+      setCategoryGroups(cats.data);
+      setClientCachedData("duplicates_categories", cats.data);
+    }
+    if (merchs.data) {
+      setMerchantGroups(merchs.data);
+      setClientCachedData("duplicates_merchants", merchs.data);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-     
     load();
   }, [load]);
 
@@ -189,6 +200,9 @@ function MergeDialog({ target, onOpenChange, onMerged }: { target: MergeTarget; 
       totalReassigned += result.data?.expensesReassigned ?? 0;
     }
     toast.success("Categories merged", { description: `${totalReassigned} expense${totalReassigned === 1 ? "" : "s"} preserved` });
+    invalidateClientCache("duplicates_");
+    invalidateClientCache("categories_");
+    invalidateClientCache("merchants_");
     setMerging(false);
     onMerged();
   }
