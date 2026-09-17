@@ -16,6 +16,32 @@ import type { EnrichedExpense } from "@/lib/actions/expenses";
 
 const SWIPE_REVEAL = 152;
 
+function formatExpenseTime(expenseTime: string | null | undefined, createdAt: string | null | undefined): string | null {
+  if (expenseTime) {
+    const [h, m] = expenseTime.split(":").map(Number);
+    if (!isNaN(h) && !isNaN(m)) {
+      const period = h >= 12 ? "PM" : "AM";
+      const displayH = h % 12 || 12;
+      return `${displayH}:${String(m).padStart(2, "0")} ${period}`;
+    }
+    return expenseTime.slice(0, 5);
+  }
+  if (createdAt) {
+    try {
+      const date = new Date(createdAt);
+      return date.toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export function ExpenseRow({
   expense,
   onEdit,
@@ -54,7 +80,7 @@ export function ExpenseRow({
     setDragX((x) => (x < -SWIPE_REVEAL / 2 ? -SWIPE_REVEAL : 0));
   }
 
-  const timeLabel = expense.expense_time ? expense.expense_time.slice(0, 5) : null;
+  const timeLabel = formatExpenseTime(expense.expense_time, expense.created_at);
 
   return (
     <div className="relative overflow-hidden rounded-xl">

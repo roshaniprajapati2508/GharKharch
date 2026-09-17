@@ -22,7 +22,7 @@ export function TopExpensesList({ expenses, categories }: { expenses: TopExpense
               <span className="w-4 shrink-0 text-xs font-semibold text-muted-foreground">{i + 1}</span>
               <CategoryIcon icon={cat?.icon} color={cat?.color} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">{e.item_name}</p>
+                <p className="truncate text-sm font-semibold text-foreground capitalize">{e.item_name}</p>
                 <p className="text-xs text-muted-foreground">{dayGroupLabel(e.expense_date)}</p>
               </div>
               <p className="shrink-0 text-sm font-semibold text-foreground">{formatINR(e.amount)}</p>

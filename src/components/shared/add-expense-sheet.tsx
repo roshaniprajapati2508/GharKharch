@@ -85,6 +85,20 @@ function emptyShoppingRow(carryOver: CategorySelection | null): ShoppingRow {
   return { key: crypto.randomUUID(), itemName: "", amount: "", category: carryOver };
 }
 
+function getCurrentISTTime(): string {
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date());
+  } catch {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+}
+
 function emptySingleState(userId: string) {
   return {
     amount: "",
@@ -94,7 +108,7 @@ function emptySingleState(userId: string) {
     paidBy: userId,
     expenseType: "household" as ExpenseType,
     date: getTodayISO(),
-    time: "",
+    time: getCurrentISTTime(),
     paymentMethod: "UPI" as string | null, // Default to UPI as requested
     cardId: null as string | null,
     upiProfileId: null as string | null,
