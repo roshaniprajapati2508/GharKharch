@@ -1,6 +1,4 @@
-// Note: not importing the `server-only` package (not an installed dependency) —
-// every consumer of this module is itself a `"use server"` action file or a
-// Server Component, so it never reaches a client bundle.
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -8,8 +6,11 @@ import { createClient } from "@/lib/supabase/server";
  * server-side. Server actions must call this instead of trusting any
  * household_id passed from the client (spec section 71: a user must never be
  * able to manipulate household_id to reach another household's data).
+ *
+ * Wrapped with React `cache` so that parallel queries in the same server request
+ * or Server Component render only make one round trip for auth and household resolution.
  */
-export async function requireHouseholdContext() {
+export const requireHouseholdContext = cache(async () => {
   const supabase = await createClient();
 
   const {
@@ -32,7 +33,7 @@ export async function requireHouseholdContext() {
   }
 
   return { supabase, userId: user.id, householdId: membership.household_id };
-}
+});
 
 export class ActionError extends Error {}
 

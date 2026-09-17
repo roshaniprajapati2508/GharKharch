@@ -5,7 +5,7 @@
 // rather than silently discarded or falsely reported as saved. A network
 // listener (wired up by OfflineSyncProvider) retries queued items as soon as
 // connectivity returns. Per spec: "Do NOT compromise data integrity for a
-// fake offline experience" — a queued expense stays visibly pending until the
+// fake offline experience" - a queued expense stays visibly pending until the
 // server has actually accepted it.
 
 import { idbGetAll, idbPut, idbDelete, STORE_PENDING_EXPENSES } from "@/lib/offline/db";
@@ -22,7 +22,7 @@ export function isOffline(): boolean {
   return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
-/** True for a genuine connectivity failure — never true for a validation/server error, which must surface to the user instead of being silently queued. */
+/** True for a genuine connectivity failure - never true for a validation/server error, which must surface to the user instead of being silently queued. */
 export function isNetworkError(err: unknown): boolean {
   return err instanceof TypeError && /fetch|network/i.test(err.message);
 }
@@ -50,7 +50,7 @@ export interface SyncResult {
   failed: number;
 }
 
-/** Attempts to save every queued expense for real. A queued item is only ever removed once the server has confirmed it — a failed attempt is left in the queue for the next sync. */
+/** Attempts to save every queued expense for real. A queued item is only ever removed once the server has confirmed it - a failed attempt is left in the queue for the next sync. */
 export async function syncPendingExpenses(): Promise<SyncResult> {
   const pending = await getPendingExpenses();
   let synced = 0;
@@ -67,7 +67,7 @@ export async function syncPendingExpenses(): Promise<SyncResult> {
       }
     } catch {
       failed++;
-      break; // still offline (or the server is unreachable) — stop and retry later rather than failing every remaining item one by one
+      break; // still offline (or the server is unreachable) - stop and retry later rather than failing every remaining item one by one
     }
   }
 

@@ -1,11 +1,11 @@
 -- =========================================================
--- Migration 013 — expose per-entry ownership from the duplicate finder
+-- Migration 013 - expose per-entry ownership from the duplicate finder
 -- =========================================================
 -- Bug fix: the "Find duplicates" merge dialog (migration 011, spec items
 -- 39, 45-46, 80) let the person pick *any* member of a duplicate group as
 -- the one to keep, including when the group mixes a global/system default
 -- with the household's own copy. merge_categories()/merge_merchants()
--- correctly refuse to delete a global default (by design — see 011's Part
+-- correctly refuse to delete a global default (by design - see 011's Part
 -- E comment), but the client had no way to know which id was the global
 -- one, so choosing the household copy as "keep" always failed with a
 -- confusing "Global default categories cannot be merged away" error and no
@@ -15,7 +15,7 @@
 -- return an `is_global` boolean array, parallel to the ids/names arrays, so
 -- the client can identify the global entry, default the merge selection to
 -- it (it's always a safe, valid canonical choice), and disable picking
--- anything else when one is present — instead of letting the person hit
+-- anything else when one is present - instead of letting the person hit
 -- the error at all.
 --
 -- Return-type change means these can't be `create or replace`d in place;

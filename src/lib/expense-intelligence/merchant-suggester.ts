@@ -11,7 +11,7 @@ export interface MerchantSuggestion {
   reason: string;
 }
 
-/** Pure text match — no DB access, so it can run on every keystroke without a round trip. */
+/** Pure text match - no DB access, so it can run on every keystroke without a round trip. */
 export function suggestMerchant(text: string, merchants: Tables<"merchants">[]): MerchantSuggestion | null {
   const normalized = text.trim().toLowerCase();
   if (!normalized) return null;

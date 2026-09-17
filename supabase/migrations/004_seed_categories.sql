@@ -3,7 +3,7 @@
 -- Households can add their own categories (household_id set) alongside these.
 --
 -- KNOWN HISTORICAL BUG (fixed by 011_dedup_and_merge.sql): only the top-level
--- category insert below has an `on conflict do nothing` guard — every
+-- category insert below has an `on conflict do nothing` guard - every
 -- subcategory insert does not. If this file is ever run twice against the
 -- same database, every subcategory doubles. Migration 011 cleans up any
 -- existing duplicates this caused and adds a scoped unique index

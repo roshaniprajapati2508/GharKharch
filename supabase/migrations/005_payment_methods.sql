@@ -1,5 +1,5 @@
 -- GharKharch: household-manageable payment methods (spec section 35, 61)
--- expenses.payment_method stays a free-text column (see 001) — this table is the
+-- expenses.payment_method stays a free-text column (see 001) - this table is the
 -- source of truth for what shows up in the picker, and lets each household
 -- rename/deactivate/add methods without a schema change.
 

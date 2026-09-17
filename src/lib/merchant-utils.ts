@@ -1,5 +1,5 @@
 // Pure, non-server-action helper. Kept out of lib/actions/merchants.ts because
-// a "use server" file may only export async Server Actions — Next.js 16
+// a "use server" file may only export async Server Actions - Next.js 16
 // enforces this at build time ("Server Actions must be async functions"), so
 // a plain sync utility like this one has to live in its own module even
 // though it's only ever used from that file.

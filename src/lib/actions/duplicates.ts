@@ -3,7 +3,7 @@
 // Server-action layer for migration 011's dedup tooling (spec items 37-46,
 // 79-80). The one-time global-category cleanup already happened in the SQL
 // migration itself; this file backs the interactive "Find duplicates" tool
-// for a household's *own* categories/merchants — the ones a bug can't fix
+// for a household's *own* categories/merchants - the ones a bug can't fix
 // for them, because the user genuinely created two similar entries
 // (e.g. "Zudio" / "Zudio Store").
 

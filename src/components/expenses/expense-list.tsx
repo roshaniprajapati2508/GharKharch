@@ -60,7 +60,7 @@ export function ExpenseList({
     return (
       <EmptyState
         title="Your household spending story starts here."
-        description="Once you add an expense, GharKharch starts building your spending picture — automatically."
+        description="Once you add an expense, GharKharch starts building your spending picture - automatically."
         ctaLabel={onAdd ? "Add your first expense" : undefined}
         onCta={onAdd}
         chips={["Milk", "Groceries", "Petrol", "Shopping"]}

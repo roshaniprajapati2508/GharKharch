@@ -1,5 +1,5 @@
 // Insights Engine (spec section 30). Every insight here is derived directly
-// from numbers GharKharch already aggregates in Postgres — nothing is
+// from numbers GharKharch already aggregates in Postgres - nothing is
 // invented, and an insight is simply omitted when the underlying data isn't
 // meaningful yet (e.g. no previous-period total to compare against).
 

@@ -7,7 +7,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme="light"
       position="top-center"
-      // Safe-area aware on mobile (spec section 61, 88) — the fixed offset is
+      // Safe-area aware on mobile (spec section 61, 88) - the fixed offset is
       // additive with the device's own inset, so a toast never sits under a
       // notch or gesture bar on a top-center placement.
       style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}

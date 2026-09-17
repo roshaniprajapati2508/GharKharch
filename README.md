@@ -28,7 +28,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-Never put the **service role key** in a `NEXT_PUBLIC_*` variable — it stays server-side
+Never put the **service role key** in a `NEXT_PUBLIC_*` variable - it stays server-side
 only, and Phase 1 doesn't need it at all.
 
 ## 3. Run the database migrations
@@ -36,10 +36,10 @@ only, and Phase 1 doesn't need it at all.
 In the Supabase dashboard, open **SQL Editor** and run the files in `supabase/migrations/`
 **in order**:
 
-1. `001_initial_schema.sql` — tables, the household-creation/join functions, triggers
-2. `002_rls.sql` — Row Level Security policies (every household-scoped table)
-3. `003_indexes.sql` — performance indexes
-4. `004_seed_categories.sql` — the default Food & Grocery / Shopping / Fashion / … category tree
+1. `001_initial_schema.sql` - tables, the household-creation/join functions, triggers
+2. `002_rls.sql` - Row Level Security policies (every household-scoped table)
+3. `003_indexes.sql` - performance indexes
+4. `004_seed_categories.sql` - the default Food & Grocery / Shopping / Fashion / … category tree
 
 (If you'd rather use the Supabase CLI: `supabase link` then `supabase db push`.)
 
@@ -54,16 +54,16 @@ an invite code (found under **More → your household** once the first person ha
 
 ## Scripts
 
-- `npm run dev` — start the dev server
-- `npm run build` — production build
-- `npm run typecheck` — TypeScript, no emit
-- `npm run lint` — ESLint
+- `npm run dev` - start the dev server
+- `npm run build` - production build
+- `npm run typecheck` - TypeScript, no emit
+- `npm run lint` - ESLint
 
 ## Project layout
 
 ```
 src/app/(auth)/      login, signup, onboarding
-src/app/(app)/        dashboard, expenses, analytics, reports, more — behind auth
+src/app/(app)/        dashboard, expenses, analytics, reports, more - behind auth
 src/components/ui/    hand-built shadcn-style primitives (button, card, drawer, …)
 src/components/shared/ AppShell, nav, Logo, EmptyState, AddExpenseDrawer
 src/lib/supabase/     browser/server/middleware Supabase clients

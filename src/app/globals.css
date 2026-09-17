@@ -193,7 +193,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Tailwind's preflight reset sets `button { cursor: default }` to match native
-   browser button behavior — correct for a native OS-style button, but on the
+   browser button behavior - correct for a native OS-style button, but on the
    web it means every one of our buttons (filter chips, row actions, tabs,
    dropdown items) silently loses the pointer/hand cursor a mouse user expects
    on anything clickable, with no visual indication it's interactive at all.
@@ -209,13 +209,13 @@ button:disabled {
 /* Baseline hover/press feedback for every interactive control. Individual
    components (Button, etc.) already declare their own hover/active states,
    but a great many small icon-only controls across the app (row actions,
-   dropdown items, tabs) only set a `hover:bg-*` class with no transition —
+   dropdown items, tabs) only set a `hover:bg-*` class with no transition -
    the color change was correct but happened as an instant snap rather than
    a smooth fade, which read as "nothing is interactive" even though hover
    states existed. This applies a short, universal fade to color/background/
    border/shadow changes on every button, link, and menu item, site-wide,
    without having to touch each of those call sites individually. Movement
-   (transform/scale) is deliberately left out here — that's still opted into
+   (transform/scale) is deliberately left out here - that's still opted into
    per-component (see Button) so it can be disabled under prefers-reduced-
    motion at the source; a color fade alone is not a vestibular concern. */
 button, a, [role="button"], [role="menuitem"], [role="tab"] {
@@ -224,7 +224,7 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
   transition-timing-function: ease-out;
 }
 
-/* Respect device safe areas (spec item: accessibility — safe-area insets) for
+/* Respect device safe areas (spec item: accessibility - safe-area insets) for
    fixed/sticky chrome that sits at a device edge: bottom nav, bottom sheets,
    and the sticky top bar under a notch/status bar. `env()` resolves to 0 on
    devices without a safe-area inset, so these are harmless everywhere else. */

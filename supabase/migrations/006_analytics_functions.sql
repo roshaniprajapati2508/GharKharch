@@ -2,7 +2,7 @@
 -- All functions are SQL, STABLE, and run with the CALLER's privileges (Postgres
 -- default is SECURITY INVOKER), so the existing RLS policy on `expenses` is
 -- still enforced even though we also filter by p_household_id defensively.
--- Every one of these returns already-aggregated rows — never raw expense sets —
+-- Every one of these returns already-aggregated rows - never raw expense sets -
 -- so the browser never has to sum thousands of transactions itself.
 
 -- ---------------------------------------------------------
@@ -161,7 +161,7 @@ as $$
 $$;
 
 -- ---------------------------------------------------------
--- Item-level analytics — everyday consumption items like Milk (spec section 26, 27)
+-- Item-level analytics - everyday consumption items like Milk (spec section 26, 27)
 -- ---------------------------------------------------------
 create or replace function public.get_item_analytics(
   p_household_id uuid,
@@ -202,7 +202,7 @@ as $$
 $$;
 
 -- ---------------------------------------------------------
--- Daily spending series — powers the trend chart and the calendar heatmap
+-- Daily spending series - powers the trend chart and the calendar heatmap
 -- (spec section 8A, 8F, 23, 33)
 -- ---------------------------------------------------------
 create or replace function public.get_daily_spending(

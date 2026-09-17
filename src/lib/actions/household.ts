@@ -8,8 +8,8 @@ import type { Tables } from "@/types/database";
 const nameSchema = z.string().trim().min(1, "Enter a name").max(60);
 
 /**
- * Renames the household. Restricted to the owner (the person who created it —
- * migration 001's `create_household()` — vs. a partner who joined via invite
+ * Renames the household. Restricted to the owner (the person who created it -
+ * migration 001's `create_household()` - vs. a partner who joined via invite
  * code, who gets the 'member' role) by the RLS policy on `households` itself
  * (migration 002: "households: owner can update"), so this checks the role
  * first to give a clear error instead of a confusing silent no-op from RLS

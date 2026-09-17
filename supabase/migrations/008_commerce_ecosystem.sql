@@ -1,6 +1,6 @@
 -- GharKharch: Indian commerce, payment & bill ecosystem
 -- (extends the schema per the "GharKharch - Indian Commerce, Payment & Bill
--- Ecosystem" addendum). Purely additive/altering — never drops user data.
+-- Ecosystem" addendum). Purely additive/altering - never drops user data.
 --
 -- Summary of what this migration does:
 --   1. Upgrades `merchants` from household-only to a global-catalogue-or-household
@@ -8,7 +8,7 @@
 --      plus per-household custom merchants), and adds merchant_type/channel/
 --      aliases/parent_merchant_id/is_system/logo_url.
 --   2. Adds the card catalogue: card_issuers, card_products, user_cards.
---   3. Adds bank_accounts and upi_profiles (identifiers only — never credentials).
+--   3. Adds bank_accounts and upi_profiles (identifiers only - never credentials).
 --   4. Adds the bills module: bill_providers, bills.
 --   5. Adds optional payment-instrument links on `expenses` (card_id /
 --      upi_profile_id / bank_account_id), at most one set at a time.
@@ -38,7 +38,7 @@ comment on column merchants.aliases is 'Alternate spellings/short names that sho
 
 -- The existing unique(household_id, normalized_name) constraint from 001 still
 -- works for household-owned rows (Postgres treats NULL as distinct per-row, so
--- it does NOT prevent duplicate global rows) — add an explicit partial unique
+-- it does NOT prevent duplicate global rows) - add an explicit partial unique
 -- index so system merchant names stay unique among themselves.
 create unique index if not exists idx_merchants_global_unique
   on merchants (normalized_name) where household_id is null;
@@ -98,7 +98,7 @@ create table if not exists user_cards (
   user_id uuid not null references auth.users(id) on delete cascade,
   issuer_id uuid references card_issuers(id) on delete set null,
   card_product_id uuid references card_products(id) on delete set null,
-  custom_name text not null, -- e.g. "HDFC Regalia" — always shown, even if issuer/product are unset
+  custom_name text not null, -- e.g. "HDFC Regalia" - always shown, even if issuer/product are unset
   last4 text check (last4 is null or last4 ~ '^[0-9]{4}$'),
   network text check (network in ('visa', 'mastercard', 'rupay', 'amex', 'diners', 'other')),
   card_type text not null default 'credit' check (card_type in ('credit', 'debit', 'prepaid')),
@@ -137,7 +137,7 @@ create index if not exists idx_user_cards_household on user_cards (household_id,
 create index if not exists idx_card_products_issuer on card_products (issuer_id);
 
 -- =========================================================
--- 3. Bank accounts & UPI profiles — identifiers only, never credentials.
+-- 3. Bank accounts & UPI profiles - identifiers only, never credentials.
 -- =========================================================
 
 create table if not exists bank_accounts (
@@ -167,7 +167,7 @@ create table if not exists upi_profiles (
   updated_at timestamptz not null default now()
 );
 
-comment on table upi_profiles is 'UPI payment profile labels only — never stores UPI PIN or any credential.';
+comment on table upi_profiles is 'UPI payment profile labels only - never stores UPI PIN or any credential.';
 
 do $$
 declare t text;
@@ -202,7 +202,7 @@ create table if not exists bill_providers (
   household_id uuid references households(id) on delete cascade, -- null = system provider
   name text not null,
   provider_type text not null check (provider_type in ('electricity', 'gas', 'water', 'internet', 'mobile', 'dth', 'maintenance', 'other')),
-  state text, -- e.g. 'Gujarat' — informational only, not used to filter
+  state text, -- e.g. 'Gujarat' - informational only, not used to filter
   logo_url text,
   is_system boolean not null default false,
   is_active boolean not null default true,

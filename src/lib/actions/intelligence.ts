@@ -1,6 +1,6 @@
 "use server";
 
-// Server-action layer for lib/expense-intelligence/* — every DB read lives
+// Server-action layer for lib/expense-intelligence/* - every DB read lives
 // here; the suggesters themselves stay pure functions (see their own file
 // headers for why).
 
@@ -79,7 +79,7 @@ export async function getCategorySuggestion(itemName: string, merchantId: string
 
 /**
  * Recurring-expense candidates (spec section 11): items purchased on a
- * consistent cadence, surfaced as a dismiss-able suggestion — never
+ * consistent cadence, surfaced as a dismiss-able suggestion - never
  * auto-created (spec section 88: "do NOT automatically invent transactions
  * from recurring patterns").
  */

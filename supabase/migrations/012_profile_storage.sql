@@ -1,5 +1,5 @@
 -- 012_profile_storage.sql
--- Premium UX phase — Profile management + real avatar upload (spec items 47-53).
+-- Premium UX phase - Profile management + real avatar upload (spec items 47-53).
 --
 -- Adds a `username` column to `profiles` (optional, unique, lowercase handle)
 -- and a Supabase Storage bucket + RLS policies for user-uploaded avatars, so
@@ -11,14 +11,14 @@
 -- this file causes no harm.
 
 -- ============================================================================
--- PART A — username column
+-- PART A - username column
 -- ============================================================================
 
 alter table profiles add column if not exists username text;
 
 -- Plain unique index, not a scoped one like categories/merchants: usernames
 -- are a global, user-level handle (not household-scoped), and Postgres
--- already treats multiple NULLs as distinct in a unique index — exactly what
+-- already treats multiple NULLs as distinct in a unique index - exactly what
 -- we want, since most users will never set one.
 do $$
 begin
@@ -38,7 +38,7 @@ alter table profiles add constraint profiles_username_format
 --   alter table profiles validate constraint profiles_username_format;
 
 -- ============================================================================
--- PART B — avatar storage bucket
+-- PART B - avatar storage bucket
 -- ============================================================================
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -47,14 +47,14 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 -- `public = true`: avatars are low-sensitivity, so we serve them via plain
--- public URLs (no signed-URL refresh logic needed in the client) — the same
+-- public URLs (no signed-URL refresh logic needed in the client) - the same
 -- tradeoff most consumer apps make for profile pictures. Write access is
 -- still fully locked down below: only the owning user can add/replace/remove
 -- files inside their own `{user_id}/` folder.
 -- `file_size_limit` is in bytes (5 MiB), matching the spec's upload cap.
 
 -- ============================================================================
--- PART C — storage RLS policies
+-- PART C - storage RLS policies
 -- ============================================================================
 -- Path convention: profile-images/{user_id}/avatar.<ext>
 -- storage.foldername(name) splits the object path into an array of folder

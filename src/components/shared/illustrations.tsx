@@ -1,5 +1,5 @@
 // Brand-consistent inline SVG illustration system (spec item 28) for empty and
-// error states — each one reuses the same house/leaf/coin motif and brand
+// error states - each one reuses the same house/leaf/coin motif and brand
 // color tokens as the loading screen, so the "nothing here yet" moments feel
 // designed rather than borrowed from a generic icon set.
 
@@ -13,7 +13,7 @@ function Base({ className, children }: IllustrationProps & { children: React.Rea
   );
 }
 
-/** Dashboard / general "no activity yet" — a coin sprouting a leaf. */
+/** Dashboard / general "no activity yet" - a coin sprouting a leaf. */
 export function EmptyDashboardIllustration({ className }: IllustrationProps) {
   return (
     <Base className={className}>
@@ -29,7 +29,7 @@ export function EmptyDashboardIllustration({ className }: IllustrationProps) {
   );
 }
 
-/** Expenses list / transactions — a receipt strip. */
+/** Expenses list / transactions - a receipt strip. */
 export function EmptyExpensesIllustration({ className }: IllustrationProps) {
   return (
     <Base className={className}>
@@ -42,7 +42,7 @@ export function EmptyExpensesIllustration({ className }: IllustrationProps) {
   );
 }
 
-/** Search — magnifying glass over a blank card. */
+/** Search - magnifying glass over a blank card. */
 export function EmptySearchIllustration({ className }: IllustrationProps) {
   return (
     <Base className={className}>
@@ -54,7 +54,7 @@ export function EmptySearchIllustration({ className }: IllustrationProps) {
   );
 }
 
-/** Category / merchant breakdown — a simple bar chart. */
+/** Category / merchant breakdown - a simple bar chart. */
 export function EmptyChartIllustration({ className }: IllustrationProps) {
   return (
     <Base className={className}>
@@ -66,7 +66,7 @@ export function EmptyChartIllustration({ className }: IllustrationProps) {
   );
 }
 
-/** Success / confirmation — checkmark badge. */
+/** Success / confirmation - checkmark badge. */
 export function SuccessIllustration({ className }: IllustrationProps) {
   return (
     <Base className={className}>
@@ -76,7 +76,7 @@ export function SuccessIllustration({ className }: IllustrationProps) {
   );
 }
 
-/** Error / something went wrong — a gentle exclamation, not alarming. */
+/** Error / something went wrong - a gentle exclamation, not alarming. */
 export function ErrorIllustration({ className }: IllustrationProps) {
   return (
     <Base className={className}>
@@ -87,7 +87,7 @@ export function ErrorIllustration({ className }: IllustrationProps) {
   );
 }
 
-/** Profile — a friendly person silhouette in a soft badge, for a profile empty/loading placeholder. */
+/** Profile - a friendly person silhouette in a soft badge, for a profile empty/loading placeholder. */
 export function ProfileIllustration({ className }: IllustrationProps) {
   return (
     <Base className={className}>
@@ -99,7 +99,7 @@ export function ProfileIllustration({ className }: IllustrationProps) {
   );
 }
 
-/** Onboarding / welcome — the household roof-and-heart motif, used for first-run and "you're all set" moments. */
+/** Onboarding / welcome - the household roof-and-heart motif, used for first-run and "you're all set" moments. */
 export function OnboardingIllustration({ className }: IllustrationProps) {
   return (
     <Base className={className}>

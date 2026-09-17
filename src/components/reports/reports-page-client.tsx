@@ -17,6 +17,7 @@ import {
   getCustomDateRange,
   type DateRange,
 } from "@/lib/date-utils";
+import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
 
 type ReportPeriod = "today" | "week" | "month" | "lastMonth" | "custom";
 
@@ -27,37 +28,62 @@ const PERIODS: { key: ReportPeriod; label: string; resolve: () => DateRange }[] 
   { key: "lastMonth", label: "Last month", resolve: getPreviousMonthRange },
 ];
 
-export function ReportsPageClient() {
+function getReportCacheKey(range: DateRange) {
+  return `report_${range.start}_${range.end}`;
+}
+
+export function ReportsPageClient({ initialData }: { initialData?: ReportData | null }) {
   const { openAdd } = useAddExpense();
   const [period, setPeriod] = useState<ReportPeriod>("month");
-  const [range, setRange] = useState<DateRange>(getMonthRange(0));
-  const [data, setData] = useState<ReportData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<DateRange>(initialData?.range ?? getMonthRange(0));
+
+  const [data, setData] = useState<ReportData | null>(() => {
+    if (initialData) {
+      setClientCachedData(getReportCacheKey(initialData.range), initialData);
+      return initialData;
+    }
+    return getClientCachedData<ReportData>(getReportCacheKey(getMonthRange(0)));
+  });
+
+  const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
-  const load = useCallback(async (nextRange: DateRange) => {
-    setLoading(true);
+  const load = useCallback(async (nextRange: DateRange, forceFresh = false) => {
+    const cacheKey = getReportCacheKey(nextRange);
+    const cached = getClientCachedData<ReportData>(cacheKey);
+
+    if (cached && !forceFresh) {
+      setData(cached);
+    } else if (!cached && !data) {
+      setLoading(true);
+    }
+
     const result = await getReportData(nextRange);
     setLoading(false);
+
     if (result.error !== null) {
       toast.error(result.error);
       return;
     }
+
+    setClientCachedData(cacheKey, result.data);
     setData(result.data);
-  }, []);
+  }, [data]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
-    load(range);
+    if (!initialData && !data) {
+      load(range);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useOnExpenseSaved(
     useCallback(() => {
-      load(range);
+      invalidateClientCache("report_");
+      load(range, true);
     }, [load, range])
   );
 

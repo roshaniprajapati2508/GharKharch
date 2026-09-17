@@ -1,10 +1,10 @@
 -- GharKharch: seed the system-wide (global, household_id null) commerce catalogue.
--- Everything here is a starting point, not a hard-coded requirement — every
+-- Everything here is a starting point, not a hard-coded requirement - every
 -- household can rename, deactivate, or add their own on top (spec addendum
 -- sections 3-9, 16, 28-32, 45).
 
 -- =========================================================
--- System merchants — quick commerce / grocery delivery
+-- System merchants - quick commerce / grocery delivery
 -- =========================================================
 insert into merchants (household_id, name, normalized_name, merchant_type, channel, is_system, aliases) values
   (null, 'Zepto',              'zepto',              'grocery',  'online', true, array[]::text[]),
@@ -46,7 +46,7 @@ on conflict (normalized_name) where household_id is null do nothing;
 
 -- Map the merchants above to a sensible global category/subcategory where an
 -- obvious one exists in the 004 seed tree (best-effort; harmless if a name
--- doesn't match — the merchant is still created, just without a category).
+-- doesn't match - the merchant is still created, just without a category).
 update merchants m
 set subcategory_id = c.id
 from categories c
@@ -98,7 +98,7 @@ join (values
 on conflict (issuer_id, name, variant) do nothing;
 
 -- =========================================================
--- Bill providers (system, global) — Gujarat-relevant + national
+-- Bill providers (system, global) - Gujarat-relevant + national
 -- =========================================================
 insert into bill_providers (household_id, name, provider_type, state, is_system) values
   (null, 'UGVCL', 'electricity', 'Gujarat', true),

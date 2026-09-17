@@ -29,7 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // extra sequential round trip here is latency every page in the app pays on top
   // of its own data fetch. household_members.user_id and profiles.id both reference
   // auth.users but aren't FK'd to each other, so they can't be embedded in one
-  // PostgREST query — but we can still fetch household + member ids in parallel,
+  // PostgREST query - but we can still fetch household + member ids in parallel,
   // then fetch every member's profile (mine and the partner's) in a single `.in()`
   // query instead of two separate profile look-ups.
   const [{ data: household }, { data: members }] = await Promise.all([

@@ -157,7 +157,7 @@ export default function RecurringExpensesPage() {
         <h1 className="text-xl font-bold tracking-tight text-foreground">Recurring expenses</h1>
       </div>
       <p className="-mt-3 text-xs text-muted-foreground">
-        Track rent, subscriptions, EMIs and other bills that repeat. GharKharch will never log an expense on its own from these — they&apos;re just bookkeeping for what to expect.
+        Track rent, subscriptions, EMIs and other bills that repeat. GharKharch will never log an expense on its own from these - they&apos;re just bookkeeping for what to expect.
       </p>
 
       {loading ? (
@@ -256,7 +256,7 @@ export default function RecurringExpensesPage() {
                       <option value={top.id}>{top.name}</option>
                       {top.children.map((child) => (
                         <option key={child.id} value={child.id}>
-                          {"— " + child.name}
+                          {"- " + child.name}
                         </option>
                       ))}
                     </Fragment>
@@ -309,7 +309,7 @@ export default function RecurringExpensesPage() {
         open={!!removeTarget}
         onOpenChange={(open) => !open && setRemoveTarget(null)}
         title={`Remove "${removeTarget?.name}"?`}
-        description="Past expenses already logged from this rule keep their amount and category — they just won't be tagged as recurring anymore."
+        description="Past expenses already logged from this rule keep their amount and category - they just won't be tagged as recurring anymore."
         confirmLabel="Remove"
         destructive
         onConfirm={handleDelete}

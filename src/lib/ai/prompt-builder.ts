@@ -18,7 +18,7 @@ export function buildFinancialQueryPrompt(question: string, structuredFacts: unk
     { role: "system", content: SYSTEM_PROMPT },
     {
       role: "user",
-      content: `Question: "${question}"\n\nData (JSON, already computed — do not recompute anything):\n${JSON.stringify(structuredFacts, null, 2)}\n\nAnswer the question using only this data.`,
+      content: `Question: "${question}"\n\nData (JSON, already computed - do not recompute anything):\n${JSON.stringify(structuredFacts, null, 2)}\n\nAnswer the question using only this data.`,
     },
   ];
 }

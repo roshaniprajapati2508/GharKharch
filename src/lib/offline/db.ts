@@ -1,7 +1,7 @@
 "use client";
 
 // Minimal IndexedDB wrapper for the offline expense queue (spec section 41).
-// Deliberately tiny and dependency-free — this only ever needs one object
+// Deliberately tiny and dependency-free - this only ever needs one object
 // store, so a full IndexedDB library would be overkill.
 
 const DB_NAME = "gharkharch-offline";

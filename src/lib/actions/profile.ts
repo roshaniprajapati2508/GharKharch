@@ -56,7 +56,7 @@ export async function updateMyProfile(rawInput: ProfileFormInput) {
 /**
  * Persists a freshly-uploaded avatar's public URL (the actual file upload to
  * Supabase Storage happens client-side against `profile-images/{user_id}/...`
- * — RLS on `storage.objects` from migration 012 already restricts that path
+ * - RLS on `storage.objects` from migration 012 already restricts that path
  * to the signed-in owner, so this action only needs to record the resulting
  * URL against the profile row and clean up the previous file).
  */

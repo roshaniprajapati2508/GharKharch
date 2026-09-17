@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { getIcon } from "@/lib/icon-map";
 import type { Tables } from "@/types/database";
 
-/** Horizontal chip row of the household's active payment methods (spec section 9, 61). Optional — can stay unset. */
+/** Horizontal chip row of the household's active payment methods (spec section 9, 61). Optional - can stay unset. */
 export function PaymentMethodSelect({
   methods,
   value,
@@ -75,7 +75,7 @@ export function CardQuickPicker({
   );
 }
 
-/** When Bank Transfer is the payment method and the household has bank accounts on file, let them pick which one — mirrors CardQuickPicker/UpiQuickPicker. Fixes a gap where editing an expense that already had a bank account attached would silently clear it on save. */
+/** When Bank Transfer is the payment method and the household has bank accounts on file, let them pick which one - mirrors CardQuickPicker/UpiQuickPicker. Fixes a gap where editing an expense that already had a bank account attached would silently clear it on save. */
 export function BankQuickPicker({
   accounts,
   value,

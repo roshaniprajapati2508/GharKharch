@@ -1,7 +1,7 @@
 -- GharKharch: fast fuzzy search (spec section 20, 21, 64)
 -- Global search across item name / notes / merchant name uses ILIKE from the
 -- app; pg_trgm + GIN indexes make that fast even as the expenses table grows
--- (spec section 72 — must stay responsive at 10k-50k+ rows).
+-- (spec section 72 - must stay responsive at 10k-50k+ rows).
 
 create extension if not exists pg_trgm;
 

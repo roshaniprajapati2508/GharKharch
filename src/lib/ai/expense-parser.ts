@@ -9,8 +9,8 @@
 //
 // It is never the only path, and it never invents an amount (spec section
 // 46, 88): the AI's own extracted amount is validated as a positive finite
-// number before use, and any failure — missing key, network error, bad
-// JSON, missing/invalid amount — falls back to the deterministic result
+// number before use, and any failure - missing key, network error, bad
+// JSON, missing/invalid amount - falls back to the deterministic result
 // untouched. The user still sees every field in the Add Expense form before
 // saving, so an AI misread is always caught before it becomes a transaction.
 
@@ -24,7 +24,7 @@ export interface AiParsedQuickEntry extends ParsedQuickEntry {
 
 const EXTRACT_SYSTEM_PROMPT = `Extract a single household expense from the user's text. Respond with ONLY compact JSON, no prose, in exactly this shape:
 {"itemName": string, "amount": number | null, "paymentMethod": "Cash" | "Credit Card" | "Debit Card" | "UPI" | "Bank Transfer" | "Wallet" | null, "daysAgo": number}
-"daysAgo" is 0 for today, 1 for yesterday, etc — default 0 if not mentioned. If you cannot find a clear amount in the text, set "amount" to null. Never guess or estimate an amount that isn't written in the text.`;
+"daysAgo" is 0 for today, 1 for yesterday, etc - default 0 if not mentioned. If you cannot find a clear amount in the text, set "amount" to null. Never guess or estimate an amount that isn't written in the text.`;
 
 interface ExtractedFields {
   itemName: string;
@@ -35,7 +35,7 @@ interface ExtractedFields {
 
 function tryParseAiJson(raw: string): ExtractedFields | null {
   try {
-    // Models sometimes wrap JSON in a code fence despite instructions not to — strip it defensively.
+    // Models sometimes wrap JSON in a code fence despite instructions not to - strip it defensively.
     const cleaned = raw
       .trim()
       .replace(/^```(json)?/i, "")

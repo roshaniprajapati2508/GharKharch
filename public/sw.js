@@ -3,7 +3,7 @@
 // Scope, deliberately: cache static assets so the app shell loads instantly
 // and survives brief connectivity drops, and show a friendly offline page if
 // a navigation request fails with no cache to fall back on. It does NOT try
-// to cache or replay API/data requests — Supabase reads/writes always need a
+// to cache or replay API/data requests - Supabase reads/writes always need a
 // real round trip, and the actual offline capability for adding an expense
 // while offline is handled client-side by src/lib/offline/offline-queue.ts
 // (IndexedDB), not by this worker. Per spec: "Do NOT compromise data
@@ -36,7 +36,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  if (request.method !== "GET") return; // never intercept mutations — those go straight to the network (or the IndexedDB queue) untouched
+  if (request.method !== "GET") return; // never intercept mutations - those go straight to the network (or the IndexedDB queue) untouched
 
   const url = new URL(request.url);
 
@@ -56,7 +56,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Page navigations: network-first, falling back to the offline page only
-  // when there is truly no connectivity — never serve a stale cached page of
+  // when there is truly no connectivity - never serve a stale cached page of
   // financial data as if it were current.
   if (request.mode === "navigate") {
     event.respondWith(

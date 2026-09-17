@@ -78,7 +78,7 @@ export function ItemAnalyticsTab({
 
       {view === "growing" ? (
         growing.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Nothing is trending up yet — check back after a couple of months.</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">Nothing is trending up yet - check back after a couple of months.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {growing.slice(0, 15).map((item) => (

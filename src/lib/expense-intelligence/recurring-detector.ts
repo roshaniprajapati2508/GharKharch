@@ -1,5 +1,5 @@
 // Recurring-expense detection (spec section 11). Pure function over the rows
-// from get_item_gap_consistency (migration 010) — never writes anything
+// from get_item_gap_consistency (migration 010) - never writes anything
 // itself. Per spec section 88 ("do NOT automatically invent transactions from
 // recurring patterns"), this only ever produces a dismiss-able suggestion;
 // turning one into an actual `recurring_expenses` row is always a separate,
@@ -42,7 +42,7 @@ function cadenceLabel(avgGapDays: number, stddevDays: number): string {
 /**
  * Flags items as recurring-like when their purchase gap is both short enough
  * to matter and consistent enough to trust (coefficient of variation below
- * `maxCoefficientOfVariation`) — a plain, explainable rule rather than a
+ * `maxCoefficientOfVariation`) - a plain, explainable rule rather than a
  * fabricated statistical claim.
  */
 export function detectRecurringCandidates(

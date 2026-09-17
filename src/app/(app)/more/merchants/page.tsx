@@ -298,7 +298,7 @@ export default function MerchantsSettingsPage() {
               <Tags className="h-4 w-4 text-brand-primary" />
               {liveDetailTarget?.name}
             </DrawerTitle>
-            <DrawerDescription>Rename, add aliases, and group this merchant (spec item 44) — teach GharKharch other names it goes by.</DrawerDescription>
+            <DrawerDescription>Rename, add aliases, and group this merchant (spec item 44) - teach GharKharch other names it goes by.</DrawerDescription>
           </DrawerHeader>
 
           <div className="flex flex-col gap-5 overflow-y-auto px-5 pb-2">
@@ -321,7 +321,7 @@ export default function MerchantsSettingsPage() {
               <Label className="text-xs">Aliases</Label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {(liveDetailTarget?.aliases ?? []).length === 0 && (
-                  <p className="text-xs text-muted-foreground">No aliases yet — add one below.</p>
+                  <p className="text-xs text-muted-foreground">No aliases yet - add one below.</p>
                 )}
                 {(liveDetailTarget?.aliases ?? []).map((alias) => (
                   <span
@@ -357,7 +357,7 @@ export default function MerchantsSettingsPage() {
                 disabled={parentBusy}
                 className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               >
-                <option value="">No parent — standalone merchant</option>
+                <option value="">No parent - standalone merchant</option>
                 {parentOptions.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -380,7 +380,7 @@ export default function MerchantsSettingsPage() {
           <div className="safe-bottom w-full max-w-md rounded-t-2xl bg-card p-5 sm:rounded-2xl sm:pb-5" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-1 text-lg font-semibold text-foreground">Customize this merchant</h2>
             <p className="mb-3 text-xs text-muted-foreground">
-              This is a shared/system merchant, so saving creates your own editable copy and removes the original from your list — nothing changes for anyone else. Once saved, you can add aliases and grouping on your copy same as any merchant you add yourself.
+              This is a shared/system merchant, so saving creates your own editable copy and removes the original from your list - nothing changes for anyone else. Once saved, you can add aliases and grouping on your copy same as any merchant you add yourself.
             </p>
             <Label>Name</Label>
             <Input value={customizeName} onChange={(e) => setCustomizeName(e.target.value)} className="mt-1.5" autoFocus onKeyDown={(e) => e.key === "Enter" && handleCustomizeSave()} />
@@ -400,7 +400,7 @@ export default function MerchantsSettingsPage() {
         open={!!hideTarget}
         onOpenChange={(open) => !open && setHideTarget(null)}
         title={`Remove "${hideTarget?.name}" from your merchants?`}
-        description="This only affects your household — it stays available to everyone else, and any past expenses using it keep it."
+        description="This only affects your household - it stays available to everyone else, and any past expenses using it keep it."
         confirmLabel="Remove"
         destructive
         onConfirm={handleHideGlobal}

@@ -41,7 +41,7 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
-  /** Shows a spinner in place of the label and disables the button — the "Save -> spinner -> Saved" pattern (spec section 9, 11). Never combine with `asChild`. */
+  /** Shows a spinner in place of the label and disables the button - the "Save -> spinner -> Saved" pattern (spec section 9, 11). Never combine with `asChild`. */
   loading?: boolean;
 }
 

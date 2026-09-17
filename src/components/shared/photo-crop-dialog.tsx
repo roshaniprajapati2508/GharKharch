@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getCroppedImageBlob } from "@/lib/crop-image";
 
 /**
- * A crop/pan/zoom step between "user picked a file" and "we upload it" —
+ * A crop/pan/zoom step between "user picked a file" and "we upload it" -
  * profile photos are shown everywhere as perfect circles, so letting people
  * choose which part of a non-square photo actually lands inside that circle
  * (rather than silently center-cropping or stretching it) is the difference

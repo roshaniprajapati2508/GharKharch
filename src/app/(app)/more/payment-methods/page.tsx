@@ -30,7 +30,7 @@ import {
 import type { Tables } from "@/types/database";
 
 // Shared enter/exit for every list row below (add/edit/remove should read as
-// a visible change, not an instant re-render) — framer-motion's global
+// a visible change, not an instant re-render) - framer-motion's global
 // `MotionConfig reducedMotion="user"` in app-shell.tsx already collapses
 // this to an instant snap under prefers-reduced-motion.
 const ROW_MOTION = {
@@ -173,7 +173,7 @@ function MethodsTab() {
         open={!!removeTarget}
         onOpenChange={(open) => !open && setRemoveTarget(null)}
         title={`Remove "${removeTarget?.name}"?`}
-        description="You can add it again later — past expenses keep this payment method's name."
+        description="You can add it again later - past expenses keep this payment method's name."
         confirmLabel="Remove"
         onConfirm={remove}
       />
@@ -257,7 +257,7 @@ function CardsTab() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-muted-foreground">
-        GharKharch only stores the card name, issuer, network, and last 4 digits for spend tracking — never a full card number, CVV, or PIN.
+        GharKharch only stores the card name, issuer, network, and last 4 digits for spend tracking - never a full card number, CVV, or PIN.
       </p>
       <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
         <AnimatePresence initial={false}>
@@ -340,7 +340,7 @@ function CardsTab() {
         open={!!removeTarget}
         onOpenChange={(open) => !open && setRemoveTarget(null)}
         title={`Remove "${removeTarget?.custom_name}"?`}
-        description="You can add it again later — past expenses keep this card's name."
+        description="You can add it again later - past expenses keep this card's name."
         confirmLabel="Remove"
         onConfirm={remove}
       />
@@ -404,7 +404,7 @@ function UpiTab() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-muted-foreground">Just a label to tell your UPI apps apart — never a UPI PIN or any credential.</p>
+      <p className="text-xs text-muted-foreground">Just a label to tell your UPI apps apart - never a UPI PIN or any credential.</p>
       <div className="flex gap-2">
         <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Google Pay, PhonePe" onKeyDown={(e) => e.key === "Enter" && add()} />
         <Button onClick={add} loading={saving} disabled={!label.trim()}>
@@ -442,7 +442,7 @@ function UpiTab() {
         open={!!removeTarget}
         onOpenChange={(open) => !open && setRemoveTarget(null)}
         title={`Remove "${removeTarget?.label}"?`}
-        description="You can add it again later — past expenses keep this label."
+        description="You can add it again later - past expenses keep this label."
         confirmLabel="Remove"
         onConfirm={remove}
       />
@@ -526,7 +526,7 @@ function BanksTab() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-muted-foreground">Only the last 2-4 digits are stored — never a full account number.</p>
+      <p className="text-xs text-muted-foreground">Only the last 2-4 digits are stored - never a full account number.</p>
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="Bank name" />
         <Input value={last4} onChange={(e) => setLast4(e.target.value)} placeholder="XXXX" maxLength={4} className="w-20" />
@@ -569,7 +569,7 @@ function BanksTab() {
         open={!!removeTarget}
         onOpenChange={(open) => !open && setRemoveTarget(null)}
         title={`Remove "${removeTarget?.bank_name}"?`}
-        description="You can add it again later — past expenses keep this bank account's name."
+        description="You can add it again later - past expenses keep this bank account's name."
         confirmLabel="Remove"
         onConfirm={remove}
       />

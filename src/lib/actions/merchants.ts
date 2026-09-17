@@ -93,7 +93,7 @@ export async function customizeMerchant(globalId: string, changes: Partial<Pick<
   });
 }
 
-/** "Remove" for a global/system merchant — hides it from this household's lists/pickers without touching the shared row or any other household (migration 014). */
+/** "Remove" for a global/system merchant - hides it from this household's lists/pickers without touching the shared row or any other household (migration 014). */
 export async function hideGlobalMerchant(globalId: string) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();
@@ -118,7 +118,7 @@ export async function deactivateMerchant(id: string) {
   });
 }
 
-/** Add one alias (e.g. "instamart" -> Swiggy Instamart) — spec item 44's merchant alias system. Case/whitespace-normalized, de-duplicated. */
+/** Add one alias (e.g. "instamart" -> Swiggy Instamart) - spec item 44's merchant alias system. Case/whitespace-normalized, de-duplicated. */
 export async function addMerchantAlias(id: string, alias: string) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();
@@ -159,7 +159,7 @@ export async function removeMerchantAlias(id: string, alias: string) {
   });
 }
 
-/** Sets or clears which merchant this one rolls up under (e.g. "Swiggy Instamart" under "Swiggy") — spec item 44. */
+/** Sets or clears which merchant this one rolls up under (e.g. "Swiggy Instamart" under "Swiggy") - spec item 44. */
 export async function setMerchantParent(id: string, parentId: string | null) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();
@@ -193,7 +193,7 @@ export async function deleteMerchant(id: string) {
       .eq("merchant_id", id)
       .is("deleted_at", null);
     if (count && count > 0) {
-      throw new ActionError(`${count} expense(s) still reference this merchant — deactivate it instead`);
+      throw new ActionError(`${count} expense(s) still reference this merchant - deactivate it instead`);
     }
     const { error } = await supabase.from("merchants").delete().eq("id", id);
     if (error) throw new ActionError(error.message);

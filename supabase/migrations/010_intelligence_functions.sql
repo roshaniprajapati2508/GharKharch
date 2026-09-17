@@ -48,7 +48,7 @@ $$;
 -- Gap consistency per item: average days between consecutive purchases, and
 -- how much that gap varies (lower stddev = more consistent / recurring-like).
 -- Feeds recurring-detector.ts (spec section 11: "Milk is usually added every
--- 1-2 days" style suggestions). Only ever a suggestion — nothing here writes
+-- 1-2 days" style suggestions). Only ever a suggestion - nothing here writes
 -- to `recurring_expenses` automatically.
 -- ---------------------------------------------------------
 create or replace function public.get_item_gap_consistency(

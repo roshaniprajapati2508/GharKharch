@@ -42,6 +42,7 @@ import {
   type CategoryWithChildren,
 } from "@/lib/actions/categories";
 import { mergeCategories } from "@/lib/actions/duplicates";
+import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
 import type { Tables } from "@/types/database";
 
 type FlatRow = Tables<"categories"> & { parentName: string | null };
@@ -66,8 +67,10 @@ function SortableItem({
 }
 
 export default function CategoriesSettingsPage() {
-  const [tree, setTree] = useState<CategoryWithChildren[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tree, setTree] = useState<CategoryWithChildren[]>(() => {
+    return getClientCachedData<CategoryWithChildren[]>("categories_tree_active") ?? [];
+  });
+  const [loading, setLoading] = useState(() => !getClientCachedData<CategoryWithChildren[]>("categories_tree_active"));
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [customizingGlobalId, setCustomizingGlobalId] = useState<string | null>(null);
@@ -89,9 +92,18 @@ export default function CategoriesSettingsPage() {
   const [bulkConfirm, setBulkConfirm] = useState<"deactivate" | "delete" | "merge" | null>(null);
 
   async function load() {
-    setLoading(true);
+    const cacheKey = showInactive ? "categories_tree_all" : "categories_tree_active";
+    const cached = getClientCachedData<CategoryWithChildren[]>(cacheKey);
+    if (cached) {
+      setTree(cached);
+    } else if (tree.length === 0) {
+      setLoading(true);
+    }
     const result = await listCategoriesForHousehold({ includeInactive: showInactive });
-    if (result.data) setTree(result.data.tree);
+    if (result.data) {
+      setTree(result.data.tree);
+      setClientCachedData(cacheKey, result.data.tree);
+    }
     setLoading(false);
   }
 
@@ -160,7 +172,7 @@ export default function CategoriesSettingsPage() {
 
   function openEditFlow(cat: Tables<"categories">) {
     if (!cat.household_id) {
-      // Global default — can't edit the shared row, so this opens the same sheet
+      // Global default - can't edit the shared row, so this opens the same sheet
       // in "customize" mode: saving creates a household copy and hides the
       // default (migration 014) instead of calling updateCategory.
       setCustomizingGlobalId(cat.id);
@@ -199,6 +211,7 @@ export default function CategoriesSettingsPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("categories_");
     toast.success(customizingGlobalId ? `"${result.data.name}" is now yours to edit` : editingId ? `"${result.data.name}" updated` : `"${result.data.name}" added`);
     closeSheet();
     load();
@@ -213,6 +226,7 @@ export default function CategoriesSettingsPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("categories_");
     toast.success(`"${hideTarget.name}" removed from your categories`);
     setHideTarget(null);
     load();
@@ -258,7 +272,7 @@ export default function CategoriesSettingsPage() {
       toast.error(result.error);
       return;
     }
-    toast.success(nextActive ? `"${cat.name}" reactivated` : `"${cat.name}" deactivated — hidden from pickers, history kept`);
+    toast.success(nextActive ? `"${cat.name}" reactivated` : `"${cat.name}" deactivated - hidden from pickers, history kept`);
     load();
   }
 
@@ -293,7 +307,7 @@ export default function CategoriesSettingsPage() {
     }
     const { deleted, skipped } = result.data;
     if (skipped > 0) {
-      toast(`Deleted ${deleted}, skipped ${skipped} still in use — deactivate those instead`);
+      toast(`Deleted ${deleted}, skipped ${skipped} still in use - deactivate those instead`);
     } else {
       toast.success(`${deleted} categor${deleted === 1 ? "y" : "ies"} deleted`);
     }
@@ -319,7 +333,7 @@ export default function CategoriesSettingsPage() {
       toast.error(result.error);
       return;
     }
-    toast.success(`Merged "${nameA}" and "${nameB}" — ${result.data.expensesReassigned} expense(s) moved`);
+    toast.success(`Merged "${nameA}" and "${nameB}" - ${result.data.expensesReassigned} expense(s) moved`);
     setSelected(new Set());
     setSelectMode(false);
     load();
@@ -335,7 +349,7 @@ export default function CategoriesSettingsPage() {
     },
     delete: {
       title: `Delete ${selected.size} categor${selected.size === 1 ? "y" : "ies"}?`,
-      description: "Only categories with zero expenses attached will actually be removed — any still in use are skipped so you can deactivate them instead. This can't be undone for the ones that are deleted.",
+      description: "Only categories with zero expenses attached will actually be removed - any still in use are skipped so you can deactivate them instead. This can't be undone for the ones that are deleted.",
       confirmLabel: "Delete",
       destructive: true,
       onConfirm: handleBulkDelete,
@@ -609,7 +623,7 @@ export default function CategoriesSettingsPage() {
             </h2>
             {customizingGlobalId && (
               <p className="mb-3 text-xs text-muted-foreground">
-                This is a shared default, so saving creates your own editable copy with these changes and removes the original default from your list — nothing changes for anyone else.
+                This is a shared default, so saving creates your own editable copy with these changes and removes the original default from your list - nothing changes for anyone else.
               </p>
             )}
             <div className="flex flex-col gap-4">
@@ -675,7 +689,7 @@ export default function CategoriesSettingsPage() {
         open={!!hideTarget}
         onOpenChange={(open) => !open && setHideTarget(null)}
         title={`Remove "${hideTarget?.name}" from your categories?`}
-        description="This only affects your household — it stays available to everyone else, and any past expenses using it keep it."
+        description="This only affects your household - it stays available to everyone else, and any past expenses using it keep it."
         confirmLabel="Remove"
         destructive
         onConfirm={handleHideGlobal}

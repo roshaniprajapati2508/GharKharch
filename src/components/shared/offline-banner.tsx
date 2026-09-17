@@ -19,7 +19,7 @@ export function OfflineBanner() {
     setSyncing(false);
     refreshPendingCount();
     if (synced > 0) toast.success(`${synced} expense${synced === 1 ? "" : "s"} synced`);
-    if (failed > 0 && synced === 0) toast.error("Still offline — will keep trying");
+    if (failed > 0 && synced === 0) toast.error("Still offline - will keep trying");
   }
 
   return (

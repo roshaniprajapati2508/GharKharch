@@ -33,7 +33,7 @@ export async function listCardCatalogue() {
 }
 
 // ---------------------------------------------------------------------------
-// User cards — identification only, never a card number/CVV/PIN (spec addendum section 15)
+// User cards - identification only, never a card number/CVV/PIN (spec addendum section 15)
 // ---------------------------------------------------------------------------
 
 export async function listUserCards() {
@@ -105,7 +105,7 @@ export async function deactivateUserCard(id: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Bank accounts — identifier only (last 2-4 digits), never a full account number
+// Bank accounts - identifier only (last 2-4 digits), never a full account number
 // ---------------------------------------------------------------------------
 
 export async function listBankAccounts() {
@@ -164,7 +164,7 @@ export async function deactivateBankAccount(id: string) {
 }
 
 // ---------------------------------------------------------------------------
-// UPI profiles — label only, never a UPI PIN or credential
+// UPI profiles - label only, never a UPI PIN or credential
 // ---------------------------------------------------------------------------
 
 export async function listUpiProfiles() {

@@ -1,5 +1,5 @@
 // Quick Add ranking (spec section 9, 10, 80). Pure scoring over already-fetched
-// `expense_patterns` rows — the only DB reads live in the calling server
+// `expense_patterns` rows - the only DB reads live in the calling server
 // action (actions/quick-add.ts), matching every other file in this folder.
 //
 //   score = recencyScore     * 0.30
@@ -8,7 +8,7 @@
 //         + userPreference   * 0.15
 //         + merchantFrequency* 0.10
 //
-// The spec calls this a starting point ("this can evolve later") — the goal
+// The spec calls this a starting point ("this can evolve later") - the goal
 // is that Quick Add visibly learns from real usage rather than staying static.
 
 export interface QuickAddPatternInput {
@@ -42,7 +42,7 @@ function recencyScore(lastUsedAt: string | null, now: number): number {
  * `weekdayAffinity` maps normalized item_name -> 0..1 (fraction of that
  * item's purchases historically falling on today's weekday; see
  * get_item_weekday_affinity). Missing entries score 0 for that term, not a
- * penalty — most items simply don't have a strong weekday signal yet.
+ * penalty - most items simply don't have a strong weekday signal yet.
  */
 export function rankQuickAddCandidates(
   patterns: QuickAddPatternInput[],

@@ -5,7 +5,7 @@ import type { Database } from "@/types/database";
 
 type MerchantBreakdownRow = Database["public"]["Functions"]["get_merchant_breakdown"]["Returns"][number];
 
-/** "Where we shop" (spec section 26) — compact dashboard version of the merchant breakdown; the full list lives in Analytics. */
+/** "Where we shop" (spec section 26) - compact dashboard version of the merchant breakdown; the full list lives in Analytics. */
 export function TopMerchantsCard({ merchants, limit = 5 }: { merchants: MerchantBreakdownRow[]; limit?: number }) {
   const shown = merchants.slice(0, limit);
   if (shown.length === 0) return null;

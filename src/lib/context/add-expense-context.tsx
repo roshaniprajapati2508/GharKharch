@@ -20,7 +20,7 @@ export function useAddExpense() {
 
 /**
  * Lets the current page refetch its own data whenever the global Add Expense
- * sheet (floating "+" button, bottom nav) saves — without this, a page whose
+ * sheet (floating "+" button, bottom nav) saves - without this, a page whose
  * data was fetched once via a server action (rather than Next's cache) would
  * only reflect an expense added through the global sheet after a manual reload.
  */

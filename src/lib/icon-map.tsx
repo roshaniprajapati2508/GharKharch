@@ -7,7 +7,7 @@ import {
   Clapperboard, Tv, Gamepad2, Ticket, Utensils, Zap, Flame, Droplets, Wifi, SatelliteDish,
   Banknote, CreditCard, Building2, Wallet, MoreHorizontal, QrCode, Receipt, CircleDot,
   GlassWater, Square, Cookie, Croissant, Drumstick, Megaphone, MapPin, Phone,
-  // Expanded picker set (spec item: richer icon/color choice) — distinct new glyphs only,
+  // Expanded picker set (spec item: richer icon/color choice) - distinct new glyphs only,
   // no re-aliasing of icons already imported above.
   Coffee, Fish, Beef, IceCream, Cake, Baby, Dog, Cat, Gift, BookOpen,
   GraduationCap, Briefcase, Plane, Bed, Umbrella, Sun, Cloud, Music, Camera,

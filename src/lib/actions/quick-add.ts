@@ -14,7 +14,7 @@ export interface QuickAddChip {
 }
 
 /**
- * Scored Quick Add chips (spec sections 9, 10, 80) — ranked by the
+ * Scored Quick Add chips (spec sections 9, 10, 80) - ranked by the
  * recency/frequency/weekday/user-preference/merchant-frequency formula in
  * lib/expense-intelligence/quick-add-suggester.ts, not just "most recent."
  */
@@ -32,7 +32,7 @@ export async function getQuickAddChips(limit = 6) {
 
     if (error) throw new ActionError(error.message);
     // item_name is nullable in the schema, but every pattern created via
-    // upsertExpensePattern always sets it — filter defensively rather than
+    // upsertExpensePattern always sets it - filter defensively rather than
     // widening the ranker's input type for a case that shouldn't occur.
     const namedPatterns = (patterns ?? []).filter((p): p is typeof p & { item_name: string } => p.item_name !== null);
     if (namedPatterns.length === 0) return [] as QuickAddChip[];

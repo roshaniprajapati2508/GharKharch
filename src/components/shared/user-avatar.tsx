@@ -21,7 +21,7 @@ export function UserAvatar({
   name: string;
   avatarUrl?: string | null;
   className?: string;
-  /** Overrides the fallback initials' text size — AvatarFallback hardcodes `text-sm`, which doesn't inherit from a larger `className` on the wrapper. */
+  /** Overrides the fallback initials' text size - AvatarFallback hardcodes `text-sm`, which doesn't inherit from a larger `className` on the wrapper. */
   textClassName?: string;
 }) {
   return (

@@ -4,21 +4,21 @@
 // rest of the app instead of picking its own number. All entrance variants
 // use `ease-out`-equivalent easing per spec section 8's guidance for
 // entrances, and everything here respects `prefers-reduced-motion` through
-// framer-motion's own `useReducedMotion` (re-exported below) — a component
+// framer-motion's own `useReducedMotion` (re-exported below) - a component
 // should collapse its `initial`/`animate` to the same state when that hook
 // returns true rather than skipping animation setup awkwardly.
 
 import type { Variants, Transition } from "framer-motion";
 
 export const MOTION = {
-  micro: 0.15, // 150ms – micro interactions (120-180ms)
+  micro: 0.15, // 150ms - micro interactions (120-180ms)
   button: 0.18, // 150-200ms
   card: 0.22, // 180-250ms
   sheet: 0.3, // 250-350ms
   page: 0.25, // 200-300ms
 } as const;
 
-const EASE_OUT: Transition["ease"] = [0.16, 1, 0.3, 1]; // expo-out — snappy entrance, no overshoot
+const EASE_OUT: Transition["ease"] = [0.16, 1, 0.3, 1]; // expo-out - snappy entrance, no overshoot
 
 export const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 8 },

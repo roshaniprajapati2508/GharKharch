@@ -1,5 +1,5 @@
 // Natural-language quick entry (spec section 45, 83). Deterministic parsing
-// only — "This can initially use deterministic parsing. AI can be added
+// only - "This can initially use deterministic parsing. AI can be added
 // later," and per spec section 88, AI must never be responsible for core
 // financial calculations, so the amount/date extraction here never goes
 // through an LLM even when one is configured (see lib/ai/expense-parser.ts,
@@ -19,7 +19,7 @@ export interface ParsedQuickEntry {
   amount: number | null;
   paymentMethod: string | null;
   expenseDate: string;
-  /** Words the parser couldn't confidently place — surfaced so the UI can show what was ignored rather than silently dropping it. */
+  /** Words the parser couldn't confidently place - surfaced so the UI can show what was ignored rather than silently dropping it. */
   unmatchedTokens: string[];
 }
 

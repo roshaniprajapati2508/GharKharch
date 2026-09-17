@@ -1,10 +1,10 @@
 "use client";
 
-// "Ask GharKharch" UI (spec sections 46-47) — the user-facing surface for the
+// "Ask GharKharch" UI (spec sections 46-47) - the user-facing surface for the
 // User question -> Intent detection -> DB aggregation -> AI explanation
 // pipeline in lib/actions/ai-assistant.ts. Every answer is derived from real,
 // already-computed household numbers (shown in the "Based on" line below the
-// answer) — the AI, when configured, only rephrases them.
+// answer) - the AI, when configured, only rephrases them.
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";

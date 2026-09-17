@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 // Typography system: Plus Jakarta Sans for headings/titles, Inter for body/UI
-// text — both self-hosted at build time via next/font (zero layout shift,
+// text - both self-hosted at build time via next/font (zero layout shift,
 // no external request at runtime) and exposed as CSS variables that
 // globals.css's `@theme` block turns into the `font-sans`/`font-body` and
 // `font-heading`/`font-headings` Tailwind utilities.

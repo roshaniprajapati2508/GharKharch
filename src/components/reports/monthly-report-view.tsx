@@ -6,7 +6,7 @@ import { generateInsights } from "@/lib/expense-intelligence/spending-analyzer";
 import { useHousehold } from "@/lib/context/household-context";
 import type { ReportData } from "@/lib/actions/reports";
 
-/** The premium monthly-report layout (spec section 32) — also what prints to PDF via the browser's print dialog. */
+/** The premium monthly-report layout (spec section 32) - also what prints to PDF via the browser's print dialog. */
 export function MonthlyReportView({ data }: { data: ReportData }) {
   const { userId, displayName, partner } = useHousehold();
   const total = parseFloat(data.summary.total);
@@ -58,7 +58,7 @@ export function MonthlyReportView({ data }: { data: ReportData }) {
         </div>
         <div className="text-center">
           <p className="text-xs text-muted-foreground">Top category</p>
-          <p className="mt-0.5 truncate text-lg font-semibold text-foreground">{data.categoryBreakdown[0]?.category_name ?? "—"}</p>
+          <p className="mt-0.5 truncate text-lg font-semibold text-foreground">{data.categoryBreakdown[0]?.category_name ?? "-"}</p>
         </div>
       </div>
 

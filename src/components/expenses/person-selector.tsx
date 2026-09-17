@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useHousehold } from "@/lib/context/household-context";
 import type { ExpenseType } from "@/types/database";
 
-/** "Paid by" is always a real user — Me or the partner (spec section 9, 36; see phase-1 note reconciling section 15 vs 36). */
+/** "Paid by" is always a real user - Me or the partner (spec section 9, 36; see phase-1 note reconciling section 15 vs 36). */
 export function PaidBySelector({ value, onChange }: { value: string; onChange: (userId: string) => void }) {
   const { userId, displayName, partner } = useHousehold();
 

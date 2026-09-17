@@ -8,7 +8,7 @@ export function ServiceWorkerRegistrar() {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
     navigator.serviceWorker.register("/sw.js").catch(() => {
       // A failed registration (e.g. unsupported browser, dev-mode HTTP) should
-      // never break the app — GharKharch works fully without a service worker.
+      // never break the app - GharKharch works fully without a service worker.
     });
   }, []);
 

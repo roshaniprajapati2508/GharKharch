@@ -17,8 +17,8 @@ const NAV_ITEMS = [
 
 // `sm` (≥640px) through just under `md` (≥768, e.g. a Galaxy Tab S4 in
 // portrait at 712px) gets a compact icon-only rail instead of the phone's
-// bottom nav (which hides at that same `sm` breakpoint — see bottom-nav.tsx)
-// or the full labeled sidebar — the same pattern used by Gmail, Slack, and
+// bottom nav (which hides at that same `sm` breakpoint - see bottom-nav.tsx)
+// or the full labeled sidebar - the same pattern used by Gmail, Slack, and
 // most enterprise apps for tablet-width screens, so a tablet always gets a
 // layout that uses its width instead of being stuck with the phone UI.
 export function SidebarNav({ onAddClick }: { onAddClick: () => void }) {

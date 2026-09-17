@@ -1,6 +1,6 @@
 // Thin, consistent wrappers over sonner's `toast` (spec section 61: "Create a
 // consistent global toast system"). Existing call sites using `toast.success`
-// / `toast.error` directly from "sonner" keep working — these helpers exist
+// / `toast.error` directly from "sonner" keep working - these helpers exist
 // for the newer interactions that need an icon-prefixed message, an undo
 // action, or a retry action, so that pattern stays identical everywhere it's
 // used rather than each component inventing its own toast shape.

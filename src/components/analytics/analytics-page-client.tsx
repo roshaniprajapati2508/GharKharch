@@ -15,35 +15,61 @@ import { TopExpensesList } from "@/components/analytics/top-expenses-list";
 import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-context";
 import { getAnalyticsData, type AnalyticsPageData, type PersonFilter } from "@/lib/actions/analytics";
 import { getMonthRange, type DateRange } from "@/lib/date-utils";
+import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
 
-export function AnalyticsPageClient() {
+function getAnalyticsCacheKey(range: DateRange, person: PersonFilter) {
+  return `analytics_${range.start}_${range.end}_${person}`;
+}
+
+export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPageData | null }) {
   const { openAdd } = useAddExpense();
   const [period, setPeriod] = useState<QuickPeriod>("month");
-  const [range, setRange] = useState<DateRange>(getMonthRange(0));
+  const [range, setRange] = useState<DateRange>(initialData?.range ?? getMonthRange(0));
   const [person, setPerson] = useState<PersonFilter>("household");
-  const [data, setData] = useState<AnalyticsPageData | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (nextRange: DateRange, nextPerson: PersonFilter) => {
-    setLoading(true);
+  const [data, setData] = useState<AnalyticsPageData | null>(() => {
+    if (initialData) {
+      setClientCachedData(getAnalyticsCacheKey(initialData.range, "household"), initialData);
+      return initialData;
+    }
+    return getClientCachedData<AnalyticsPageData>(getAnalyticsCacheKey(getMonthRange(0), "household"));
+  });
+
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async (nextRange: DateRange, nextPerson: PersonFilter, forceFresh = false) => {
+    const cacheKey = getAnalyticsCacheKey(nextRange, nextPerson);
+    const cached = getClientCachedData<AnalyticsPageData>(cacheKey);
+
+    if (cached && !forceFresh) {
+      setData(cached);
+    } else if (!cached && !data) {
+      setLoading(true);
+    }
+
     const result = await getAnalyticsData({ range: nextRange, person: nextPerson });
     setLoading(false);
+
     if (result.error !== null) {
       toast.error(result.error);
       return;
     }
+
+    setClientCachedData(cacheKey, result.data);
     setData(result.data);
-  }, []);
+  }, [data]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
-    load(range, person);
+    if (!initialData && !data) {
+      load(range, person);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useOnExpenseSaved(
     useCallback(() => {
-      load(range, person);
+      invalidateClientCache("analytics_");
+      load(range, person, true);
     }, [load, range, person])
   );
 

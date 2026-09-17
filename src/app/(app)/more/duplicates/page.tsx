@@ -1,10 +1,10 @@
 "use client";
 
-// "Find duplicates" tool (spec items 39, 45-46, 80) — surfaces potential
+// "Find duplicates" tool (spec items 39, 45-46, 80) - surfaces potential
 // duplicate categories/merchants the household created themselves (the
 // global-category seeding bug already has its own one-time SQL cleanup in
 // migration 011) and lets the user merge them, with the affected-expense
-// count shown before they commit. Never auto-merges — spec item 80 is
+// count shown before they commit. Never auto-merges - spec item 80 is
 // explicit that ambiguous records stay separate until a person confirms.
 
 import { useEffect, useState, useCallback } from "react";
@@ -146,7 +146,7 @@ function MergeDialog({ target, onOpenChange, onMerged }: { target: MergeTarget; 
   const { kind, group } = target;
   // A global/system entry can never be the side a merge deletes (enforced server-side
   // in merge_categories/merge_merchants), so when one is in the group it's the only
-  // valid "keep" choice — pin the selection to it and don't offer the others at all,
+  // valid "keep" choice - pin the selection to it and don't offer the others at all,
   // instead of letting the person pick wrong and hit a confusing error (migration 013).
   const globalIndex = group.isGlobal.findIndex(Boolean);
   const hasGlobal = globalIndex !== -1;
@@ -198,7 +198,7 @@ function MergeDialog({ target, onOpenChange, onMerged }: { target: MergeTarget; 
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Merge {kind === "category" ? "categories" : "merchants"}</DialogTitle>
-          <DialogDescription>Choose which one to keep — the others will be combined into it.</DialogDescription>
+          <DialogDescription>Choose which one to keep - the others will be combined into it.</DialogDescription>
         </DialogHeader>
 
         <RadioGroup value={canonicalId} onValueChange={setCanonicalId} className="gap-3">
@@ -223,7 +223,7 @@ function MergeDialog({ target, onOpenChange, onMerged }: { target: MergeTarget; 
 
         {hasGlobal && (
           <p className="text-xs text-muted-foreground">
-            The global default is always the one kept — the other{group.ids.length > 2 ? "s" : ""} will be merged into it.
+            The global default is always the one kept - the other{group.ids.length > 2 ? "s" : ""} will be merged into it.
           </p>
         )}
 

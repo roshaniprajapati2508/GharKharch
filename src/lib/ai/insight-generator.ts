@@ -15,7 +15,7 @@ export interface AiAnswer {
 /**
  * Explains `structuredFacts` in response to `question`. `deterministicAnswer`
  * is a plain-language sentence built directly from the facts with no AI
- * involved — used verbatim when no API key is configured, and also as the
+ * involved - used verbatim when no API key is configured, and also as the
  * fallback if the AI call fails for any reason, so the assistant always
  * answers with something real.
  */

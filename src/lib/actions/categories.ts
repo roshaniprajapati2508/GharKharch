@@ -74,7 +74,7 @@ export async function updateCategory(id: string, rawInput: Partial<CategoryFormI
  * shared row (it's visible to every household), so this creates a normal
  * household-owned copy seeded from the default's current values plus
  * whatever the caller is changing, and hides the original default for this
- * household only. The new row is then just an ordinary category — full
+ * household only. The new row is then just an ordinary category - full
  * edit/delete/reorder applies to it going forward.
  */
 export async function customizeCategory(globalId: string, changes: Partial<Pick<CategoryFormInput, "name" | "icon" | "color">>) {
@@ -93,7 +93,7 @@ export async function customizeCategory(globalId: string, changes: Partial<Pick<
   });
 }
 
-/** "Remove" for a global default category — hides it from this household's lists/pickers without touching the shared row or any other household (migration 014). */
+/** "Remove" for a global default category - hides it from this household's lists/pickers without touching the shared row or any other household (migration 014). */
 export async function hideGlobalCategory(globalId: string) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();
@@ -119,7 +119,7 @@ export async function deleteCategory(id: string) {
       .eq("category_id", id)
       .is("deleted_at", null);
     if (count && count > 0) {
-      throw new ActionError(`${count} expense(s) still use this category — move or delete them first`);
+      throw new ActionError(`${count} expense(s) still use this category - move or delete them first`);
     }
 
     const { error } = await supabase.from("categories").delete().eq("id", id);
@@ -232,7 +232,7 @@ export async function bulkDeleteCategories(ids: string[]) {
   });
 }
 
-/** Manual reorder (spec item 24: drag/reorder within a sibling group) — writes sort_order 0..n for the given ordered id list. */
+/** Manual reorder (spec item 24: drag/reorder within a sibling group) - writes sort_order 0..n for the given ordered id list. */
 export async function reorderCategories(orderedIds: string[]) {
   return runAction(async () => {
     const { supabase } = await requireHouseholdContext();

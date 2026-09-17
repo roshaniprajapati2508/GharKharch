@@ -5,7 +5,7 @@
 //   2. Exact item mapping        5. Keyword matching
 //   3. Previous user correction  6. Frequency          7. Default category
 //
-// GharKharch doesn't keep a separate "correction log" table — instead,
+// GharKharch doesn't keep a separate "correction log" table - instead,
 // `expense_patterns` (keyed on item_name + merchant_id) already always holds
 // the MOST RECENTLY chosen category for that exact pairing (see
 // `upsertExpensePattern` in actions/expenses.ts, which overwrites category_id
@@ -67,11 +67,11 @@ function findByName(tree: CategoryWithChildren[], categoryName: string, subcateg
   return { categoryId: cat.id, subcategoryId: sub?.id ?? null };
 }
 
-/** Pure scoring function — every DB read happens in the caller (a server action), so this stays trivially testable. */
+/** Pure scoring function - every DB read happens in the caller (a server action), so this stays trivially testable. */
 export function suggestCategory(itemName: string, ctx: CategorySuggesterContext): CategorySuggestion | null {
   const normalized = itemName.trim().toLowerCase();
 
-  // Tier 1+3: exact (item, merchant) pairing — the most specific and most
+  // Tier 1+3: exact (item, merchant) pairing - the most specific and most
   // recently-corrected signal available.
   if (ctx.exactItemMerchant) {
     const names = resolveCategoryNames(ctx.exactItemMerchant.category_id, ctx.exactItemMerchant.subcategory_id, ctx.categoryTree);
@@ -148,6 +148,6 @@ export function suggestCategory(itemName: string, ctx: CategorySuggesterContext)
     }
   }
 
-  // Tier 7: no confident default — let the user pick.
+  // Tier 7: no confident default - let the user pick.
   return null;
 }

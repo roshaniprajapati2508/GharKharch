@@ -30,7 +30,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           </div>
           {/* Bottom padding on phones must clear the bottom nav bar *and* the
               floating Add button, which is raised half outside the bar
-              (see bottom-nav.tsx) — 5rem covers both with a small buffer,
+              (see bottom-nav.tsx) - 5rem covers both with a small buffer,
               plus the device's own safe-area inset on top of that. From
               `sm` up there's no bottom nav (SidebarNav takes over), so it
               drops back to ordinary page padding. */}
@@ -53,7 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     // `reducedMotion="user"` (spec item 87): every framer-motion `motion.*` component anywhere
     // under this shell automatically collapses its transitions to instant when the OS-level
-    // prefers-reduced-motion setting is on — a single systematic fix instead of each component
+    // prefers-reduced-motion setting is on - a single systematic fix instead of each component
     // having to remember to call `useReducedMotion()` itself.
     <MotionConfig reducedMotion="user">
       <OfflineProvider>

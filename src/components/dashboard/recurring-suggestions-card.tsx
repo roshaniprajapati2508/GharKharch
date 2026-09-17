@@ -39,7 +39,7 @@ function saveDismissed(names: Set<string>) {
 
 /**
  * Surfaces recurring-pattern detections (spec section 11) as a dismiss-able
- * suggestion — confirming always requires an explicit tap; nothing here ever
+ * suggestion - confirming always requires an explicit tap; nothing here ever
  * creates a recurring expense on its own (spec section 88).
  */
 export function RecurringSuggestionsCard() {
@@ -136,7 +136,7 @@ export function RecurringSuggestionsCard() {
             <DialogTitle>Set up recurring expense</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            {confirmTarget?.itemName} — usually {confirmTarget?.cadenceLabel}, average {confirmTarget && formatINR(confirmTarget.amount)}.
+            {confirmTarget?.itemName} - usually {confirmTarget?.cadenceLabel}, average {confirmTarget && formatINR(confirmTarget.amount)}.
           </p>
           <div className="mt-1 flex flex-wrap gap-2">
             {FREQUENCIES.map((f) => (

@@ -54,15 +54,15 @@ export function SummaryHeader({
   const stats: { label: string; value: string }[] = isSingleDay
     ? [
         { label: "Transactions", value: String(summary.txn_count) },
-        { label: "Avg / transaction", value: summary.txn_count > 0 ? formatINR(avgPerTxn) : "—" },
-        { label: "Largest expense", value: summary.largest_amount ? formatINR(summary.largest_amount) : "—" },
-        { label: "Top category", value: topCategory?.category_name ?? "—" },
+        { label: "Avg / transaction", value: summary.txn_count > 0 ? formatINR(avgPerTxn) : "-" },
+        { label: "Largest expense", value: summary.largest_amount ? formatINR(summary.largest_amount) : "-" },
+        { label: "Top category", value: topCategory?.category_name ?? "-" },
       ]
     : [
         { label: "Daily average", value: formatINR(dailyAvg) },
-        { label: "Avg / transaction", value: summary.txn_count > 0 ? formatINR(avgPerTxn) : "—" },
+        { label: "Avg / transaction", value: summary.txn_count > 0 ? formatINR(avgPerTxn) : "-" },
         { label: "Transactions", value: String(summary.txn_count) },
-        { label: "Largest expense", value: summary.largest_amount ? formatINR(summary.largest_amount) : "—" },
+        { label: "Largest expense", value: summary.largest_amount ? formatINR(summary.largest_amount) : "-" },
       ];
 
   return (

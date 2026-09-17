@@ -6,12 +6,12 @@ import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/a
 import type { Tables } from "@/types/database";
 
 // The `budgets` table (migration 001) and its RLS policy (migration 002) have
-// existed since the very first migration — comment on the table literally
-// says "architecture prepared now; UI can come later" — but no action or
+// existed since the very first migration - comment on the table literally
+// says "architecture prepared now; UI can come later" - but no action or
 // screen was ever built against it. This is that UI: monthly spending caps,
 // per category or for the whole household, with progress against what's
 // actually been spent (reusing the same `get_category_breakdown` RPC the
-// Dashboard/Analytics screens already use — never a fresh raw query).
+// Dashboard/Analytics screens already use - never a fresh raw query).
 
 const budgetInputSchema = z.object({
   category_id: z.string().uuid().nullable(),
@@ -42,7 +42,7 @@ export async function listBudgetsForMonth(periodMonth: string) {
       .select("*")
       .eq("household_id", householdId)
       .eq("period_month", periodMonth)
-      .is("person_id", null) // person-level budgets aren't exposed in this first pass — see upsertBudget
+      .is("person_id", null) // person-level budgets aren't exposed in this first pass - see upsertBudget
       .order("created_at", { ascending: true });
     if (error) throw new ActionError(error.message);
 
@@ -78,7 +78,7 @@ export async function listBudgetsForMonth(periodMonth: string) {
  * `category_id` is null) for a given month. Deliberately does its own
  * find-then-write instead of `.upsert(..., { onConflict })`: the table's
  * unique constraint is `(household_id, category_id, person_id, period_month)`,
- * and Postgres never treats two NULLs as equal for uniqueness purposes — so
+ * and Postgres never treats two NULLs as equal for uniqueness purposes - so
  * an `ON CONFLICT` on that constraint silently never fires while `person_id`
  * is NULL (our only supported case so far) and would insert duplicate rows
  * instead of updating the existing one.

@@ -1,7 +1,7 @@
 "use server";
 
 // Report generation (spec sections 31, 32, 62): reuses the same Phase 4
-// aggregate functions as the Analytics screen — a report is just a curated,
+// aggregate functions as the Analytics screen - a report is just a curated,
 // presentation-focused view over the same server-aggregated numbers.
 
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";

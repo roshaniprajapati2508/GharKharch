@@ -73,7 +73,7 @@ export default function ProfilePage() {
       return;
     }
 
-    // Don't upload yet — let the person choose which part of the photo
+    // Don't upload yet - let the person choose which part of the photo
     // lands inside the circular avatar first (see PhotoCropDialog).
     setPendingCropFile(file);
   }
@@ -118,7 +118,7 @@ export default function ProfilePage() {
   async function handleRemovePhoto() {
     setUploading(true);
     const supabase = createClient();
-    // Best-effort cleanup — the profile row's avatar_url is the source of truth for what's shown,
+    // Best-effort cleanup - the profile row's avatar_url is the source of truth for what's shown,
     // so we clear that regardless of whether the storage object list/remove succeeds.
     try {
       const { data: files } = await supabase.storage.from("profile-images").list(userId);
@@ -126,7 +126,7 @@ export default function ProfilePage() {
         await supabase.storage.from("profile-images").remove(files.map((f) => `${userId}/${f.name}`));
       }
     } catch {
-      // ignore — clearing the DB column below is what actually controls what's displayed
+      // ignore - clearing the DB column below is what actually controls what's displayed
     }
     const result = await setMyAvatarUrl(null);
     setUploading(false);

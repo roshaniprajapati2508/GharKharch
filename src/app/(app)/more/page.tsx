@@ -129,7 +129,7 @@ export default function MorePage() {
                 )}
               </CardTitle>
             )}
-            <CardDescription>Shared by you {partner ? `and ${partner.displayName}` : "— invite your partner to join"}</CardDescription>
+            <CardDescription>Shared by you {partner ? `and ${partner.displayName}` : "- invite your partner to join"}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {partner && (

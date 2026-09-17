@@ -1,4 +1,4 @@
--- GharKharch: Premium UX phase — category/merchant duplicate cleanup + safe
+-- GharKharch: Premium UX phase - category/merchant duplicate cleanup + safe
 -- merge functions (spec items 4, 37-46, 79-80).
 --
 -- ROOT CAUSE of the duplicate "Milk / Milk", "Curd / Curd" global categories
@@ -14,9 +14,9 @@
 -- loop, `create ... if not exists`, `create or replace function`).
 
 -- =========================================================
--- Part A — one-time cleanup of the accidental global category duplicates
+-- Part A - one-time cleanup of the accidental global category duplicates
 -- =========================================================
--- Global categories only (household_id is null) — household-created
+-- Global categories only (household_id is null) - household-created
 -- duplicates are left alone here; those are merged interactively via
 -- merge_categories() below, since deleting a household's own data without
 -- their say-so would be wrong.
@@ -25,7 +25,7 @@
 -- duplicate PARENT categories (e.g. two "Electronics" rows) reparents their
 -- children onto the same canonical parent, which can itself newly create a
 -- child-level duplicate (two "Croma" rows now sharing one parent) that a
--- single pass would never revisit. Bounded to 20 passes as a safety valve —
+-- single pass would never revisit. Bounded to 20 passes as a safety valve -
 -- real duplication depth here is at most 2 levels (top-level + subcategory).
 
 do $$
@@ -87,10 +87,10 @@ begin
 end $$;
 
 -- =========================================================
--- Part B — same cleanup for global merchants, defensively
+-- Part B - same cleanup for global merchants, defensively
 -- =========================================================
 -- 009's seed already guards against this with `on conflict ... do nothing`,
--- so this loop should normally be a no-op — it's here only in case an older
+-- so this loop should normally be a no-op - it's here only in case an older
 -- run of 009 predates that guard.
 
 do $$
@@ -138,7 +138,7 @@ begin
 end $$;
 
 -- =========================================================
--- Part C — prevent this class of bug from recurring
+-- Part C - prevent this class of bug from recurring
 -- =========================================================
 -- household_id and parent_id are both coalesced to a fixed sentinel so that
 -- multiple NULLs (global scope / top-level category) are compared as equal,
@@ -155,10 +155,10 @@ create unique index if not exists idx_categories_unique_scope
   where is_active;
 
 -- =========================================================
--- Part D — read-only merge-impact preview (spec item 39: "Affected expenses: 42")
+-- Part D - read-only merge-impact preview (spec item 39: "Affected expenses: 42")
 -- =========================================================
 -- security invoker + `stable`: relies on the caller's own RLS, same pattern
--- as the migration 006 analytics functions — never bypasses row security.
+-- as the migration 006 analytics functions - never bypasses row security.
 
 create or replace function public.get_category_merge_impact(p_duplicate_id uuid)
 returns jsonb
@@ -189,12 +189,12 @@ as $$
 $$;
 
 -- =========================================================
--- Part E — safe interactive merge functions (spec items 39, 45, 79)
+-- Part E - safe interactive merge functions (spec items 39, 45, 79)
 -- =========================================================
 -- Both are SECURITY DEFINER (need to touch rows across tables regardless of
 -- the caller's own RLS visibility into every dependent table) but both
 -- independently re-check authorization before doing anything: the duplicate
--- being merged away must belong to the caller's own household — a global/
+-- being merged away must belong to the caller's own household - a global/
 -- system category or merchant can never be the one deleted here, only ever
 -- the *canonical* side of a merge. This matches spec item 81's "do not allow
 -- dangerous edits to global records."
@@ -288,7 +288,7 @@ end;
 $$;
 
 -- =========================================================
--- Part F — potential-duplicate finder (spec item 80: "Find duplicates")
+-- Part F - potential-duplicate finder (spec item 80: "Find duplicates")
 -- =========================================================
 -- Groups active categories/merchants by normalized name within the caller's
 -- own visible scope (their household's own rows + global defaults), so the

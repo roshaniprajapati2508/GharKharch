@@ -1,5 +1,5 @@
 // Bare canvas math for turning a react-easy-crop selection into an actual
-// image file — react-easy-crop only reports *what* to crop (a pixel
+// image file - react-easy-crop only reports *what* to crop (a pixel
 // rectangle on the source image), not the cropped pixels themselves.
 
 export type PixelCrop = { x: number; y: number; width: number; height: number };

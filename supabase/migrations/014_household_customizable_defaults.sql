@@ -1,8 +1,8 @@
 -- =========================================================
--- Migration 014 — let a household "customize" a global default
+-- Migration 014 - let a household "customize" a global default
 -- =========================================================
 -- Categories and merchants with household_id = null are global/system data,
--- shared and visible to every household — that's why every update/delete
+-- shared and visible to every household - that's why every update/delete
 -- action in this app refuses to touch them directly (see e.g.
 -- update_category/update_merchant's household_id checks, and 011's merge
 -- functions). That's still correct: one household editing "Milk" in place
@@ -17,7 +17,7 @@
 -- merchant seeded from the default's values, which is then a completely
 -- ordinary editable row like any the household created themselves.
 --
--- Two small per-household "hide" tables are enough for this — no changes to
+-- Two small per-household "hide" tables are enough for this - no changes to
 -- categories/merchants themselves, and no risk to shared data.
 
 create table if not exists household_hidden_categories (
@@ -34,7 +34,7 @@ create table if not exists household_hidden_merchants (
   primary key (household_id, merchant_id)
 );
 
-comment on table household_hidden_categories is 'Per-household suppression of a global/default category (spec: "customize a default" without mutating shared data). A row here means this household no longer sees that category in lists/pickers — the category row itself, and every other household''s view of it, is untouched.';
+comment on table household_hidden_categories is 'Per-household suppression of a global/default category (spec: "customize a default" without mutating shared data). A row here means this household no longer sees that category in lists/pickers - the category row itself, and every other household''s view of it, is untouched.';
 comment on table household_hidden_merchants is 'Per-household suppression of a global/system merchant, mirroring household_hidden_categories.';
 
 alter table household_hidden_categories enable row level security;
@@ -71,12 +71,12 @@ create policy "Members can unhide a merchant for their household"
   using (public.is_household_member(household_id));
 
 -- =========================================================
--- customize_category / customize_merchant — the "Edit" path for a default
+-- customize_category / customize_merchant - the "Edit" path for a default
 -- =========================================================
 -- Creates a household-owned copy seeded from the global row's current
 -- values (or the caller's edits, if provided), hides the global original for
 -- this household, and returns the new row. Everything after this is just an
--- ordinary household category/merchant — full edit/delete/reorder applies.
+-- ordinary household category/merchant - full edit/delete/reorder applies.
 
 create or replace function public.customize_category(
   p_global_id uuid,
