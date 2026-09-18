@@ -69,6 +69,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
+  // Tells supporting mobile browsers (Chrome/Android 108+) to actually shrink
+  // the layout viewport when the on-screen keyboard opens, instead of
+  // overlaying it on top of a viewport that stays full-height. Without this,
+  // a fixed bottom sheet sized off vh/dvh can end up with its header pushed
+  // above the visible area the instant an input inside it is focused - the
+  // exact 'top bar cut off while typing' bug on Add Expense.
+  interactiveWidget: "resizes-content",
 };
 
 // Organization structured data (spec section 15): only real, verifiable

@@ -116,7 +116,7 @@ export function ShoppingModeSheet({
   return (
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[94vh]">
+        <DrawerContent className="max-h-[94dvh]">
           <DrawerHeader>
             <DrawerTitle>Shopping mode</DrawerTitle>
             <DrawerDescription>Add several items quickly — each is saved as its own expense.</DrawerDescription>

@@ -272,7 +272,7 @@ export function ExpenseSearch({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showClose={false}
-        className="top-0 h-dvh max-h-dvh w-screen max-w-none translate-y-0 rounded-none p-0 sm:top-1/2 sm:h-auto sm:max-h-[85vh] sm:w-[92vw] sm:max-w-2xl sm:-translate-y-1/2 sm:rounded-2xl sm:border sm:shadow-2xl overflow-hidden flex flex-col bg-background"
+        className="top-0 h-dvh max-h-dvh w-screen max-w-none translate-y-0 rounded-none p-0 sm:top-1/2 sm:h-auto sm:max-h-[85dvh] sm:w-[92vw] sm:max-w-2xl sm:-translate-y-1/2 sm:rounded-2xl sm:border sm:shadow-2xl overflow-hidden flex flex-col bg-background"
       >
         <DialogTitle className="sr-only">Command Search Expenses</DialogTitle>
 

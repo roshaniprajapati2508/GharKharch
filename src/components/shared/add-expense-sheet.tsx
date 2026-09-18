@@ -718,7 +718,7 @@ export function AddExpenseSheet({
   return (
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent showClose={false} className="max-w-lg sm:max-w-xl mx-auto max-h-[92vh] flex flex-col focus:outline-none rounded-t-2xl sm:rounded-t-3xl border-t border-border shadow-2xl bg-card">
+        <DrawerContent showClose={false} className="max-w-lg sm:max-w-xl mx-auto max-h-[92dvh] flex flex-col focus:outline-none rounded-t-2xl sm:rounded-t-3xl border-t border-border shadow-2xl bg-card">
           {/* Header */}
           <DrawerHeader className="px-5 pt-4 pb-2.5 border-b border-border/40">
             <div className="flex items-center justify-between">

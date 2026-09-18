@@ -52,7 +52,7 @@ export function MerchantPickerView({
   }
 
   return (
-    <div className="flex h-full max-h-[80vh] flex-col">
+    <div className="flex h-full max-h-[80dvh] flex-col">
       <Command className="flex flex-1 flex-col overflow-hidden" shouldFilter={false}>
         <CommandInput placeholder="Search merchants…" value={query} onValueChange={setQuery} autoFocus />
         <CommandList className="flex-1 overflow-y-auto">
@@ -102,7 +102,7 @@ export function MerchantPicker({
 }) {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh]">
+      <DrawerContent className="max-h-[85dvh]">
         <DrawerHeader>
           <DrawerTitle>Choose a merchant</DrawerTitle>
           <DrawerDescription>Search or add a new shop, app, or vendor.</DrawerDescription>

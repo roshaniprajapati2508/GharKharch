@@ -62,7 +62,7 @@ export function ExpenseFiltersSheet({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[90vh]">
+      <DrawerContent className="max-h-[90dvh]">
         <DrawerHeader>
           <DrawerTitle>Filter expenses</DrawerTitle>
         </DrawerHeader>

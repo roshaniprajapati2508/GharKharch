@@ -69,7 +69,7 @@ export function CategoryPickerView({
   }
 
   return (
-    <div className="flex h-full max-h-[80vh] flex-col">
+    <div className="flex h-full max-h-[80dvh] flex-col">
       {!creating ? (
         <Command className="flex flex-1 flex-col overflow-hidden" shouldFilter={true}>
           <CommandInput placeholder="Search categories…" autoFocus />
@@ -167,7 +167,7 @@ export function CategoryPicker({
 }) {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh]">
+      <DrawerContent className="max-h-[85dvh]">
         <DrawerHeader>
           <DrawerTitle>Choose a category</DrawerTitle>
           <DrawerDescription>Global defaults plus anything you&apos;ve added.</DrawerDescription>

@@ -229,7 +229,7 @@ export function SpendingCalendar() {
       )}
 
       <Drawer open={!!selectedDate} onOpenChange={(open) => !open && setSelectedDate(null)}>
-        <DrawerContent className="max-h-[85vh] max-w-lg sm:max-w-xl mx-auto rounded-t-3xl shadow-2xl" showClose={false}>
+        <DrawerContent className="max-h-[85dvh] max-w-lg sm:max-w-xl mx-auto rounded-t-3xl shadow-2xl" showClose={false}>
           <DrawerHeader className="relative pb-2">
             <DrawerTitle className="text-base font-semibold text-foreground">
               {selectedDate
