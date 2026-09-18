@@ -13,6 +13,8 @@ import {
   Tag,
   ArrowRight,
   Receipt,
+  Plus,
+  ShoppingCart,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -23,6 +25,8 @@ import { CategoryIcon } from "@/lib/icon-map";
 import { formatINR } from "@/lib/utils";
 import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";
 import type { EnrichedExpense } from "@/lib/actions/expenses";
+import { parseQuickEntry } from "@/lib/expense-intelligence/nl-parser";
+import { useAddExpense } from "@/lib/context/add-expense-context";
 
 const RECENT_KEY = "gharkharch:recent-searches";
 
@@ -136,6 +140,7 @@ export function ExpenseSearch({
   onDelete,
 }: ExpenseSearchProps) {
   const { householdId, userId, partner } = useHousehold();
+  const { openAdd, openShopping } = useAddExpense();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [query, setQuery] = useState("");
@@ -179,6 +184,27 @@ export function ExpenseSearch({
     () => parseSearchIntent(query, partner?.displayName, categories, merchants),
     [query, partner, categories, merchants]
   );
+
+  // Direct NL execution (spec: Pillar 2). Typing something that reads like a
+  // quick add - "Petrol 500 upi", "Milk 60" - rather than a search, offers to
+  // open the Add Expense sheet pre-filled instead of only filtering results.
+  // Only surfaced when the text didn't already resolve to a more specific
+  // search intent (category/merchant/person/month/amount-comparison), and
+  // needs both a plausible item name and a parsed amount to avoid firing on
+  // an ordinary search term that happens to contain a number.
+  const quickEntry = useMemo(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 4 || intent.type !== "text") return null;
+    const parsed = parseQuickEntry(trimmed);
+    if (parsed.amount === null || !parsed.itemName.trim()) return null;
+    return parsed;
+  }, [query, intent]);
+
+  function handleQuickEntryAdd() {
+    saveRecent(query);
+    onOpenChange(false);
+    openAdd(query.trim());
+  }
 
   useEffect(() => {
     if (!query.trim()) {
@@ -348,6 +374,23 @@ export function ExpenseSearch({
 
         {/* Command Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
+          {/* Direct NL Execution: looks like a quick-add, not a search */}
+          {quickEntry && (
+            <button
+              type="button"
+              onClick={handleQuickEntryAdd}
+              className="flex w-full items-center justify-between gap-2 rounded-xl border border-brand-primary/30 bg-gradient-to-r from-brand-primary/10 to-emerald-500/5 px-3.5 py-2.5 text-left hover:border-brand-primary/50 hover:bg-brand-primary/15 transition-all cursor-pointer"
+            >
+              <span className="flex items-center gap-2 text-xs font-medium text-foreground">
+                <Plus className="h-3.5 w-3.5 shrink-0 text-brand-primary" />
+                Add <strong>&quot;{quickEntry.itemName}&quot;</strong>
+                {" "}&middot; {formatINR(quickEntry.amount ?? 0)}
+                {quickEntry.paymentMethod ? ` · ${quickEntry.paymentMethod}` : ""}
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-brand-primary" />
+            </button>
+          )}
+
           {/* Active Search Intent Indicator */}
           {query.trim() && intent.type !== "text" && intent.type !== "empty" && (
             <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 text-xs font-medium text-emerald-800 dark:text-emerald-300">
@@ -449,6 +492,46 @@ export function ExpenseSearch({
               <div className="space-y-2">
                 <p className="px-1 text-xs font-semibold text-muted-foreground">Quick Actions</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenChange(false);
+                      openAdd();
+                    }}
+                    className="flex items-center justify-between rounded-xl border border-border bg-card p-3 text-left hover:border-primary/40 hover:bg-muted/50 transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Plus className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">Add New Expense</p>
+                        <p className="text-[10px] text-muted-foreground">Or just type it above (e.g. &quot;Milk 60&quot;)</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenChange(false);
+                      openShopping();
+                    }}
+                    className="flex items-center justify-between rounded-xl border border-border bg-card p-3 text-left hover:border-primary/40 hover:bg-muted/50 transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <ShoppingCart className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">Shopping Mode</p>
+                        <p className="text-[10px] text-muted-foreground">Add several items in one go</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+
                   <Link
                     href="/more/ask"
                     onClick={() => onOpenChange(false)}

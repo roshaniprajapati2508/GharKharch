@@ -79,6 +79,16 @@ interface AddExpenseSheetProps {
   onSaved?: (expense: Tables<"expenses">) => void;
   onOpenShoppingMode?: () => void;
   initialMode?: "single" | "shopping";
+  /**
+   * Free-text quick entry to parse and pre-fill on open (spec: Pillar 2,
+   * command-palette "direct NL execution" - e.g. typing "Petrol 500 UPI" into
+   * Cmd+K opens this sheet already filled in via parseQuickEntry()). Only
+   * applied once per sheet-open, and only for a fresh add (never overrides
+   * editExpense/duplicateFrom). Still requires the normal Save tap - this is
+   * a pre-fill, not an auto-save, consistent with this app's review-before-
+   * apply rule for anything parsed automatically.
+   */
+  initialQuickEntry?: string | null;
 }
 
 interface ShoppingRow {
@@ -168,6 +178,7 @@ export function AddExpenseSheet({
   onOpenChange,
   editExpense,
   duplicateFrom,
+  initialQuickEntry,
   onOptimisticAdd,
   onSaved,
   initialMode = "single",
@@ -447,6 +458,31 @@ export function AddExpenseSheet({
     setNlEntryOpen(false);
     toast.message("Parsed — review details");
   }
+
+  // Apply a quick-entry string handed in from outside (Cmd+K command palette
+  // "direct NL execution") the moment the sheet opens with one, exactly once
+  // per open - never for an edit/duplicate, and never overriding whatever the
+  // person types afterwards.
+  const appliedQuickEntryRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) {
+      appliedQuickEntryRef.current = null;
+      return;
+    }
+    if (!initialQuickEntry || editExpense || duplicateFrom) return;
+    if (appliedQuickEntryRef.current === initialQuickEntry) return;
+    appliedQuickEntryRef.current = initialQuickEntry;
+
+    const parsed = parseQuickEntry(initialQuickEntry);
+    setForm((f) => ({
+      ...f,
+      itemName: parsed.itemName || f.itemName,
+      amount: parsed.amount !== null ? String(parsed.amount) : f.amount,
+      paymentMethod: parsed.paymentMethod ?? f.paymentMethod ?? "UPI",
+      date: parsed.expenseDate,
+    }));
+    toast.message("Parsed from search — review details");
+  }, [open, initialQuickEntry, editExpense, duplicateFrom]);
 
   // Voice entry - speech-to-text into the same "Smart parse text" box above,
   // reusing parseQuickEntry() rather than a separate path. Deliberately

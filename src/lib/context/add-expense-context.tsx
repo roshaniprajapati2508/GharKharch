@@ -5,8 +5,13 @@ import { AddExpenseSheet } from "@/components/shared/add-expense-sheet";
 import { ShoppingModeSheet } from "@/components/shared/shopping-mode-sheet";
 
 interface AddExpenseContextValue {
-  /** Opens the single global "Add Expense" sheet from anywhere in the app (empty states, quick actions, nav). */
-  openAdd: () => void;
+  /**
+   * Opens the single global "Add Expense" sheet from anywhere in the app
+   * (empty states, quick actions, nav). Pass `quickEntry` (e.g. from the
+   * Cmd+K command palette) to pre-fill the sheet via parseQuickEntry() -
+   * see AddExpenseSheet's `initialQuickEntry` prop.
+   */
+  openAdd: (quickEntry?: string) => void;
   /** Opens the global "Shopping mode" sheet — several quick line items in one sitting (spec section 1). Reachable from inside the Add Expense sheet itself (see its header link) as well as from here directly. */
   openShopping: () => void;
   /** Registers a callback fired after the global sheet successfully saves a new expense. Returns an unsubscribe function. */
@@ -49,9 +54,13 @@ export function useOnExpenseSaved(callback: () => void) {
 export function AddExpenseProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [shoppingOpen, setShoppingOpen] = useState(false);
+  const [quickEntry, setQuickEntry] = useState<string | null>(null);
   const listeners = useRef(new Set<() => void>());
 
-  const openAdd = useCallback(() => setOpen(true), []);
+  const openAdd = useCallback((entry?: string) => {
+    setQuickEntry(entry ?? null);
+    setOpen(true);
+  }, []);
   const openShopping = useCallback(() => setShoppingOpen(true), []);
 
   const subscribeSaved = useCallback((fn: () => void) => {
@@ -72,6 +81,7 @@ export function AddExpenseProvider({ children }: { children: React.ReactNode }) 
         open={open}
         onOpenChange={setOpen}
         onSaved={notifySaved}
+        initialQuickEntry={quickEntry}
         onOpenShoppingMode={() => {
           setOpen(false);
           setShoppingOpen(true);
