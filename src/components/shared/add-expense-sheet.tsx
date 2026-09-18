@@ -21,6 +21,8 @@ import {
   Zap,
   Check,
   Calendar,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import {
   Drawer,
@@ -57,6 +59,7 @@ import { isOffline, isNetworkError, queueExpense } from "@/lib/offline/offline-q
 import { useOffline } from "@/lib/context/offline-context";
 import { parseQuickEntry } from "@/lib/expense-intelligence/nl-parser";
 import { matchKeywordRule } from "@/lib/expense-intelligence/keyword-map";
+import { fuzzyMatches } from "@/lib/expense-intelligence/fuzzy-match";
 import { detectPriceChange, type PriceChangeFlag } from "@/lib/actions/insights";
 import { ReceiptReviewSheet, type ReceiptReviewValues } from "@/components/shared/receipt-review-sheet";
 import { checkAiConfigured, scanReceipt } from "@/lib/actions/receipts";
@@ -444,6 +447,69 @@ export function AddExpenseSheet({
     toast.message("Parsed — review details");
   }
 
+  // Voice entry - speech-to-text into the same "Smart parse text" box above,
+  // reusing parseQuickEntry() rather than a separate path. Deliberately
+  // stops short of auto-applying the transcript straight to the form: this
+  // app's own rule elsewhere is that an AI/automatically-captured guess
+  // (receipt scanning, category suggestions) is always shown for the person
+  // to review before it's saved, never applied silently - a misheard amount
+  // ("16" vs "60") is exactly the kind of mistake that review step exists
+  // to catch, so voice fills the text box and still requires the same one
+  // "Parse" tap the typed flow already needs.
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<{ stop: () => void } | null>(null);
+
+  useEffect(() => {
+    setVoiceSupported(
+      typeof window !== "undefined" && !!((window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition)
+    );
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
+
+  function startVoiceInput() {
+    const SpeechRecognitionCtor =
+      (window as unknown as Record<string, unknown>).SpeechRecognition ||
+      (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      toast.error("Voice input isn't supported in this browser - try Chrome on Android.");
+      return;
+    }
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    setNlEntryOpen(true);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Web Speech API has no shared TS lib typing across browsers
+    const recognition: any = new (SpeechRecognitionCtor as any)();
+    recognition.lang = "gu-IN"; // Gujarati (India) - Chrome keeps English/Hinglish loanwords ("UPI", "cash") readable within the transcript too
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.continuous = false;
+
+    recognition.onstart = () => setListening(true);
+    recognition.onerror = () => {
+      setListening(false);
+      toast.error("Didn't catch that - please try again.");
+    };
+    recognition.onend = () => setListening(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setNlText(transcript);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }
+
   function applyMerchant(merchant: Tables<"merchants">) {
     setForm((f) => ({ ...f, merchant, itemName: merchant.name }));
     if (!categoryTouched && merchant.subcategory_id) {
@@ -474,7 +540,7 @@ export function AddExpenseSheet({
 
   const predictiveMatches = useMemo(() => {
     const q = form.itemName.trim().toLowerCase();
-    if (!q || isEditing || predictionDismissed) return [];
+    if (isEditing || predictionDismissed) return [];
 
     interface PredictiveCandidate {
       key: string;
@@ -490,14 +556,65 @@ export function AddExpenseSheet({
       paymentMethod: string;
       paidBy: string;
       expenseType: ExpenseType;
-      matchType: "history" | "merchant" | "keyword";
+      matchType: "history" | "merchant" | "keyword" | "amount";
       badgeLabel: string;
     }
 
     const results: PredictiveCandidate[] = [];
     const seenKeys = new Set<string>();
 
-    // 1. Check past expense history / patterns
+    // Reverse price inference: nothing typed in Item/Description yet, but
+    // an amount has been entered - suggest past expenses of the same (or
+    // very close) amount instead of waiting for the item name. Ranked by
+    // exact-amount matches first, then how often that item/amount pair has
+    // come up before, then by closeness.
+    if (!q) {
+      const amt = parseFloat(form.amount);
+      if (!amountTouched || !amt || amt <= 0) return [];
+
+      const scored = pastPredictions
+        .map((pred) => {
+          const diff = Math.abs(pred.amount - amt);
+          const pct = diff / Math.max(pred.amount, amt, 1);
+          return { pred, diff, pct };
+        })
+        .filter((s) => s.diff === 0 || s.pct <= 0.05)
+        .sort((a, b) => {
+          if (a.diff === 0 && b.diff !== 0) return -1;
+          if (b.diff === 0 && a.diff !== 0) return 1;
+          if (b.pred.usageCount !== a.pred.usageCount) return b.pred.usageCount - a.pred.usageCount;
+          return a.diff - b.diff;
+        });
+
+      for (const { pred, diff } of scored) {
+        const key = `amt::${pred.itemName.toLowerCase()}::${pred.merchantId ?? ""}`;
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        const merchObj = pred.merchantId ? merchants.find((m) => m.id === pred.merchantId) ?? null : null;
+        results.push({
+          key,
+          itemName: pred.itemName,
+          amount: pred.amount,
+          categoryId: pred.categoryId,
+          subcategoryId: pred.subcategoryId,
+          categoryName: pred.categoryName,
+          subcategoryName: pred.subcategoryName,
+          categoryIcon: pred.categoryIcon ?? "circle",
+          categoryColor: pred.categoryColor ?? "neutral",
+          merchant: merchObj,
+          paymentMethod: pred.paymentMethod || "UPI",
+          paidBy: pred.paidBy,
+          expenseType: pred.expenseType,
+          matchType: "amount",
+          badgeLabel: diff === 0 ? "Same amount before" : `~${formatINR(pred.amount)} before`,
+        });
+        if (results.length >= 4) break;
+      }
+
+      return results;
+    }
+
+    // 1. Check past expense history / patterns - exact/substring first
     for (const pred of pastPredictions) {
       const itemMatch = pred.itemName.toLowerCase().includes(q);
       const merchMatch = pred.merchantName?.toLowerCase().includes(q);
@@ -532,7 +649,41 @@ export function AddExpenseSheet({
       if (results.length >= 4) break;
     }
 
-    // 2. Check Merchants and Aliases
+    // 1b. Fuzzy typo-tolerant fallback over history, only if the exact pass
+    // above didn't already fill up - catches things like "ygesh" for
+    // "Yogesh" or "kheero" for "Khiru" from fast mobile typing.
+    if (results.length < 4 && q.length >= 3) {
+      for (const pred of pastPredictions) {
+        const key = `${pred.itemName.toLowerCase()}::${pred.merchantId ?? ""}`;
+        if (seenKeys.has(key)) continue;
+        const fuzzyItem = fuzzyMatches(pred.itemName, q);
+        const fuzzyMerch = pred.merchantName ? fuzzyMatches(pred.merchantName, q) : false;
+        if (fuzzyItem || fuzzyMerch) {
+          seenKeys.add(key);
+          const merchObj = pred.merchantId ? merchants.find((m) => m.id === pred.merchantId) ?? null : null;
+          results.push({
+            key,
+            itemName: pred.itemName,
+            amount: pred.amount,
+            categoryId: pred.categoryId,
+            subcategoryId: pred.subcategoryId,
+            categoryName: pred.categoryName,
+            subcategoryName: pred.subcategoryName,
+            categoryIcon: pred.categoryIcon ?? "circle",
+            categoryColor: pred.categoryColor ?? "neutral",
+            merchant: merchObj,
+            paymentMethod: pred.paymentMethod || "UPI",
+            paidBy: pred.paidBy,
+            expenseType: pred.expenseType,
+            matchType: "history",
+            badgeLabel: "Did you mean this?",
+          });
+        }
+        if (results.length >= 4) break;
+      }
+    }
+
+    // 2. Check Merchants and Aliases - exact/substring first
     if (results.length < 4) {
       for (const m of merchants) {
         const nameMatch = m.name.toLowerCase().includes(q);
@@ -569,7 +720,43 @@ export function AddExpenseSheet({
       }
     }
 
-    // 3. Check Keyword Map
+    // 2b. Fuzzy typo-tolerant fallback over merchants/aliases.
+    if (results.length < 4 && q.length >= 3) {
+      for (const m of merchants) {
+        const key = `${m.name.toLowerCase()}::${m.id}`;
+        if (seenKeys.has(key)) continue;
+        const fuzzyName = fuzzyMatches(m.name, q);
+        const fuzzyAlias = Array.isArray(m.aliases) && m.aliases.some((a) => fuzzyMatches(a, q));
+        if (fuzzyName || fuzzyAlias) {
+          seenKeys.add(key);
+          const sub = m.subcategory_id ? categoryFlat.find((c) => c.id === m.subcategory_id) : null;
+          const parent = sub?.parent_id ? categoryFlat.find((c) => c.id === sub.parent_id) : sub;
+          const topCat = parent ? categoryFlat.find((c) => c.id === parent.id) : null;
+
+          results.push({
+            key,
+            itemName: m.name,
+            amount: null,
+            categoryId: topCat?.id ?? "seed-shopping",
+            subcategoryId: sub?.id ?? null,
+            categoryName: topCat?.name ?? "Shopping",
+            subcategoryName: sub?.name ?? null,
+            categoryIcon: topCat?.icon ?? "store",
+            categoryColor: topCat?.color ?? "indigo",
+            merchant: m,
+            paymentMethod: "UPI",
+            paidBy: userId,
+            expenseType: "household",
+            matchType: "merchant",
+            badgeLabel: "Did you mean this?",
+          });
+        }
+        if (results.length >= 4) break;
+      }
+    }
+
+    // 3. Check Keyword Map (matchKeywordRule already has its own internal
+    // fuzzy fallback - see keyword-map.ts)
     if (results.length < 4) {
       const rule = matchKeywordRule(q);
       if (rule) {
@@ -605,7 +792,7 @@ export function AddExpenseSheet({
     }
 
     return results.slice(0, 4);
-  }, [form.itemName, isEditing, predictionDismissed, pastPredictions, merchants, categoryFlat, userId]);
+  }, [form.itemName, form.amount, amountTouched, isEditing, predictionDismissed, pastPredictions, merchants, categoryFlat, userId]);
 
   function applyPredictiveMatch(pred: any) {
     setForm((f) => ({
@@ -1126,14 +1313,37 @@ export function AddExpenseSheet({
                     Item / Description
                   </Label>
                   {!isEditing && (
-                    <button
-                      type="button"
-                      onClick={() => setNlEntryOpen(!nlEntryOpen)}
-                      className="text-xs text-brand-primary flex items-center gap-1 hover:underline font-semibold"
-                    >
-                      <Sparkles className="h-3 w-3" />
-                      {nlEntryOpen ? "Normal input" : "Smart parse text"}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {voiceSupported && (
+                        <button
+                          type="button"
+                          onClick={startVoiceInput}
+                          title={listening ? "Stop listening" : "Speak your expense (Gujarati)"}
+                          className={cn(
+                            "flex items-center gap-1 text-xs font-semibold hover:underline",
+                            listening ? "text-destructive" : "text-brand-primary"
+                          )}
+                        >
+                          {listening ? (
+                            <>
+                              <MicOff className="h-3 w-3 animate-pulse" /> Listening…
+                            </>
+                          ) : (
+                            <>
+                              <Mic className="h-3 w-3" /> Speak
+                            </>
+                          )}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setNlEntryOpen(!nlEntryOpen)}
+                        className="text-xs text-brand-primary flex items-center gap-1 hover:underline font-semibold"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        {nlEntryOpen ? "Normal input" : "Smart parse text"}
+                      </button>
+                    </div>
                   )}
                 </div>
 

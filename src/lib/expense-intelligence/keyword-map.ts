@@ -8,6 +8,8 @@
 // usage (exact item/merchant pattern) always outranks it (see
 // category-suggester.ts). Keep entries mapped to real seeded names only.
 
+import { fuzzyMatches } from "./fuzzy-match";
+
 export interface KeywordRule {
   keywords: string[];
   categoryName: string;
@@ -102,8 +104,19 @@ export const KEYWORD_RULES: KeywordRule[] = [
 
 /** Finds the first keyword rule whose keyword appears in the (already-lowercased) text. */
 export function matchKeywordRule(text: string): KeywordRule | null {
+  // Exact/substring pass first - cheap, and correctly-spelled text should
+  // never need the fuzzy fallback below.
   for (const rule of KEYWORD_RULES) {
     if (rule.keywords.some((k) => text.includes(k))) return rule;
   }
+
+  // Typo-tolerant fallback pass (fuzzy typo tolerance, e.g. "docter" for
+  // "doctor", "xrox" for "xerox") - only reached when nothing matched
+  // exactly, and only for text that's substantial enough to be worth it.
+  if (text.trim().length < 3) return null;
+  for (const rule of KEYWORD_RULES) {
+    if (rule.keywords.some((k) => fuzzyMatches(text, k))) return rule;
+  }
+
   return null;
 }
