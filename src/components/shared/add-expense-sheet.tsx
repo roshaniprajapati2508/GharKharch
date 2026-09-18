@@ -182,6 +182,7 @@ export function AddExpenseSheet({
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [merchantPickerOpen, setMerchantPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   // Shopping mode state
   const [shoppingRows, setShoppingRows] = useState<ShoppingRow[]>([emptyShoppingRow(null)]);
@@ -719,18 +720,33 @@ export function AddExpenseSheet({
   const yesterdayIso = addDaysISO(todayIso, -1);
   const isCustomDate = form.date !== todayIso && form.date !== yesterdayIso;
   const displayDateText = useMemo(() => {
-    if (!form.date) return "Choose date";
-    try {
-      const [y, m, d] = form.date.split("-").map(Number);
-      if (y && m && d) {
-        const dt = new Date(y, m - 1, d);
-        return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    if (isCustomDate && form.date) {
+      try {
+        const [y, m, d] = form.date.split("-").map(Number);
+        if (y && m && d) {
+          const dt = new Date(y, m - 1, d);
+          return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+        }
+      } catch {
+        return form.date;
       }
-    } catch {
-      // fallback
     }
-    return form.date;
-  }, [form.date]);
+    return "Choose date";
+  }, [form.date, isCustomDate]);
+
+  const handleOpenDatePicker = () => {
+    if (dateInputRef.current) {
+      if (typeof dateInputRef.current.showPicker === "function") {
+        try {
+          dateInputRef.current.showPicker();
+        } catch {
+          dateInputRef.current.focus();
+        }
+      } else {
+        dateInputRef.current.focus();
+      }
+    }
+  };
 
   // Top 7 categories for 1-tap quick select (never empty)
   const topCategories = useMemo(() => {
@@ -1126,6 +1142,7 @@ export function AddExpenseSheet({
                   <div className="relative inline-flex items-center">
                     <button
                       type="button"
+                      onClick={handleOpenDatePicker}
                       className={cn(
                         "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer",
                         isCustomDate
@@ -1137,9 +1154,21 @@ export function AddExpenseSheet({
                       <span>{displayDateText}</span>
                     </button>
                     <input
+                      ref={dateInputRef}
                       type="date"
                       value={form.date}
-                      onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setForm((f) => ({ ...f, date: e.target.value }));
+                        }
+                      }}
+                      onClick={(e) => {
+                        try {
+                          if (typeof e.currentTarget.showPicker === "function") {
+                            e.currentTarget.showPicker();
+                          }
+                        } catch {}
+                      }}
                       className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
                       aria-label="Pick custom date"
                     />
