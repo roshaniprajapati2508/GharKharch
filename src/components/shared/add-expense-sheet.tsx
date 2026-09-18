@@ -20,6 +20,7 @@ import {
   ShoppingCart,
   Zap,
   Check,
+  Calendar,
 } from "lucide-react";
 import {
   Drawer,
@@ -716,6 +717,20 @@ export function AddExpenseSheet({
 
   const todayIso = getTodayISO();
   const yesterdayIso = addDaysISO(todayIso, -1);
+  const isCustomDate = form.date !== todayIso && form.date !== yesterdayIso;
+  const displayDateText = useMemo(() => {
+    if (!form.date) return "Choose date";
+    try {
+      const [y, m, d] = form.date.split("-").map(Number);
+      if (y && m && d) {
+        const dt = new Date(y, m - 1, d);
+        return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+      }
+    } catch {
+      // fallback
+    }
+    return form.date;
+  }, [form.date]);
 
   // Top 7 categories for 1-tap quick select (never empty)
   const topCategories = useMemo(() => {
@@ -1077,18 +1092,19 @@ export function AddExpenseSheet({
                   get their own line and the native date input gets full
                   width below them, instead of all three fighting for space
                   in one cramped row. */}
+              {/* Date */}
               <div className="pt-1">
                 <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                   Date
                 </Label>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, date: todayIso }))}
                     className={cn(
-                      "shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                      "shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all",
                       form.date === todayIso
-                        ? "bg-brand-primary text-white border-brand-primary"
+                        ? "bg-brand-primary text-white border-brand-primary shadow-sm"
                         : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
                     )}
                   >
@@ -1098,27 +1114,36 @@ export function AddExpenseSheet({
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, date: yesterdayIso }))}
                     className={cn(
-                      "shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                      "shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all",
                       form.date === yesterdayIso
-                        ? "bg-brand-primary text-white border-brand-primary"
+                        ? "bg-brand-primary text-white border-brand-primary shadow-sm"
                         : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
                     )}
                   >
                     Yesterday
                   </button>
-                  <Input
-                    type="date"
-                    value={form.date}
-                    onClick={(e) => {
-                      try {
-                        e.currentTarget.showPicker?.();
-                      } catch {
-                        // ignore if unsupported in older engines
-                      }
-                    }}
-                    onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                    className="h-9 min-w-0 flex-1 text-xs bg-background cursor-pointer px-2.5 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:ml-auto [&::-webkit-calendar-picker-indicator]:opacity-70 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
-                  />
+
+                  <div className="relative inline-flex items-center">
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer",
+                        isCustomDate
+                          ? "bg-brand-primary text-white border-brand-primary shadow-sm"
+                          : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
+                      )}
+                    >
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>{displayDateText}</span>
+                    </button>
+                    <input
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                      aria-label="Pick custom date"
+                    />
+                  </div>
                 </div>
               </div>
 
