@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, Plus, Pencil, Store, Trash2, Search, X, Tags } from "lucide-react";
+import { ChevronLeft, Plus, Pencil, Store, Trash2, Search, X, Tags, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -251,6 +251,13 @@ export default function MerchantsSettingsPage() {
                 </Badge>
               )}
               <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                <Link
+                  href={`/more/merchants/${m.id}`}
+                  className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-primary"
+                  title="View merchant profile"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                </Link>
                 {!m.household_id && (
                   <button
                     onClick={() => {

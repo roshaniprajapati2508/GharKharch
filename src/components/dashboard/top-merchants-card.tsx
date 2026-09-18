@@ -21,7 +21,11 @@ export function TopMerchantsCard({ merchants, limit = 5 }: { merchants: Merchant
 
       <div className="mt-3 flex flex-col divide-y divide-border">
         {shown.map((m) => (
-          <div key={m.merchant_id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+          <Link
+            key={m.merchant_id}
+            href={`/more/merchants/${m.merchant_id}`}
+            className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0 hover:opacity-80"
+          >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-mint text-brand-primary">
               <Store className="h-4 w-4" />
             </span>
@@ -30,7 +34,7 @@ export function TopMerchantsCard({ merchants, limit = 5 }: { merchants: Merchant
               <p className="text-xs text-muted-foreground">{m.txn_count} purchase{m.txn_count === 1 ? "" : "s"}</p>
             </div>
             <p className="shrink-0 text-sm font-semibold text-foreground">{formatINR(m.total)}</p>
-          </div>
+          </Link>
         ))}
       </div>
     </div>
