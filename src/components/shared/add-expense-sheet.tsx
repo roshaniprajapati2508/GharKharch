@@ -1003,8 +1003,10 @@ export function AddExpenseSheet({
                 )}
               </div>
 
-              {/* Paid By & Expense Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {/* Paid By & Expense Type - always two dedicated columns, at
+                  every width, so they never collapse into a single stacked
+                  column on a narrower window. */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
                   <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                     Paid By
@@ -1082,12 +1084,12 @@ export function AddExpenseSheet({
                 <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                   Date
                 </Label>
-                <div className="grid grid-cols-2 gap-1.5 sm:flex sm:items-center">
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, date: todayIso }))}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                      "shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
                       form.date === todayIso
                         ? "bg-brand-primary text-white border-brand-primary"
                         : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
@@ -1099,7 +1101,7 @@ export function AddExpenseSheet({
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, date: yesterdayIso }))}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                      "shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
                       form.date === yesterdayIso
                         ? "bg-brand-primary text-white border-brand-primary"
                         : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
@@ -1111,7 +1113,7 @@ export function AddExpenseSheet({
                     type="date"
                     value={form.date}
                     onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                    className="col-span-2 h-9 text-xs bg-background sm:col-span-1 sm:flex-1"
+                    className="h-9 min-w-0 flex-1 text-xs bg-background"
                   />
                 </div>
               </div>
