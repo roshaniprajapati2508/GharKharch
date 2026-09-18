@@ -209,6 +209,38 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 44px;
 }
 
+/* Shimmer skeleton loading state (spec: Module 2 "Mercury & Stripe" visual
+   polish) - a moving highlight sweep across a muted block, used in place of
+   a flat `animate-pulse` fade wherever a loading placeholder should read as
+   "actively loading" rather than just dimmed. Usage: className="skeleton-shimmer
+   rounded-xl bg-muted h-16 w-full" (same sizing classes as an animate-pulse
+   block, swap the animation utility only). */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
+  animation: skeleton-shimmer-sweep 1.6s ease-in-out infinite;
+}
+:root[data-theme="dark"] .skeleton-shimmer::after {
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.08), transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .skeleton-shimmer::after {
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.08), transparent);
+  }
+}
+@keyframes skeleton-shimmer-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* Tailwind's preflight reset sets `button { cursor: default }` to match native
    browser button behavior - correct for a native OS-style button, but on the
    web it means every one of our buttons (filter chips, row actions, tabs,

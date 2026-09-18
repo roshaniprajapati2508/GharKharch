@@ -306,5 +306,26 @@ the filename and this header comment changed.
   marketplace/client merchants (Amazon/Flipkart/Meesho Seller Payout,
   Website Orders, Freelance Client), and adds get_income_summary() for the
   dashboard's total-inflow card. Safe to run any time after 022.
+- 024 depends on 001 (`households`) only. Adds `automation_rules` (the IFTTT
+  Smart Rules engine) and `household_hidden_automation_rules` (mirrors
+  `household_hidden_categories`/`_merchants` from 014 - lets a household turn
+  off a global default rule without mutating the shared row). Actions store
+  category/merchant/paid-by by NAME, not raw id (`category_name`,
+  `subcategory_name`, `merchant_name`, `paid_by_name`) - same "match by name,
+  resolve at use-time" convention as 020-023, since real ids don't exist at
+  migration-seed-time. Seeds 11 global default rules across Homemade
+  Business expenses, business/personal income detection, and household/daily
+  food, per the keyword lists in the Developer Implementation Brief. Safe to
+  run any time after 001; independent of 019-023.
+- 025 depends on 001 (`households`, `is_household_member()`) and Supabase's
+  built-in `auth.users`. Adds `activity_events` (a real, explicitly-logged
+  audit table - distinct from the dashboard's existing ActivityFeedCard,
+  which only infers events from expense timestamps) plus two functions,
+  `mark_activity_read`/`mark_all_activity_read`, backing the inbox's
+  per-user read state and "Mark all as read". No dependency on 019-024;
+  safe to run any time after 001. Note: this migration only creates the
+  table/functions - it does not backfill history, so the inbox will be
+  empty until new expense saves / rule fires / budget alerts start logging
+  to it going forward.
 - As always: Claude prepares these files only. Running them against your live
   Supabase project is entirely up to you, via the SQL Editor or the CLI.

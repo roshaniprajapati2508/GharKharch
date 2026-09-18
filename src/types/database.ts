@@ -426,12 +426,80 @@ export interface Database {
         Update: Partial<{ household_id: string; merchant_id: string }>;
         Relationships: [];
       };
+      household_hidden_automation_rules: {
+        Row: { household_id: string; rule_id: string; hidden_at: string };
+        Insert: { household_id: string; rule_id: string };
+        Update: Partial<{ household_id: string; rule_id: string }>;
+        Relationships: [];
+      };
+      automation_rules: {
+        Row: {
+          id: string;
+          household_id: string | null; // null = global default rule (migration 024)
+          name: string;
+          priority: number;
+          is_active: boolean;
+          conditions: {
+            keywords: string[];
+            min_amount: number | null;
+            max_amount: number | null;
+            entry_type: "expense" | "income" | null;
+            time_of_day: string | null;
+          };
+          actions: {
+            category_name: string | null;
+            subcategory_name: string | null;
+            merchant_name: string | null;
+            payment_method: string | null;
+            paid_by_name: string | null;
+            entry_type: "expense" | "income" | null;
+          };
+          execution_count: number;
+          last_executed_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Omit<Database["public"]["Tables"]["automation_rules"]["Row"], "id" | "created_at" | "execution_count">> & {
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["automation_rules"]["Row"]>;
+        Relationships: [];
+      };
+      activity_events: {
+        Row: {
+          id: string;
+          household_id: string;
+          actor_id: string | null;
+          event_type: string; // 'expense_created' | 'expense_updated' | 'expense_deleted' | 'rule_triggered' | 'budget_alert' | ...
+          entity_type: string | null; // 'expense' | 'merchant' | 'rule' | 'budget' | null
+          entity_id: string | null;
+          summary: string;
+          metadata: Record<string, unknown>;
+          is_alert: boolean;
+          read_by: string[];
+          created_at: string;
+        };
+        Insert: Partial<Omit<Database["public"]["Tables"]["activity_events"]["Row"], "id" | "created_at" | "read_by">> & {
+          household_id: string;
+          event_type: string;
+          summary: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["activity_events"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
       create_household: {
         Args: { p_name?: string };
         Returns: string;
+      };
+      mark_activity_read: {
+        Args: { p_event_id: string };
+        Returns: void;
+      };
+      mark_all_activity_read: {
+        Args: { p_household_id: string };
+        Returns: void;
       };
       join_household_by_code: {
         Args: { p_code: string };

@@ -68,6 +68,37 @@ export const paymentMethodFormSchema = z.object({
 });
 export type PaymentMethodFormInput = z.infer<typeof paymentMethodFormSchema>;
 
+// IFTTT Smart Rules (spec: Module 1). conditions/actions are validated
+// loosely (fields default to null/[]) since the rule builder UI lets a
+// user save a partially-filled rule and come back to it - the matching
+// engine (expense-intelligence/automation-rules.ts) already treats every
+// field as optional at match/resolve time.
+export const automationRuleConditionsSchema = z.object({
+  keywords: z.array(z.string().trim().min(1)).default([]),
+  min_amount: z.coerce.number().nullable().optional().default(null),
+  max_amount: z.coerce.number().nullable().optional().default(null),
+  entry_type: entryTypeEnum.nullable().optional().default(null),
+  time_of_day: z.string().nullable().optional().default(null),
+});
+
+export const automationRuleActionsSchema = z.object({
+  category_name: z.string().trim().nullable().optional().default(null),
+  subcategory_name: z.string().trim().nullable().optional().default(null),
+  merchant_name: z.string().trim().nullable().optional().default(null),
+  payment_method: z.string().trim().nullable().optional().default(null),
+  paid_by_name: z.string().trim().nullable().optional().default(null),
+  entry_type: entryTypeEnum.nullable().optional().default(null),
+});
+
+export const automationRuleFormSchema = z.object({
+  name: z.string().trim().min(1, "Give this rule a name").max(120),
+  priority: z.coerce.number().int().default(100),
+  is_active: z.boolean().default(true),
+  conditions: automationRuleConditionsSchema.default({}),
+  actions: automationRuleActionsSchema.default({}),
+});
+export type AutomationRuleFormInput = z.infer<typeof automationRuleFormSchema>;
+
 export const userCardFormSchema = z.object({
   custom_name: z.string().trim().min(1, "Enter a name for this card").max(80),
   issuer_id: z.string().uuid().nullable().optional(),

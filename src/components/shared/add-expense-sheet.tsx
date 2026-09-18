@@ -67,6 +67,8 @@ import { checkAiConfigured, scanReceipt } from "@/lib/actions/receipts";
 import type { ParsedReceipt } from "@/lib/ai/receipt-parser";
 import { createClient } from "@/lib/supabase/client";
 import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";
+import { listAutomationRules, recordRuleExecution } from "@/lib/actions/automation-rules";
+import { matchAutomationRule, resolveRuleActions, type AutomationRule } from "@/lib/expense-intelligence/automation-rules";
 import type { Tables, ExpenseType } from "@/types/database";
 import { cn, formatINR } from "@/lib/utils";
 
@@ -184,7 +186,7 @@ export function AddExpenseSheet({
   onSaved,
   initialMode = "single",
 }: AddExpenseSheetProps) {
-  const { userId, householdId } = useHousehold();
+  const { userId, householdId, displayName, partner } = useHousehold();
   const { refreshPendingCount } = useOffline();
   const isEditing = !!editExpense;
   const isNewExpense = !isEditing && !duplicateFrom;
@@ -245,12 +247,21 @@ export function AddExpenseSheet({
   // (e.g. tapping "+ Add" then immediately tapping the merchant field).
   const [refsLoading, setRefsLoading] = useState(true);
 
+  // Smart Rules (spec: Module 1) - keyword-triggered auto-fill.
+  const [automationRules, setAutomationRules] = useState<AutomationRule[]>(
+    () => getClientCachedData<AutomationRule[]>("automation_rules_list") ?? []
+  );
+  const [appliedRule, setAppliedRule] = useState<{ id: string; name: string } | null>(null);
+  const lastRuleCheckedText = useRef<string | null>(null);
+
   useEffect(() => {
     if (!open) return;
 
     setEntryMode(initialMode);
     setShoppingRows([emptyShoppingRow(null)]);
     setRefsLoading(true);
+    setAppliedRule(null);
+    lastRuleCheckedText.current = null;
 
     // Refresh refs in background
     Promise.all([
@@ -262,7 +273,8 @@ export function AddExpenseSheet({
       listBankAccounts(),
       getQuickAddChips(),
       getPastExpensePredictions(),
-    ]).then(([cats, merch, methods, userCards, upi, banks, chips, preds]) => {
+      listAutomationRules(),
+    ]).then(([cats, merch, methods, userCards, upi, banks, chips, preds, rules]) => {
       setRefsLoading(false);
       if (cats.data && cats.data.tree.length > 0) {
         setCategoryTree(cats.data.tree);
@@ -316,6 +328,10 @@ export function AddExpenseSheet({
       if (preds.data) {
         setPastPredictions(preds.data);
         setClientCachedData("past_expense_predictions", preds.data);
+      }
+      if (rules.data) {
+        setAutomationRules(rules.data);
+        setClientCachedData("automation_rules_list", rules.data);
       }
     }).catch(() => {
       // Network hiccup - stop showing "Loading..." so the merchant picker
@@ -436,6 +452,57 @@ export function AddExpenseSheet({
     }));
     setCategoryTouched(true);
     setSuggestion(null);
+  }
+
+  // Smart Rules auto-fill (spec: Module 1) - runs ahead of the manual
+  // "suggestion" pill above: when the typed/spoken text matches an active
+  // rule's keywords, apply its actions immediately (0ms, no click needed)
+  // and show a "Auto-filled by rule" badge, rather than waiting for the
+  // user to accept a suggestion. Only fires while the user hasn't already
+  // touched category/merchant themselves, so it never clobbers a manual
+  // choice, and only once per distinct item text (lastRuleCheckedText)
+  // so retyping the same text doesn't keep re-triggering it.
+  useEffect(() => {
+    if (!open || isEditing) return;
+    const text = form.itemName.trim();
+    if (!text) {
+      setAppliedRule(null);
+      lastRuleCheckedText.current = null;
+      return;
+    }
+    if (categoryTouched || form.merchant || text === lastRuleCheckedText.current) return;
+    lastRuleCheckedText.current = text;
+
+    const amount = parseFloat(form.amount);
+    const rule = matchAutomationRule(text, automationRules, {
+      amount: Number.isFinite(amount) ? amount : null,
+      entryType: form.entryType,
+    });
+    if (!rule) return;
+
+    const members = [
+      { id: userId, displayName },
+      ...(partner ? [{ id: partner.id, displayName: partner.displayName }] : []),
+    ];
+    const resolved = resolveRuleActions(rule, categoryTree, merchants, members);
+    applyMatchedRule(rule, resolved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.itemName, form.amount, form.entryType, categoryTouched, form.merchant, open, isEditing, automationRules, categoryTree, merchants]);
+
+  function applyMatchedRule(
+    rule: AutomationRule,
+    resolved: ReturnType<typeof resolveRuleActions>
+  ) {
+    setForm((f) => ({
+      ...f,
+      entryType: resolved.entryType ?? f.entryType,
+      category: resolved.category ?? f.category,
+      merchant: resolved.merchant ?? f.merchant,
+      paidBy: resolved.paidBy ?? f.paidBy,
+      paymentMethod: resolved.paymentMethod ?? f.paymentMethod,
+    }));
+    if (resolved.category) setCategoryTouched(true);
+    setAppliedRule({ id: rule.id, name: rule.name });
   }
 
   const merchantHint = useMemo(() => {
@@ -1056,6 +1123,7 @@ export function AddExpenseSheet({
 
       if (!isEditing) onOptimisticAdd?.(result.data);
       onSaved?.(result.data);
+      if (appliedRule) recordRuleExecution(appliedRule.id, appliedRule.name).catch(() => {});
       toast.success(isEditing ? "Expense updated" : "Expense added");
       onOpenChange(false);
     } catch (err) {
@@ -1306,6 +1374,12 @@ export function AddExpenseSheet({
                   </div>
                 )}
               </div>
+
+              {appliedRule && (
+                <div className="flex items-center gap-1.5 rounded-full bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400 w-fit">
+                  ✨ Auto-filled by rule: {appliedRule.name}
+                </div>
+              )}
 
               {/* 1-Tap Category Quick Chips with Rich Pastel Colors (Always rendered immediately 0ms) */}
               <div>

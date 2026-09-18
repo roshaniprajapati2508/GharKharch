@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { expenseFormSchema, type ExpenseFormInput } from "@/lib/validations/expense";
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
+import { logActivityEvent } from "@/lib/actions/activity-events";
 import { getTodayISO } from "@/lib/date-utils";
 import type { Tables } from "@/types/database";
 
@@ -135,6 +136,19 @@ export async function createExpense(rawInput: ExpenseFormInput, recurringRuleId?
       amount: input.amount,
     });
 
+    try {
+      await logActivityEvent(supabase, {
+        householdId,
+        actorId: userId,
+        eventType: input.entry_type === "income" ? "income_created" : "expense_created",
+        entityType: "expense",
+        entityId: data.id,
+        summary: `${input.entry_type === "income" ? "Logged income" : "Added expense"}: ${input.item_name} (${input.amount})`,
+      });
+    } catch {
+      // Activity logging must never fail the actual save.
+    }
+
     revalidateExpensePages();
     return data as Tables<"expenses">;
   });
@@ -142,7 +156,7 @@ export async function createExpense(rawInput: ExpenseFormInput, recurringRuleId?
 
 export async function updateExpense(id: string, rawInput: ExpenseFormInput) {
   return runAction(async () => {
-    const { supabase, householdId } = await requireHouseholdContext();
+    const { supabase, userId, householdId } = await requireHouseholdContext();
     const input = expenseFormSchema.parse(rawInput);
 
     const { data, error } = await supabase
@@ -170,6 +184,19 @@ export async function updateExpense(id: string, rawInput: ExpenseFormInput) {
       .single();
 
     if (error || !data) throw new ActionError(error?.message ?? "Couldn't update the expense");
+
+    try {
+      await logActivityEvent(supabase, {
+        householdId,
+        actorId: userId,
+        eventType: "expense_updated",
+        entityType: "expense",
+        entityId: data.id,
+        summary: `Edited: ${input.item_name} (${input.amount})`,
+      });
+    } catch {
+      // Activity logging must never fail the actual save.
+    }
 
     revalidateExpensePages();
     return data as Tables<"expenses">;
@@ -299,7 +326,7 @@ export async function bulkRestoreExpenses(ids: string[]) {
 
 export async function softDeleteExpense(id: string) {
   return runAction(async () => {
-    const { supabase, householdId } = await requireHouseholdContext();
+    const { supabase, userId, householdId } = await requireHouseholdContext();
     const { data, error } = await supabase
       .from("expenses")
       .update({ deleted_at: new Date().toISOString() })
@@ -308,6 +335,18 @@ export async function softDeleteExpense(id: string) {
       .select()
       .single();
     if (error || !data) throw new ActionError(error?.message ?? "Couldn't delete the expense");
+    try {
+      await logActivityEvent(supabase, {
+        householdId,
+        actorId: userId,
+        eventType: "expense_deleted",
+        entityType: "expense",
+        entityId: data.id,
+        summary: `Deleted: ${data.item_name} (${data.amount})`,
+      });
+    } catch {
+      // Activity logging must never fail the actual save.
+    }
     revalidateExpensePages();
     return data as Tables<"expenses">;
   });
