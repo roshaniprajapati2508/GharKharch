@@ -20,12 +20,21 @@ export function ExpenseList({
   onDuplicate,
   onDelete,
   onAdd,
+  selectionMode = false,
+  selectedIds,
+  onToggleSelect,
+  onInlineUpdate,
 }: {
   expenses: EnrichedExpense[];
   onEdit: (expense: EnrichedExpense) => void;
   onDuplicate: (expense: EnrichedExpense) => void;
   onDelete: (expense: EnrichedExpense) => void;
   onAdd?: () => void;
+  /** Multi-select + inline edit (spec: Pillar 4). All four are optional and default to off, so existing callers (e.g. the dashboard's compact "recent" list) are unaffected. */
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (expense: EnrichedExpense) => void;
+  onInlineUpdate?: (expense: EnrichedExpense, field: "amount" | "item_name", value: string) => Promise<boolean>;
 }) {
   const [noteTarget, setNoteTarget] = useState<EnrichedExpense | null>(null);
   const [noteValue, setNoteValue] = useState("");
@@ -105,6 +114,10 @@ export function ExpenseList({
                 }}
                 onAnalyze={() => setAnalyzeTarget(e)}
                 onViewReceipt={() => viewReceipt(e)}
+                selectionMode={selectionMode}
+                selected={selectedIds?.has(e.id) ?? false}
+                onToggleSelect={onToggleSelect ? () => onToggleSelect(e) : undefined}
+                onInlineUpdate={onInlineUpdate ? (field, value) => onInlineUpdate(e, field, value) : undefined}
               />
             ))}
           </div>

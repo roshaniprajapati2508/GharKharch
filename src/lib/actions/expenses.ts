@@ -190,6 +190,111 @@ export async function updateExpenseNotes(id: string, notes: string) {
   });
 }
 
+/**
+ * Patches a single field on one expense (spec: Pillar 4, inline
+ * double-click-to-edit on the Expenses table). Deliberately separate from
+ * updateExpense() - that one requires the full ExpenseFormInput because the
+ * Add Expense sheet always has the whole form in hand; an inline edit only
+ * ever touches the one cell the person clicked, so re-validating/round-
+ * tripping the entire expense for a single-field patch would be both more
+ * code and a bigger blast radius if something else on the row is stale.
+ */
+export async function updateExpenseField(id: string, field: "amount" | "item_name", value: string) {
+  return runAction(async () => {
+    const { supabase, householdId } = await requireHouseholdContext();
+
+    let patch: { amount: number } | { item_name: string };
+    if (field === "amount") {
+      const amount = parseFloat(value);
+      if (!Number.isFinite(amount) || amount <= 0) throw new ActionError("Enter a valid amount");
+      patch = { amount };
+    } else {
+      const item_name = value.trim();
+      if (!item_name) throw new ActionError("Item name can't be empty");
+      patch = { item_name };
+    }
+
+    const { data, error } = await supabase
+      .from("expenses")
+      .update(patch)
+      .eq("id", id)
+      .eq("household_id", householdId)
+      .select()
+      .single();
+    if (error || !data) throw new ActionError(error?.message ?? "Couldn't update the expense");
+    revalidateExpensePages();
+    return data as Tables<"expenses">;
+  });
+}
+
+/**
+ * Applies the same category and/or payment-method change to several expenses
+ * at once (spec: Pillar 4, bulk actions on the Expenses table's multi-select
+ * bar). Both fields are optional so the caller only sends what the person
+ * actually changed. `subcategory_id` is always cleared alongside a bulk
+ * category change - a subcategory of the OLD category would be meaningless
+ * once the parent category changes, and there's no per-row subcategory
+ * picker in the bulk bar to choose a new one.
+ */
+export async function bulkUpdateExpenses(
+  ids: string[],
+  patch: { category_id?: string; subcategory_id?: string | null; payment_method?: string }
+) {
+  return runAction(async () => {
+    if (ids.length === 0) throw new ActionError("No expenses selected");
+    const { supabase, householdId } = await requireHouseholdContext();
+
+    const updatePayload: { category_id?: string; subcategory_id?: string | null; payment_method?: string } = {};
+    if (patch.category_id) {
+      updatePayload.category_id = patch.category_id;
+      updatePayload.subcategory_id = patch.subcategory_id ?? null;
+    }
+    if (patch.payment_method) updatePayload.payment_method = patch.payment_method;
+    if (Object.keys(updatePayload).length === 0) throw new ActionError("Nothing to update");
+
+    const { error } = await supabase
+      .from("expenses")
+      .update(updatePayload)
+      .in("id", ids)
+      .eq("household_id", householdId);
+    if (error) throw new ActionError(error.message);
+    revalidateExpensePages();
+    return { count: ids.length };
+  });
+}
+
+/** Soft-deletes several expenses at once (spec: Pillar 4 bulk actions). Same soft-delete-only rule as softDeleteExpense - never a hard delete. */
+export async function bulkSoftDeleteExpenses(ids: string[]) {
+  return runAction(async () => {
+    if (ids.length === 0) throw new ActionError("No expenses selected");
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { error } = await supabase
+      .from("expenses")
+      .update({ deleted_at: new Date().toISOString() })
+      .in("id", ids)
+      .eq("household_id", householdId);
+    if (error) throw new ActionError(error.message);
+    revalidateExpensePages();
+    return { count: ids.length };
+  });
+}
+
+/** Restores several soft-deleted expenses at once - powers the bulk-delete undo toast. */
+export async function bulkRestoreExpenses(ids: string[]) {
+  return runAction(async () => {
+    if (ids.length === 0) return { count: 0 };
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { error } = await supabase
+      .from("expenses")
+      .update({ deleted_at: null })
+      .in("id", ids)
+      .eq("household_id", householdId);
+    if (error) throw new ActionError(error.message);
+    revalidateExpensePages();
+    return { count: ids.length };
+  });
+}
+
 export async function softDeleteExpense(id: string) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();

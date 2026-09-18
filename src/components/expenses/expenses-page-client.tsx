@@ -2,14 +2,25 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, X, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ExpenseList } from "@/components/expenses/expense-list";
+import { BulkActionBar } from "@/components/expenses/bulk-action-bar";
 import { ExpenseFiltersSheet, type AppliedFilters } from "@/components/expenses/expense-filters-sheet";
 import { ExpenseSearch } from "@/components/expenses/expense-search";
 import { AddExpenseSheet } from "@/components/shared/add-expense-sheet";
-import { getExpenses, softDeleteExpense, restoreExpense, duplicateExpense, type EnrichedExpense } from "@/lib/actions/expenses";
+import {
+  getExpenses,
+  softDeleteExpense,
+  restoreExpense,
+  duplicateExpense,
+  updateExpenseField,
+  bulkUpdateExpenses,
+  bulkSoftDeleteExpenses,
+  bulkRestoreExpenses,
+  type EnrichedExpense,
+} from "@/lib/actions/expenses";
 import type { CategoryWithChildren } from "@/lib/actions/categories";
 import { formatINR } from "@/lib/utils";
 import { toastUndo } from "@/lib/toast-helpers";
@@ -31,6 +42,8 @@ export function ExpensesPageClient({
   const [searchOpen, setSearchOpen] = useState(searchParams.get("focus") === "search");
   const [editTarget, setEditTarget] = useState<EnrichedExpense | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (searchParams.get("focus") === "search") {
@@ -93,6 +106,71 @@ export function ExpensesPageClient({
     refetch(filters);
   }
 
+  async function handleInlineUpdate(expense: EnrichedExpense, field: "amount" | "item_name", value: string): Promise<boolean> {
+    const result = await updateExpenseField(expense.id, field, value);
+    if (result.error !== null) {
+      toast.error(result.error);
+      return false;
+    }
+    setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, [field]: result.data[field] } : e)));
+    return true;
+  }
+
+  function toggleSelectExpense(expense: EnrichedExpense) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(expense.id)) next.delete(expense.id);
+      else next.add(expense.id);
+      return next;
+    });
+  }
+
+  function exitSelectionMode() {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }
+
+  async function handleBulkCategoryChange(categoryId: string, categoryName: string) {
+    const ids = Array.from(selectedIds);
+    const result = await bulkUpdateExpenses(ids, { category_id: categoryId, subcategory_id: null });
+    if (result.error !== null) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(`Moved ${ids.length} expense${ids.length === 1 ? "" : "s"} to ${categoryName}`);
+    exitSelectionMode();
+    refetch(filters);
+  }
+
+  async function handleBulkPaymentMethodChange(methodName: string) {
+    const ids = Array.from(selectedIds);
+    const result = await bulkUpdateExpenses(ids, { payment_method: methodName });
+    if (result.error !== null) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(`Updated payment method for ${ids.length} expense${ids.length === 1 ? "" : "s"}`);
+    exitSelectionMode();
+    refetch(filters);
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedIds);
+    const deleted = expenses.filter((e) => ids.includes(e.id));
+    setExpenses((list) => list.filter((e) => !ids.includes(e.id)));
+    exitSelectionMode();
+    const result = await bulkSoftDeleteExpenses(ids);
+    if (result.error !== null) {
+      toast.error(result.error);
+      setExpenses((list) => [...deleted, ...list]);
+      return;
+    }
+    toastUndo(`${ids.length} expense${ids.length === 1 ? "" : "s"} deleted`, async () => {
+      const restored = await bulkRestoreExpenses(ids);
+      if (!restored.error) refetch(filters);
+    });
+  }
+
   const activeChips: { key: keyof AppliedFilters; label: string }[] = [];
   if (filters.rangeKey && filters.rangeKey !== "custom") {
     const rangeLabels: Record<string, string> = { today: "Today", "7d": "7D", "30d": "30D", month: "This Month", lastMonth: "Last Month" };
@@ -113,10 +191,25 @@ export function ExpensesPageClient({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Expenses</h1>
-        <Button variant="outline" size="sm" onClick={() => setFiltersOpen(true)}>
-          <SlidersHorizontal className="h-4 w-4" />
-          Filter
-        </Button>
+        <div className="flex items-center gap-2">
+          {selectionMode ? (
+            <Button variant="outline" size="sm" onClick={exitSelectionMode}>
+              <X className="h-4 w-4" />
+              Cancel
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
+                <ListChecks className="h-4 w-4" />
+                Select
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setFiltersOpen(true)}>
+                <SlidersHorizontal className="h-4 w-4" />
+                Filter
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {activeChips.length > 0 && (
@@ -141,8 +234,26 @@ export function ExpensesPageClient({
           ))}
         </div>
       ) : (
-        <ExpenseList expenses={expenses} onEdit={setEditTarget} onDuplicate={handleDuplicate} onDelete={handleDelete} />
+        <ExpenseList
+          expenses={expenses}
+          onEdit={setEditTarget}
+          onDuplicate={handleDuplicate}
+          onDelete={handleDelete}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelectExpense}
+          onInlineUpdate={handleInlineUpdate}
+        />
       )}
+
+      <BulkActionBar
+        selectedExpenses={expenses.filter((e) => selectedIds.has(e.id))}
+        categories={categories}
+        onCategoryChange={handleBulkCategoryChange}
+        onPaymentMethodChange={handleBulkPaymentMethodChange}
+        onDelete={handleBulkDelete}
+        onClose={exitSelectionMode}
+      />
 
       <ExpenseFiltersSheet open={filtersOpen} onOpenChange={setFiltersOpen} categories={categories} filters={filters} onApply={applyFilters} />
       <ExpenseSearch open={searchOpen} onOpenChange={setSearchOpen} />
