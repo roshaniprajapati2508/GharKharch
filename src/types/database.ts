@@ -185,6 +185,8 @@ export interface Database {
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
+          /** "expense" (default) or "income" - migration 022. Only meaningful for Homemade Business entries; every other row stays "expense". */
+          entry_type: "expense" | "income";
         };
         Insert: Partial<Omit<Database["public"]["Tables"]["expenses"]["Row"], "id" | "created_at" | "updated_at" | "amount">> & {
           household_id: string;
@@ -438,6 +440,16 @@ export interface Database {
       is_household_member: {
         Args: { p_household_id: string };
         Returns: boolean;
+      };
+      get_business_pnl: {
+        Args: { p_household_id: string; p_start: string; p_end: string };
+        Returns: {
+          income_total: string;
+          expense_total: string;
+          net_profit: string;
+          income_count: number;
+          expense_count: number;
+        }[];
       };
       get_expense_summary: {
         Args: { p_household_id: string; p_start: string; p_end: string; p_paid_by?: string | null; p_category_scope?: string | null };

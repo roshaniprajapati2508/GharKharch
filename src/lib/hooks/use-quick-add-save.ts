@@ -40,6 +40,7 @@ export function useQuickAddSave({ onSaved, onQueued }: UseQuickAddSaveOptions = 
       merchant_id: chip.merchantId,
       paid_by: userId,
       expense_type: "household" as const,
+      entry_type: "expense" as const,
       expense_date: getTodayISO(),
     };
 

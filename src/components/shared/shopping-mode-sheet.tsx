@@ -95,6 +95,7 @@ export function ShoppingModeSheet({
         merchant_id: null,
         paid_by: userId,
         expense_type: "household",
+        entry_type: "expense",
         expense_date: getTodayISO(),
       });
       if (result.error !== null) {

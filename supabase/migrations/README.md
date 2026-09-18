@@ -282,5 +282,12 @@ the filename and this header comment changed.
   and everything that references them). No dependency on 012-017 — safe to
   run any time after 011, including before 015/016/017 if you'd rather apply
   it earlier since it's an independent bug fix, not new functionality.
+- 022 depends on 001 (`expenses`, `categories`) and matches 021's business-
+  scope convention (matches "Homemade Business" by name, not id). Adds a new
+  `entry_type` column to `expenses` (default 'expense', so every existing
+  row is unaffected) plus a new `get_business_pnl()` function for the Mini
+  P&L widget - income vs. business expense for a date range. No dependency
+  on 019/020/021 beyond both matching categories by the same name. Safe to
+  run any time after 001.
 - As always: Claude prepares these files only. Running them against your live
   Supabase project is entirely up to you, via the SQL Editor or the CLI.

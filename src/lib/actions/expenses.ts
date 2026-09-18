@@ -106,6 +106,7 @@ export async function createExpense(rawInput: ExpenseFormInput, recurringRuleId?
         created_by: userId,
         paid_by: input.paid_by,
         expense_type: input.expense_type,
+        entry_type: input.entry_type,
         amount: input.amount,
         merchant_id: input.merchant_id ?? null,
         item_name: input.item_name,
@@ -149,6 +150,7 @@ export async function updateExpense(id: string, rawInput: ExpenseFormInput) {
       .update({
         paid_by: input.paid_by,
         expense_type: input.expense_type,
+        entry_type: input.entry_type,
         amount: input.amount,
         merchant_id: input.merchant_id ?? null,
         item_name: input.item_name,
@@ -347,6 +349,7 @@ export async function duplicateExpense(id: string) {
         created_by: userId,
         paid_by: original.paid_by,
         expense_type: original.expense_type,
+        entry_type: original.entry_type,
         amount: original.amount,
         merchant_id: original.merchant_id,
         item_name: original.item_name,

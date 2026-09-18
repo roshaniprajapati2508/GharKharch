@@ -302,6 +302,7 @@ export async function importExpensesFromCsv(rows: ValidatedImportRow[]) {
             amount: row.amount,
             item_name: row.item_name,
             category_id: categoryId,
+            entry_type: "expense",
             merchant_id: merchantId,
             paid_by: row.paid_by || userId,
             expense_type: row.expense_type,

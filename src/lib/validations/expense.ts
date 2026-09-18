@@ -6,6 +6,13 @@ import { getTodayISO } from "@/lib/date-utils";
 
 export const expenseTypeEnum = z.enum(["personal", "household", "shared"]);
 export const paymentMethodEnum = z.enum(["upi", "cash", "credit_card", "debit_card", "bank_transfer", "wallet", "other"]);
+// Mini P&L (spec: Pillar/Feature "Mini P&L for Homemade Business"). Every row
+// is still an "expense" in the table's plumbing sense - this just flags
+// whether the amount is money coming IN (a sale) rather than going OUT, so
+// the Homemade Business category tree can report income vs. expense instead
+// of only ever summing outflow. Defaults to "expense" so every existing row
+// and every non-business entry is unaffected.
+export const entryTypeEnum = z.enum(["expense", "income"]);
 
 export const expenseFormSchema = z.object({
   amount: z.coerce.number().positive("Enter an amount greater than ₹0").max(10_000_000, "That amount looks too large"),
@@ -15,6 +22,7 @@ export const expenseFormSchema = z.object({
   merchant_id: z.string().uuid().nullable().optional(),
   paid_by: z.string().uuid("Choose who paid"),
   expense_type: expenseTypeEnum.default("household"),
+  entry_type: entryTypeEnum.default("expense"),
   payment_method: z.string().trim().max(60).nullable().optional(),
   card_id: z.string().uuid().nullable().optional(),
   upi_profile_id: z.string().uuid().nullable().optional(),
