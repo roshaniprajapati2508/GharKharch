@@ -14,8 +14,10 @@
 // for one specific item name.
 
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
-import { getTodayISO, getWeekRange, getMonthRange, getPreviousMonthRange, addDaysISO, daysBetweenISO } from "@/lib/date-utils";
+import { getTodayISO, getWeekRange, getMonthRange, getPreviousMonthRange, addDaysISO, daysBetweenISO, toPeriodMonth } from "@/lib/date-utils";
 import { percentChange } from "@/lib/utils";
+import { getBusinessPnl } from "@/lib/actions/analytics";
+import { listBudgetsForMonth, type BudgetWithProgress } from "@/lib/actions/budgets";
 
 export interface DailyWeeklySnapshot {
   todayTotal: number;
@@ -62,6 +64,62 @@ export async function getDailyWeeklySnapshot() {
       todayCount,
       weekTotal,
       weekChangePct: prevFullWeekHasData ? percentChange(weekTotal, prevComparableTotal) : null,
+    };
+  });
+}
+
+export interface CashflowSnapshot {
+  /** This month's total spend (household + business combined) so far. */
+  monthSpendSoFar: number;
+  /** monthSpendSoFar / days elapsed this month - "how fast money is going out" (spec: Cashflow Velocity). */
+  dailyBurnRate: number;
+  /** Business income this month (from the Mini P&L) - the only "inflow" this app tracks. 0 until migration 022 is run or if the household logs no business income. */
+  inflow: number;
+  /** Same as monthSpendSoFar - kept as a separate field so the UI can label it "Outflow" without renaming the underlying spend figure everywhere else. */
+  outflow: number;
+  netFlow: number;
+  /** Top categories this month with a budget set, spent vs. budget, for the widget's health bars - reuses the existing Budgets feature rather than inventing new thresholds. Empty if the household hasn't set any budgets. */
+  categoryHealth: BudgetWithProgress[];
+}
+
+/**
+ * Cashflow Velocity / Financial Runway snapshot (spec: Pillar 5) - daily
+ * burn rate, inflow-vs-outflow, and budget health bars, all for the current
+ * month. Deliberately reuses get_expense_summary (already aggregated in
+ * Postgres), getBusinessPnl (Feature 1, migration 022) and the existing
+ * Budgets feature rather than a new bespoke query for each number.
+ */
+export async function getCashflowSnapshot() {
+  return runAction(async (): Promise<CashflowSnapshot> => {
+    const { supabase, householdId } = await requireHouseholdContext();
+
+    const today = getTodayISO();
+    const month = getMonthRange();
+    const daysElapsed = Math.max(1, daysBetweenISO(month.start, today));
+
+    const [summaryRes, pnlRes, budgetsRes] = await Promise.all([
+      supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: month.start, p_end: today, p_paid_by: null }),
+      getBusinessPnl({ start: month.start, end: today, label: "This month" }),
+      listBudgetsForMonth(toPeriodMonth()),
+    ]);
+
+    if (summaryRes.error) throw new ActionError(summaryRes.error.message);
+
+    const monthSpendSoFar = Number(summaryRes.data?.[0]?.total ?? 0);
+    const inflow = pnlRes.data?.incomeTotal ?? 0;
+    const outflow = monthSpendSoFar;
+    const categoryHealth = (budgetsRes.data ?? [])
+      .filter((b) => b.category_id !== null)
+      .sort((a, b) => b.spent / (Number(b.amount) || 1) - a.spent / (Number(a.amount) || 1))
+      .slice(0, 5);
+
+    return {
+      monthSpendSoFar,
+      dailyBurnRate: monthSpendSoFar / daysElapsed,
+      inflow,
+      outflow,
+      netFlow: inflow - outflow,
+      categoryHealth,
     };
   });
 }
