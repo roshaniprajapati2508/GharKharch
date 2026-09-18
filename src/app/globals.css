@@ -58,7 +58,7 @@
 }
 
 :root[data-theme="dark"] {
-  --background: #0b1615;
+  --background: #0c0f12;
   --foreground: #eef4f2;
 
   --surface: #10201e;
@@ -96,7 +96,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: #0b1615;
+    --background: #0c0f12;
     --foreground: #eef4f2;
     --surface: #10201e;
     --card: #10201e;
@@ -171,6 +171,12 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Money and other figures should line up in lists/tables instead of each
+     digit having its own natural width - Linear/Mercury-style financial
+     typography. Global rather than per-callsite (formatINR is called from
+     ~80 places) since tabular-nums has no visual downside on non-numeric
+     text; it only fixes digit width. */
+  font-variant-numeric: tabular-nums;
 }
 
 /* Headings default to Plus Jakarta Sans; body copy stays on Inter via `body`
