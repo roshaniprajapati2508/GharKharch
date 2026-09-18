@@ -1003,23 +1003,20 @@ export function AddExpenseSheet({
                 )}
               </div>
 
-              {/* Paid By & Expense Type - always two dedicated columns, at
-                  every width, so they never collapse into a single stacked
-                  column on a narrower window. */}
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                    Paid By
-                  </Label>
-                  <PaidBySelector value={form.paidBy} onChange={(v) => setForm((f) => ({ ...f, paidBy: v }))} />
-                </div>
+              {/* Paid By */}
+              <div>
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Paid By
+                </Label>
+                <PaidBySelector value={form.paidBy} onChange={(v) => setForm((f) => ({ ...f, paidBy: v }))} />
+              </div>
 
-                <div>
-                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                    Type
-                  </Label>
-                  <ExpenseTypeSelector value={form.expenseType} onChange={(v) => setForm((f) => ({ ...f, expenseType: v }))} />
-                </div>
+              {/* Expense Type */}
+              <div>
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Type
+                </Label>
+                <ExpenseTypeSelector value={form.expenseType} onChange={(v) => setForm((f) => ({ ...f, expenseType: v }))} />
               </div>
 
               {/* Payment Method Quick Pills (Default: UPI) */}

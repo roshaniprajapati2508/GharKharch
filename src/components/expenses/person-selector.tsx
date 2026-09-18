@@ -14,16 +14,16 @@ export function PaidBySelector({ value, onChange }: { value: string; onChange: (
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-2.5">
       {options.map((opt) => (
         <button
           key={opt.id}
           type="button"
           onClick={() => onChange(opt.id)}
           className={cn(
-            "flex h-[52px] items-center justify-center rounded-xl border px-2 text-center text-sm font-medium transition-colors",
+            "flex h-12 items-center justify-center rounded-xl border px-3 text-center text-sm font-semibold transition-all",
             value === opt.id
-              ? "border-primary bg-secondary text-secondary-foreground font-semibold"
+              ? "border-primary bg-secondary text-secondary-foreground shadow-sm"
               : "border-border bg-surface text-muted-foreground hover:bg-muted"
           )}
         >
@@ -48,21 +48,21 @@ const EXPENSE_TYPES: { value: ExpenseType; label: string; hint: string }[] = [
 
 export function ExpenseTypeSelector({ value, onChange }: { value: ExpenseType; onChange: (value: ExpenseType) => void }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-2.5">
       {EXPENSE_TYPES.map((opt) => (
         <button
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
           className={cn(
-            "flex h-[52px] flex-col items-center justify-center rounded-xl border px-1 py-1 text-center transition-colors",
+            "flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl border px-3 py-1.5 text-center transition-all",
             value === opt.value
-              ? "border-primary bg-secondary text-secondary-foreground font-semibold"
+              ? "border-primary bg-secondary text-secondary-foreground shadow-sm"
               : "border-border bg-surface text-muted-foreground hover:bg-muted"
           )}
         >
-          <span className="text-xs sm:text-sm font-medium leading-tight">{opt.label}</span>
-          <span className="text-[10px] sm:text-[11px] leading-tight opacity-80">{opt.hint}</span>
+          <span className="text-sm font-semibold leading-tight">{opt.label}</span>
+          <span className="text-xs leading-tight opacity-75">{opt.hint}</span>
         </button>
       ))}
     </div>
