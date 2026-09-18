@@ -395,6 +395,37 @@ export async function getBusinessPnl(range: DateRange) {
   });
 }
 
+export interface IncomeByCategory {
+  categoryId: string;
+  categoryName: string;
+  total: number;
+  txnCount: number;
+}
+
+/**
+ * Total household income for a range, broken down by top-level category
+ * (Salary / Freelancing & Consulting / Business Sales & Payouts - migration
+ * 023), via get_income_summary(). Distinct from getBusinessPnl, which only
+ * ever answers for the Homemade Business itself.
+ */
+export async function getIncomeSummary(range: DateRange) {
+  return runAction(async (): Promise<IncomeByCategory[]> => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { data, error } = await supabase.rpc("get_income_summary", {
+      p_household_id: householdId,
+      p_start: range.start,
+      p_end: range.end,
+    });
+    if (error) throw new ActionError(error.message);
+    return (data ?? []).map((row) => ({
+      categoryId: row.category_id,
+      categoryName: row.category_name,
+      total: parseFloat(row.total),
+      txnCount: Number(row.txn_count),
+    }));
+  });
+}
+
 /** Per-category monthly trend for the small sparkline on the Category Analytics tab — mirrors getMerchantMonthlyTrend exactly. */
 export async function getCategoryMonthlyTrend(categoryId: string, months = 6) {
   return runAction(async () => {

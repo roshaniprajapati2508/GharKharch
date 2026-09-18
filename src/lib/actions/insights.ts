@@ -16,7 +16,7 @@
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
 import { getTodayISO, getWeekRange, getMonthRange, getPreviousMonthRange, addDaysISO, daysBetweenISO, toPeriodMonth } from "@/lib/date-utils";
 import { percentChange } from "@/lib/utils";
-import { getBusinessPnl } from "@/lib/actions/analytics";
+import { getBusinessPnl, getIncomeSummary } from "@/lib/actions/analytics";
 import { listBudgetsForMonth, type BudgetWithProgress } from "@/lib/actions/budgets";
 
 export interface DailyWeeklySnapshot {
@@ -97,16 +97,19 @@ export async function getCashflowSnapshot() {
     const month = getMonthRange();
     const daysElapsed = Math.max(1, daysBetweenISO(month.start, today));
 
-    const [summaryRes, pnlRes, budgetsRes] = await Promise.all([
+    const [summaryRes, incomeRes, budgetsRes] = await Promise.all([
       supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: month.start, p_end: today, p_paid_by: null }),
-      getBusinessPnl({ start: month.start, end: today, label: "This month" }),
+      getIncomeSummary({ start: month.start, end: today, label: "This month" }),
       listBudgetsForMonth(toPeriodMonth()),
     ]);
 
     if (summaryRes.error) throw new ActionError(summaryRes.error.message);
 
     const monthSpendSoFar = Number(summaryRes.data?.[0]?.total ?? 0);
-    const inflow = pnlRes.data?.incomeTotal ?? 0;
+    // Total household inflow (Salary + Freelancing + Business Sales, not
+    // just the business's own income - that narrower figure is what
+    // getBusinessPnl / MiniPnlCard already show separately).
+    const inflow = (incomeRes.data ?? []).reduce((sum, row) => sum + row.total, 0);
     const outflow = monthSpendSoFar;
     const categoryHealth = (budgetsRes.data ?? [])
       .filter((b) => b.category_id !== null)
@@ -120,6 +123,72 @@ export async function getCashflowSnapshot() {
       outflow,
       netFlow: inflow - outflow,
       categoryHealth,
+    };
+  });
+}
+
+export interface ExecutiveCashflow {
+  totalInflow: number;
+  incomeByCategory: { categoryName: string; total: number }[];
+  outflowHousehold: number;
+  outflowBusiness: number;
+  totalOutflow: number;
+  netSavings: number;
+  /** null when there was no inflow at all in the range - a savings "rate" is meaningless with a zero denominator. */
+  savingsRatePct: number | null;
+  businessIncome: number;
+  businessExpense: number;
+  businessNetProfit: number;
+  /** null when the business had no income in the range. */
+  businessMarginPct: number | null;
+}
+
+/**
+ * Executive cashflow summary for a date range (spec: Module A dashboard
+ * cards) - total inflow (with a Salary/Freelancing/Business breakdown),
+ * total outflow split household vs. business, net savings + rate, and the
+ * Homemade Business's own net profit + margin. Combines get_income_summary
+ * (023), get_expense_summary's existing household/business scope (021, now
+ * income-excluded) and get_business_pnl (022, now business-income-scoped) -
+ * no new SQL beyond what those three already provide.
+ */
+export async function getExecutiveCashflow(range: { start: string; end: string }) {
+  return runAction(async (): Promise<ExecutiveCashflow> => {
+    const { supabase, householdId } = await requireHouseholdContext();
+
+    const [incomeRes, householdRes, businessRes, pnlRes] = await Promise.all([
+      getIncomeSummary({ ...range, label: "Cashflow" }),
+      supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_category_scope: "household" }),
+      supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_category_scope: "business" }),
+      getBusinessPnl({ ...range, label: "Cashflow" }),
+    ]);
+
+    if (householdRes.error) throw new ActionError(householdRes.error.message);
+    if (businessRes.error) throw new ActionError(businessRes.error.message);
+
+    const incomeByCategory = (incomeRes.data ?? []).map((row) => ({ categoryName: row.categoryName, total: row.total }));
+    const totalInflow = incomeByCategory.reduce((sum, row) => sum + row.total, 0);
+    const outflowHousehold = Number(householdRes.data?.[0]?.total ?? 0);
+    const outflowBusiness = Number(businessRes.data?.[0]?.total ?? 0);
+    const totalOutflow = outflowHousehold + outflowBusiness;
+    const netSavings = totalInflow - totalOutflow;
+
+    const businessIncome = pnlRes.data?.incomeTotal ?? 0;
+    const businessExpense = pnlRes.data?.expenseTotal ?? 0;
+    const businessNetProfit = pnlRes.data?.netProfit ?? 0;
+
+    return {
+      totalInflow,
+      incomeByCategory,
+      outflowHousehold,
+      outflowBusiness,
+      totalOutflow,
+      netSavings,
+      savingsRatePct: totalInflow > 0 ? (netSavings / totalInflow) * 100 : null,
+      businessIncome,
+      businessExpense,
+      businessNetProfit,
+      businessMarginPct: businessIncome > 0 ? (businessNetProfit / businessIncome) * 100 : null,
     };
   });
 }

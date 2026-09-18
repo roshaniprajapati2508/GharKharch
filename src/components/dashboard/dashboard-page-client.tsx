@@ -24,6 +24,7 @@ import { RecurringSuggestionsCard } from "@/components/dashboard/recurring-sugge
 import { ActivityFeedCard } from "@/components/dashboard/activity-feed-card";
 import { MiniPnlCard } from "@/components/analytics/mini-pnl-card";
 import { CashflowWidget } from "@/components/dashboard/cashflow-widget";
+import { ExecutiveCashflowCard } from "@/components/dashboard/executive-cashflow-card";
 import { motion, staggerContainer, fadeInUp } from "@/lib/motion";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { AddExpenseSheet } from "@/components/shared/add-expense-sheet";
@@ -167,6 +168,10 @@ export function DashboardPageClient({
         </div>
       ) : data && hasAnyActivity ? (
         <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="dashboard-grid">
+          <motion.div variants={fadeInUp} style={{ gridArea: "cashflow-exec" }}>
+            <ExecutiveCashflowCard />
+          </motion.div>
+
           <motion.div variants={fadeInUp} style={{ gridArea: "brief" }}>
             <DailyBriefCard initialData={initialBrief} initialChips={initialChips} />
           </motion.div>

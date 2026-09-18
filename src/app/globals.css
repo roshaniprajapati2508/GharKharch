@@ -237,6 +237,7 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
   max-width: 100%;
   grid-template-areas:
     "header"
+    "cashflow-exec"
     "brief"
     "forecast"
     "summary"
@@ -260,6 +261,7 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "header header"
+      "cashflow-exec cashflow-exec"
       "brief brief"
       "forecast forecast"
       "summary summary"
@@ -280,6 +282,7 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
   .dashboard-grid {
     grid-template-areas:
       "header header"
+      "cashflow-exec cashflow-exec"
       "brief brief"
       "forecast forecast"
       "summary summary"
