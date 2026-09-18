@@ -1112,8 +1112,15 @@ export function AddExpenseSheet({
                   <Input
                     type="date"
                     value={form.date}
+                    onClick={(e) => {
+                      try {
+                        e.currentTarget.showPicker?.();
+                      } catch {
+                        // ignore if unsupported in older engines
+                      }
+                    }}
                     onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                    className="h-9 min-w-0 flex-1 text-xs bg-background"
+                    className="h-9 min-w-0 flex-1 text-xs bg-background cursor-pointer px-2.5 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:ml-auto [&::-webkit-calendar-picker-indicator]:opacity-70 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
                   />
                 </div>
               </div>

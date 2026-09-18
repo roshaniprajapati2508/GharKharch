@@ -21,9 +21,9 @@ export function PaidBySelector({ value, onChange }: { value: string; onChange: (
           type="button"
           onClick={() => onChange(opt.id)}
           className={cn(
-            "flex h-12 items-center justify-center rounded-xl border text-sm font-medium transition-colors md:h-10 md:text-[13px]",
+            "flex h-[52px] items-center justify-center rounded-xl border px-2 text-center text-sm font-medium transition-colors",
             value === opt.id
-              ? "border-primary bg-secondary text-secondary-foreground"
+              ? "border-primary bg-secondary text-secondary-foreground font-semibold"
               : "border-border bg-surface text-muted-foreground hover:bg-muted"
           )}
         >
@@ -55,14 +55,14 @@ export function ExpenseTypeSelector({ value, onChange }: { value: ExpenseType; o
           type="button"
           onClick={() => onChange(opt.value)}
           className={cn(
-            "flex flex-col items-center gap-0.5 rounded-xl border px-2 py-2.5 text-center transition-colors md:py-1.5",
+            "flex h-[52px] flex-col items-center justify-center rounded-xl border px-1 py-1 text-center transition-colors",
             value === opt.value
-              ? "border-primary bg-secondary text-secondary-foreground"
+              ? "border-primary bg-secondary text-secondary-foreground font-semibold"
               : "border-border bg-surface text-muted-foreground hover:bg-muted"
           )}
         >
-          <span className="text-sm font-medium">{opt.label}</span>
-          <span className="text-[11px] leading-tight opacity-80">{opt.hint}</span>
+          <span className="text-xs sm:text-sm font-medium leading-tight">{opt.label}</span>
+          <span className="text-[10px] sm:text-[11px] leading-tight opacity-80">{opt.hint}</span>
         </button>
       ))}
     </div>
