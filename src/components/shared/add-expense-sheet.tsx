@@ -212,12 +212,18 @@ export function AddExpenseSheet({
   const [quickAddChips, setQuickAddChips] = useState<QuickAddChip[]>(
     () => getClientCachedData<QuickAddChip[]>("quick_add_chips") ?? []
   );
+  // True while the background refresh below is still in flight - lets the
+  // merchant picker show "Loading your merchants..." instead of a false
+  // "No merchants match" if it's opened before this first fetch resolves
+  // (e.g. tapping "+ Add" then immediately tapping the merchant field).
+  const [refsLoading, setRefsLoading] = useState(true);
 
   useEffect(() => {
     if (!open) return;
 
     setEntryMode(initialMode);
     setShoppingRows([emptyShoppingRow(null)]);
+    setRefsLoading(true);
 
     // Refresh refs in background
     Promise.all([
@@ -229,6 +235,7 @@ export function AddExpenseSheet({
       listBankAccounts(),
       getQuickAddChips(),
     ]).then(([cats, merch, methods, userCards, upi, banks, chips]) => {
+      setRefsLoading(false);
       if (cats.data && cats.data.tree.length > 0) {
         setCategoryTree(cats.data.tree);
         setCategoryFlat(cats.data.flat);
@@ -278,6 +285,11 @@ export function AddExpenseSheet({
         setQuickAddChips(chips.data);
         setClientCachedData("quick_add_chips", chips.data);
       }
+    }).catch(() => {
+      // Network hiccup - stop showing "Loading..." so the merchant picker
+      // falls back to whatever's cached (or a real "no merchants" state)
+      // instead of spinning forever.
+      setRefsLoading(false);
     });
 
     const source = editExpense ?? duplicateFrom;
@@ -1274,6 +1286,7 @@ export function AddExpenseSheet({
         open={merchantPickerOpen}
         onOpenChange={setMerchantPickerOpen}
         merchants={merchants}
+        loading={refsLoading}
         onSelect={applyMerchant}
         onMerchantCreated={(m) => {
           setMerchants((list) => [...list, m]);

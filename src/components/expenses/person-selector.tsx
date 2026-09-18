@@ -35,15 +35,20 @@ export function PaidBySelector({ value, onChange }: { value: string; onChange: (
   );
 }
 
+// Only two expense types are offered here: this app is for exactly two
+// people, so "personal" (just you) vs "household" (shared living costs)
+// already covers every real case - a separate "shared/split" option was
+// redundant and confusing. The "shared" value stays in the ExpenseType
+// union/DB enum for backward compatibility with any existing rows; it's
+// just no longer offered in this picker.
 const EXPENSE_TYPES: { value: ExpenseType; label: string; hint: string }[] = [
   { value: "personal", label: "Personal", hint: "Just for you" },
   { value: "household", label: "Household", hint: "Shared living costs" },
-  { value: "shared", label: "Shared", hint: "Split together" },
 ];
 
 export function ExpenseTypeSelector({ value, onChange }: { value: ExpenseType; onChange: (value: ExpenseType) => void }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-2 gap-2">
       {EXPENSE_TYPES.map((opt) => (
         <button
           key={opt.value}

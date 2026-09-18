@@ -10,11 +10,14 @@ import type { Tables } from "@/types/database";
 
 export function MerchantPickerView({
   merchants,
+  loading = false,
   onSelect,
   onMerchantCreated,
   onBack: _onBack,
 }: {
   merchants: Tables<"merchants">[];
+  /** True while the merchant list is still being fetched in the background (spec: avoid showing a false "no merchants" message before the fetch has had a chance to resolve). */
+  loading?: boolean;
   onSelect: (merchant: Tables<"merchants">) => void;
   onMerchantCreated: (merchant: Tables<"merchants">) => void;
   onBack?: () => void;
@@ -56,7 +59,12 @@ export function MerchantPickerView({
       <Command className="flex flex-1 flex-col overflow-hidden" shouldFilter={false}>
         <CommandInput placeholder="Search merchants…" value={query} onValueChange={setQuery} autoFocus />
         <CommandList className="flex-1 overflow-y-auto">
-          {filtered.length === 0 && <CommandEmpty>No merchants match &quot;{query}&quot;.</CommandEmpty>}
+          {filtered.length === 0 && loading && merchants.length === 0 && (
+            <CommandEmpty>Loading your merchants…</CommandEmpty>
+          )}
+          {filtered.length === 0 && !(loading && merchants.length === 0) && (
+            <CommandEmpty>No merchants match &quot;{query}&quot;.</CommandEmpty>
+          )}
           <CommandGroup>
             {filtered.map((m) => (
               <CommandItem key={m.id} value={m.name} onSelect={() => pick(m)}>
@@ -91,12 +99,14 @@ export function MerchantPicker({
   open,
   onOpenChange,
   merchants,
+  loading = false,
   onSelect,
   onMerchantCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   merchants: Tables<"merchants">[];
+  loading?: boolean;
   onSelect: (merchant: Tables<"merchants">) => void;
   onMerchantCreated: (merchant: Tables<"merchants">) => void;
 }) {
@@ -109,6 +119,7 @@ export function MerchantPicker({
         </DrawerHeader>
         <MerchantPickerView
           merchants={merchants}
+          loading={loading}
           onSelect={(m) => {
             onSelect(m);
             onOpenChange(false);

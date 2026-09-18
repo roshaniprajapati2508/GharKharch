@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Receipt, PieChart, FileBarChart, Settings, Plus, Search } from "lucide-react";
+import { Home, IndianRupee, PieChart, FileBarChart, Settings, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FullLogo } from "@/components/shared/logo";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { useSearch } from "@/lib/context/search-context";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/expenses", label: "Expenses", icon: Receipt },
+  { href: "/expenses", label: "Expenses", icon: IndianRupee },
   { href: "/analytics", label: "Analytics", icon: PieChart },
   { href: "/reports", label: "Reports", icon: FileBarChart },
   { href: "/more", label: "More & Settings", icon: Settings },
@@ -29,7 +29,7 @@ export function SidebarNav({ onAddClick }: { onAddClick: () => void }) {
 
       <Button
         size="lg"
-        className="mb-3 w-full justify-center px-0 md:justify-center md:px-4"
+        className="mb-3 w-full justify-center px-0 md:h-11 md:justify-center md:px-4 md:text-sm"
         onClick={onAddClick}
         aria-label="Add expense"
       >
