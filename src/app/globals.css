@@ -249,7 +249,8 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
     "frequent"
     "largest"
     "calendar"
-    "recurring";
+    "recurring"
+    "activity";
 }
 
 @media (min-width: 640px) {
@@ -267,7 +268,8 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
       "frequent largest"
       "recent recent"
       "calendar calendar"
-      "recurring recurring";
+      "recurring recurring"
+      "activity activity";
   }
 }
 
@@ -282,7 +284,7 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
       "merchants person"
       "frequent largest"
       "insights insights"
-      "recurring recurring"
+      "recurring activity"
       "calendar recent";
   }
 }
