@@ -21,12 +21,17 @@
 --                   the Homemade Business tree (matched by name, same
 --                   convention as migration 021's business scope filter)
 --   net_profit    = income_total - expense_total
--- Income rows aren't required to sit under the Homemade Business category
--- (the Add Expense sheet's Income/Expense toggle is only ever shown when a
--- business category is selected, but the function doesn't hard-require it -
--- it counts income_total as ALL income-flagged rows in the period, which
--- covers a business sale logged under a subcategory that later gets
--- reorganized without silently dropping out of the P&L).
+-- UPDATED (still part of migration 022, not yet run - safe to edit in
+-- place): originally income_total counted every entry_type = 'income' row
+-- in the household, since at the time this was the ONLY way to log income
+-- at all. Migration 023 adds general household income categories (Salary,
+-- Freelancing & Consulting, Business Sales & Payouts), so that's no longer
+-- true - a salary deposit must never count as this business's income. This
+-- function now scopes income the same way it already scoped expense: the
+-- Homemade Business category tree, OR the "Business Sales & Payouts"
+-- category (income logged there even if not literally under Homemade
+-- Business, e.g. a marketplace payout categorized before the household
+-- reorganizes it).
 
 alter table expenses
   add column if not exists entry_type text not null default 'expense'
@@ -56,7 +61,7 @@ stable
 as $$
   with business_top as (
     select id from categories
-    where name = 'Homemade Business'
+    where name in ('Homemade Business', 'Business Sales & Payouts')
       and (household_id = p_household_id or household_id is null)
   ),
   scoped as (
@@ -66,11 +71,7 @@ as $$
     where e.household_id = p_household_id
       and e.deleted_at is null
       and e.expense_date between p_start and p_end
-      and (
-        e.entry_type = 'income'
-        or c.id in (select id from business_top)
-        or c.parent_id in (select id from business_top)
-      )
+      and (c.id in (select id from business_top) or c.parent_id in (select id from business_top))
   )
   select
     coalesce(sum(amount) filter (where entry_type = 'income'), 0) as income_total,

@@ -289,5 +289,22 @@ the filename and this header comment changed.
   P&L widget - income vs. business expense for a date range. No dependency
   on 019/020/021 beyond both matching categories by the same name. Safe to
   run any time after 001.
+- 021 and 022 were edited in place after first being written (both were
+  still un-run, so this is safe - nothing has executed against your project
+  yet): 021's 7 functions now also exclude `entry_type = 'income'` rows from
+  every spend total (an expense-only column added by 022, authored after
+  021), and 022's get_business_pnl now scopes "business income" to the
+  Homemade Business tree / "Business Sales & Payouts" category specifically,
+  rather than counting every income row - needed once 023 adds general
+  household income (Salary, Freelancing) that must NOT count as this
+  business's own income. If you already ran 021/022 before reading this,
+  tell Claude and it'll prepare a follow-up migration instead of relying on
+  the in-place edit.
+- 023 depends on 001 (`categories.type`, unused for 'income' until now) and
+  022 (`expenses.entry_type`). Seeds 3 global income categories (Salary,
+  Freelancing & Consulting, Business Sales & Payouts) and 5 global
+  marketplace/client merchants (Amazon/Flipkart/Meesho Seller Payout,
+  Website Orders, Freelance Client), and adds get_income_summary() for the
+  dashboard's total-inflow card. Safe to run any time after 022.
 - As always: Claude prepares these files only. Running them against your live
   Supabase project is entirely up to you, via the SQL Editor or the CLI.

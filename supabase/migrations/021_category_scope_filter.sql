@@ -7,6 +7,12 @@
 -- expenses into the browser and summing them there (same rule every prior
 -- analytics migration in this project follows).
 --
+-- Also excludes entry_type = 'income' rows everywhere (migration 022 added
+-- that column) - none of these "how much did we spend" functions should
+-- ever count a logged sale/salary/freelance payment as spend. This matters
+-- more once income categories exist (migration 023) - before that, every
+-- row was 'expense' anyway so this was a no-op.
+--
 -- A null p_category_scope behaves exactly as before (every existing caller
 -- that doesn't pass it keeps working unchanged). 'business' includes only
 -- expenses whose category is the "Homemade Business" top-level category
@@ -56,6 +62,7 @@ as $$
     join categories c on c.id = e.category_id
     where e.household_id = p_household_id
       and e.deleted_at is null
+      and e.entry_type = 'expense'
       and e.expense_date between p_start and p_end
       and (p_paid_by is null or e.paid_by = p_paid_by)
       and (
@@ -128,6 +135,7 @@ as $$
     on e.category_id = c.id
     and e.household_id = p_household_id
     and e.deleted_at is null
+    and e.entry_type = 'expense'
     and e.expense_date between p_start and p_end
     and (p_paid_by is null or e.paid_by = p_paid_by)
   where (
@@ -179,6 +187,7 @@ as $$
   join categories c on c.id = e.category_id
   where e.household_id = p_household_id
     and e.deleted_at is null
+    and e.entry_type = 'expense'
     and e.expense_date between p_start and p_end
     and (
       p_category_scope is null
@@ -232,6 +241,7 @@ as $$
     join categories c on c.id = e.category_id
     where e.household_id = p_household_id
       and e.deleted_at is null
+      and e.entry_type = 'expense'
       and e.expense_date between p_start and p_end
       and (
         p_category_scope is null
@@ -315,6 +325,7 @@ as $$
   join categories c on c.id = e.category_id
   where e.household_id = p_household_id
     and e.deleted_at is null
+    and e.entry_type = 'expense'
     and e.expense_date between p_start and p_end
     and (
       p_category_scope is null
@@ -365,6 +376,7 @@ as $$
   join categories c on c.id = e.category_id
   where e.household_id = p_household_id
     and e.deleted_at is null
+    and e.entry_type = 'expense'
     and e.expense_date between p_start and p_end
     and (p_paid_by is null or e.paid_by = p_paid_by)
     and (
@@ -413,6 +425,7 @@ as $$
     join categories c on c.id = e.category_id
     where e.household_id = p_household_id
       and e.deleted_at is null
+      and e.entry_type = 'expense'
       and e.expense_date between p_start and p_end
       and (
         p_category_scope is null

@@ -451,6 +451,15 @@ export interface Database {
           expense_count: number;
         }[];
       };
+      get_income_summary: {
+        Args: { p_household_id: string; p_start: string; p_end: string };
+        Returns: {
+          category_id: string;
+          category_name: string;
+          total: string;
+          txn_count: number;
+        }[];
+      };
       get_expense_summary: {
         Args: { p_household_id: string; p_start: string; p_end: string; p_paid_by?: string | null; p_category_scope?: string | null };
         Returns: {
