@@ -213,6 +213,11 @@ export function AddExpenseSheet({
   const [categoryFlat, setCategoryFlat] = useState<Tables<"categories">[]>(() => {
     return getClientCachedData<Tables<"categories">[]>("categories_flat_budget") ?? [];
   });
+  // Expense and income categories are disjoint (categories.type, migration
+  // 023) - the picker must only ever offer the set matching the current
+  // Expense/Income toggle, or someone logging a sale could pick "Petrol".
+  const expenseCategoryTree = useMemo(() => categoryTree.filter((c) => c.type !== "income"), [categoryTree]);
+  const incomeCategoryTree = useMemo(() => categoryTree.filter((c) => c.type === "income"), [categoryTree]);
   const [merchants, setMerchants] = useState<Tables<"merchants">[]>(
     () => getClientCachedData<Tables<"merchants">[]>("merchants_list") ?? []
   );
@@ -1238,8 +1243,46 @@ export function AddExpenseSheet({
           {/* SINGLE EXPENSE MODE BODY */}
           {entryMode === "single" ? (
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {/* Expense / Income toggle (spec: Module A - general household
+                  income, not just the Homemade Business). Always visible, at
+                  the very top - not gated by category, since income can now
+                  be Salary or Freelancing too, not only a business sale.
+                  Switching clears the picked category, since expense and
+                  income categories are disjoint (categories.type) and a
+                  category picked under one type is never valid under the
+                  other. */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => (f.entryType === "expense" ? f : { ...f, entryType: "expense", category: null }))}
+                  className={cn(
+                    "rounded-xl border py-2.5 text-sm font-semibold transition-colors",
+                    form.entryType === "expense"
+                      ? "border-destructive bg-destructive/10 text-destructive"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  Expense
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => (f.entryType === "income" ? f : { ...f, entryType: "income", category: null }))}
+                  className={cn(
+                    "rounded-xl border py-2.5 text-sm font-semibold transition-colors",
+                    form.entryType === "income"
+                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  Income
+                </button>
+              </div>
+
               {/* Hero Amount Input with snug Rs position */}
               <div>
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                  {form.entryType === "income" ? "Amount Received" : "Amount"}
+                </Label>
                 <AmountInput
                   value={form.amount}
                   onChange={(v) => {
@@ -1528,48 +1571,11 @@ export function AddExpenseSheet({
                 )}
               </div>
 
-              {/* Business Income/Expense toggle - only meaningful once a Homemade
-                  Business category is selected (spec: Mini P&L). Hidden the
-                  rest of the time so ordinary household expenses never see
-                  an irrelevant control. */}
-              {form.category?.categoryName === "Homemade Business" && (
-                <div>
-                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                    This is
-                  </Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, entryType: "expense" }))}
-                      className={cn(
-                        "rounded-xl border py-2 text-sm font-semibold transition-colors",
-                        form.entryType === "expense"
-                          ? "border-destructive bg-destructive/10 text-destructive"
-                          : "border-border text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      Business Expense
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, entryType: "income" }))}
-                      className={cn(
-                        "rounded-xl border py-2 text-sm font-semibold transition-colors",
-                        form.entryType === "income"
-                          ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                          : "border-border text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      Business Income
-                    </button>
-                  </div>
-                </div>
-              )}
 
-              {/* Paid By */}
+              {/* Paid By / Received By */}
               <div>
                 <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                  Paid By
+                  {form.entryType === "income" ? "Received By" : "Paid By"}
                 </Label>
                 <PaidBySelector value={form.paidBy} onChange={(v) => setForm((f) => ({ ...f, paidBy: v }))} />
               </div>
@@ -1849,16 +1855,9 @@ export function AddExpenseSheet({
       <CategoryPicker
         open={categoryPickerOpen}
         onOpenChange={setCategoryPickerOpen}
-        tree={categoryTree}
+        tree={form.entryType === "income" ? incomeCategoryTree : expenseCategoryTree}
         onSelect={(selection) => {
-          // Reset the Income/Expense toggle whenever the category changes
-          // away from Homemade Business - a stale "income" flag must never
-          // silently carry over onto an unrelated household expense.
-          setForm((f) => ({
-            ...f,
-            category: selection,
-            entryType: selection.categoryName === "Homemade Business" ? f.entryType : "expense",
-          }));
+          setForm((f) => ({ ...f, category: selection }));
           setCategoryTouched(true);
         }}
         onCategoryCreated={(cat) => {
@@ -1867,11 +1866,11 @@ export function AddExpenseSheet({
         }}
       />
 
-      {/* Category Picker for Shopping Rows */}
+      {/* Category Picker for Shopping Rows - always expense-scoped, since Shopping mode has no Income toggle */}
       <CategoryPicker
         open={!!shoppingCategoryRowKey}
         onOpenChange={(op) => !op && setShoppingCategoryRowKey(null)}
-        tree={categoryTree}
+        tree={expenseCategoryTree}
         onSelect={(selection) => {
           if (activeShoppingRow) {
             updateShoppingRow(activeShoppingRow.key, { category: selection });
