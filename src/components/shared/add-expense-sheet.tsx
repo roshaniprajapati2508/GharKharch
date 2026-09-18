@@ -1074,58 +1074,62 @@ export function AddExpenseSheet({
                 )}
               </div>
 
-              {/* Date & Optional Notes Inline */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                    Date
-                  </Label>
-                  <div className="flex gap-1.5 items-center">
-                    <button
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, date: todayIso }))}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                        form.date === todayIso
-                          ? "bg-brand-primary text-white border-brand-primary"
-                          : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
-                      )}
-                    >
-                      Today
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, date: yesterdayIso }))}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                        form.date === yesterdayIso
-                          ? "bg-brand-primary text-white border-brand-primary"
-                          : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
-                      )}
-                    >
-                      Yesterday
-                    </button>
-                    <Input
-                      type="date"
-                      value={form.date}
-                      onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                      className="h-9 text-xs flex-1 bg-background"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="notes" className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                    Notes (Optional)
-                  </Label>
+              {/* Date - its own row; on narrow phones the Today/Yesterday pills
+                  get their own line and the native date input gets full
+                  width below them, instead of all three fighting for space
+                  in one cramped row. */}
+              <div className="pt-1">
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Date
+                </Label>
+                <div className="grid grid-cols-2 gap-1.5 sm:flex sm:items-center">
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, date: todayIso }))}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                      form.date === todayIso
+                        ? "bg-brand-primary text-white border-brand-primary"
+                        : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
+                    )}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, date: yesterdayIso }))}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                      form.date === yesterdayIso
+                        ? "bg-brand-primary text-white border-brand-primary"
+                        : "bg-muted text-foreground border-border/60 hover:bg-muted/80"
+                    )}
+                  >
+                    Yesterday
+                  </button>
                   <Input
-                    id="notes"
-                    value={form.notes}
-                    onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                    placeholder="e.g. Split with friends, monthly bill"
-                    className="h-9 text-xs bg-background"
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                    className="col-span-2 h-9 text-xs bg-background sm:col-span-1 sm:flex-1"
                   />
                 </div>
+              </div>
+
+              {/* Notes - its own full-width row (was previously squeezed into
+                  a 2-col grid alongside Date, which is what forced Date's
+                  row so tight on mobile in the first place). */}
+              <div>
+                <Label htmlFor="notes" className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Notes (Optional)
+                </Label>
+                <Input
+                  id="notes"
+                  value={form.notes}
+                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="e.g. Split with friends, monthly bill"
+                  className="h-9 text-xs bg-background"
+                />
               </div>
 
               {/* Receipt Attachment Status */}
