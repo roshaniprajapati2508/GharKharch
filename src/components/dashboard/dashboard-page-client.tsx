@@ -22,6 +22,7 @@ import { DashboardBackgroundDecoration } from "@/components/dashboard/background
 import { InsightsList } from "@/components/dashboard/insights-list";
 import { RecurringSuggestionsCard } from "@/components/dashboard/recurring-suggestions-card";
 import { ActivityFeedCard } from "@/components/dashboard/activity-feed-card";
+import { MiniPnlCard } from "@/components/analytics/mini-pnl-card";
 import { motion, staggerContainer, fadeInUp } from "@/lib/motion";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { AddExpenseSheet } from "@/components/shared/add-expense-sheet";
@@ -227,6 +228,10 @@ export function DashboardPageClient({
 
           <motion.div variants={fadeInUp} style={{ gridArea: "recurring" }}>
             <RecurringSuggestionsCard />
+          </motion.div>
+
+          <motion.div variants={fadeInUp} style={{ gridArea: "pnl" }}>
+            <MiniPnlCard />
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "activity" }}>

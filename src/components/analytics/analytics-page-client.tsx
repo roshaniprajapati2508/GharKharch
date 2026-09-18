@@ -19,6 +19,7 @@ import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-cont
 import { getAnalyticsData, type AnalyticsPageData, type PersonFilter, type CategoryScope } from "@/lib/actions/analytics";
 import { getMonthRange, type DateRange } from "@/lib/date-utils";
 import { CategoryScopeToggle } from "@/components/shared/category-scope-toggle";
+import { MiniPnlCard } from "@/components/analytics/mini-pnl-card";
 
 import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";
 
@@ -102,6 +103,8 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
       <DashboardFilters period={period} person={person} onPeriodChange={handlePeriodChange} onPersonChange={handlePersonChange} />
 
       <CategoryScopeToggle value={categoryScope} onChange={handleScopeChange} />
+
+      <MiniPnlCard range={range} />
 
       <Link
         href="/analytics/intelligence"

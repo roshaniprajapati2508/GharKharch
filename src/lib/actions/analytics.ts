@@ -359,6 +359,42 @@ export async function getMerchantMonthlyTrend(merchantId: string, months = 6) {
   });
 }
 
+export interface BusinessPnl {
+  incomeTotal: number;
+  expenseTotal: number;
+  netProfit: number;
+  incomeCount: number;
+  expenseCount: number;
+}
+
+/**
+ * Mini P&L for the Homemade Business (spec: "Mini P&L for Homemade
+ * Business"): income vs. business expense for a date range, via the
+ * get_business_pnl() RPC (migration 022 - not yet run against the live
+ * project as of this writing, so callers should expect this to fail with a
+ * "function does not exist" error until it is, and render an empty/neutral
+ * state rather than crashing).
+ */
+export async function getBusinessPnl(range: DateRange) {
+  return runAction(async (): Promise<BusinessPnl> => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { data, error } = await supabase.rpc("get_business_pnl", {
+      p_household_id: householdId,
+      p_start: range.start,
+      p_end: range.end,
+    });
+    if (error) throw new ActionError(error.message);
+    const row = data?.[0];
+    return {
+      incomeTotal: row ? parseFloat(row.income_total) : 0,
+      expenseTotal: row ? parseFloat(row.expense_total) : 0,
+      netProfit: row ? parseFloat(row.net_profit) : 0,
+      incomeCount: row ? Number(row.income_count) : 0,
+      expenseCount: row ? Number(row.expense_count) : 0,
+    };
+  });
+}
+
 /** Per-category monthly trend for the small sparkline on the Category Analytics tab — mirrors getMerchantMonthlyTrend exactly. */
 export async function getCategoryMonthlyTrend(categoryId: string, months = 6) {
   return runAction(async () => {
