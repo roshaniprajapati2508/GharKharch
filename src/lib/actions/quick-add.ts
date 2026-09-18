@@ -44,7 +44,16 @@ export async function getQuickAddChips(limit = 6) {
     });
     const weekdayAffinity = new Map((affinityRows ?? []).map((r) => [r.item_name, parseFloat(r.affinity)]));
 
-    const ranked = rankQuickAddCandidates(namedPatterns, { currentUserId: userId, weekdayAffinity, limit });
+    // Top-level category names, purely for the time-of-day boost (spec:
+    // Time-of-Day Contextual Prioritizer) - e.g. lift Food & Grocery
+    // patterns in the morning, Homemade Business during the day.
+    const candidateCategoryIds = Array.from(new Set(namedPatterns.map((p) => p.category_id)));
+    const { data: categoryRows } = candidateCategoryIds.length
+      ? await supabase.from("categories").select("id, name").in("id", candidateCategoryIds)
+      : { data: [] };
+    const categoryNames = new Map((categoryRows ?? []).map((c) => [c.id, c.name]));
+
+    const ranked = rankQuickAddCandidates(namedPatterns, { currentUserId: userId, weekdayAffinity, categoryNames, limit });
 
     const merchantIds = ranked.map((r) => r.merchantId).filter((id): id is string => !!id);
     const { data: merchants } = merchantIds.length

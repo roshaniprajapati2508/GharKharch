@@ -2,14 +2,23 @@
 // `expense_patterns` rows - the only DB reads live in the calling server
 // action (actions/quick-add.ts), matching every other file in this folder.
 //
-//   score = recencyScore     * 0.30
-//         + frequencyScore   * 0.30
-//         + weekdayPattern   * 0.15
-//         + userPreference   * 0.15
-//         + merchantFrequency* 0.10
+//   score = (recencyScore     * 0.30
+//          + frequencyScore   * 0.30
+//          + weekdayPattern   * 0.15
+//          + userPreference   * 0.15
+//          + merchantFrequency* 0.10)
+//          * (1 + timeOfDayBoost)
+//
+// timeOfDayBoost (see time-of-day.ts) re-ranks candidates by the household's
+// actual daily rhythm - e.g. Food & Grocery patterns get a lift in the
+// morning, Homemade Business during the day - as a final multiplier on the
+// base score, so it re-orders close calls without ever overriding a strong
+// recency/frequency signal on its own.
 //
 // The spec calls this a starting point ("this can evolve later") - the goal
 // is that Quick Add visibly learns from real usage rather than staying static.
+
+import { timeOfDayCategoryBoost } from "./time-of-day";
 
 export interface QuickAddPatternInput {
   item_name: string;
@@ -21,6 +30,9 @@ export interface QuickAddPatternInput {
   last_used_at: string | null;
   user_id: string | null;
 }
+
+/** Top-level category name for a pattern's `category_id`, used only for the time-of-day boost - resolved by the caller since names live in a separate table. */
+export type CategoryNameLookup = Map<string, string>;
 
 export interface QuickAddCandidate {
   itemName: string;
@@ -46,7 +58,14 @@ function recencyScore(lastUsedAt: string | null, now: number): number {
  */
 export function rankQuickAddCandidates(
   patterns: QuickAddPatternInput[],
-  options: { currentUserId: string; weekdayAffinity: Map<string, number>; now?: number; limit?: number }
+  options: {
+    currentUserId: string;
+    weekdayAffinity: Map<string, number>;
+    /** category_id -> top-level category name, for the time-of-day boost. Omit to skip the boost entirely (it defaults to a no-op). */
+    categoryNames?: CategoryNameLookup;
+    now?: number;
+    limit?: number;
+  }
 ): QuickAddCandidate[] {
   if (patterns.length === 0) return [];
   const now = options.now ?? Date.now();
@@ -66,7 +85,10 @@ export function rankQuickAddCandidates(
     const userPreference = p.user_id === options.currentUserId ? 1 : 0.6;
     const merchantFrequency = p.merchant_id ? (merchantTotals.get(p.merchant_id) ?? 0) / maxMerchantTotal : 0;
 
-    const score = recency * 0.3 + frequency * 0.3 + weekday * 0.15 + userPreference * 0.15 + merchantFrequency * 0.1;
+    const baseScore = recency * 0.3 + frequency * 0.3 + weekday * 0.15 + userPreference * 0.15 + merchantFrequency * 0.1;
+    const categoryName = options.categoryNames?.get(p.category_id);
+    const boost = timeOfDayCategoryBoost(categoryName, now);
+    const score = baseScore * (1 + boost);
 
     return {
       itemName: p.item_name,

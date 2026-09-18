@@ -60,6 +60,7 @@ import { useOffline } from "@/lib/context/offline-context";
 import { parseQuickEntry } from "@/lib/expense-intelligence/nl-parser";
 import { matchKeywordRule } from "@/lib/expense-intelligence/keyword-map";
 import { fuzzyMatches } from "@/lib/expense-intelligence/fuzzy-match";
+import { timeOfDayCategoryBoost } from "@/lib/expense-intelligence/time-of-day";
 import { detectPriceChange, type PriceChangeFlag } from "@/lib/actions/insights";
 import { ReceiptReviewSheet, type ReceiptReviewValues } from "@/components/shared/receipt-review-sheet";
 import { checkAiConfigured, scanReceipt } from "@/lib/actions/receipts";
@@ -576,13 +577,18 @@ export function AddExpenseSheet({
         .map((pred) => {
           const diff = Math.abs(pred.amount - amt);
           const pct = diff / Math.max(pred.amount, amt, 1);
-          return { pred, diff, pct };
+          // Time-of-day tiebreaker: when two past purchases cost about the
+          // same, prefer whichever category fits right now (e.g. at 8am,
+          // prefer a Food & Grocery match over an equally-priced one-off).
+          const timeBoost = timeOfDayCategoryBoost(pred.categoryName);
+          return { pred, diff, pct, timeBoost };
         })
         .filter((s) => s.diff === 0 || s.pct <= 0.05)
         .sort((a, b) => {
           if (a.diff === 0 && b.diff !== 0) return -1;
           if (b.diff === 0 && a.diff !== 0) return 1;
           if (b.pred.usageCount !== a.pred.usageCount) return b.pred.usageCount - a.pred.usageCount;
+          if (b.timeBoost !== a.timeBoost) return b.timeBoost - a.timeBoost;
           return a.diff - b.diff;
         });
 
