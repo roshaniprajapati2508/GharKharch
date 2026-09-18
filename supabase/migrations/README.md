@@ -327,5 +327,12 @@ the filename and this header comment changed.
   table/functions - it does not backfill history, so the inbox will be
   empty until new expense saves / rule fires / budget alerts start logging
   to it going forward.
+- 026 depends on 001 (`households`) and 022 (`expenses.entry_type`) only.
+  Adds `scratchpad_drafts` (one autosaved freeform-text row per household,
+  backing the Fast Expense Scratchpad) and `get_spending_pace_benchmark()`
+  (compares this month's spend-to-date against the household's own 3/6/12-
+  month historical average through the same day-of-month, for the
+  dashboard's Spending Pace gauge). No dependency on 023-025; safe to run
+  any time after 022.
 - As always: Claude prepares these files only. Running them against your live
   Supabase project is entirely up to you, via the SQL Editor or the CLI.

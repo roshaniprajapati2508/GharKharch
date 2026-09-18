@@ -432,6 +432,12 @@ export interface Database {
         Update: Partial<{ household_id: string; rule_id: string }>;
         Relationships: [];
       };
+      scratchpad_drafts: {
+        Row: { household_id: string; content: string; updated_at: string };
+        Insert: { household_id: string; content?: string; updated_at?: string };
+        Update: Partial<{ household_id: string; content: string; updated_at: string }>;
+        Relationships: [];
+      };
       automation_rules: {
         Row: {
           id: string;
@@ -492,6 +498,21 @@ export interface Database {
       create_household: {
         Args: { p_name?: string };
         Returns: string;
+      };
+      get_spending_pace_benchmark: {
+        Args: { p_household_id: string; p_current_date?: string };
+        Returns: {
+          current_day: number;
+          days_in_month: number;
+          month_progress_pct: string;
+          current_mtd_spend: string;
+          projected_month_end: string;
+          avg_3m_mtd_spend: string;
+          avg_6m_mtd_spend: string;
+          avg_12m_mtd_spend: string;
+          pace_vs_6m_pct: string;
+          pace_status: "frugal" | "on_track" | "elevated";
+        }[];
       };
       mark_activity_read: {
         Args: { p_event_id: string };

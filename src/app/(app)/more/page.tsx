@@ -9,6 +9,7 @@ import {
   Tag,
   Store,
   Zap,
+  NotebookPen,
   Wallet,
   PiggyBank,
   Repeat,
@@ -212,6 +213,7 @@ export default function MorePage() {
             <MenuLink href="/more/budgets" icon={PiggyBank} label="Budgets" />
             <MenuLink href="/more/recurring" icon={Repeat} label="Recurring expenses" />
             <MenuLink href="/more/rules" icon={Zap} label="Smart Rules (auto-fill)" />
+            <MenuLink href="/more/scratchpad" icon={NotebookPen} label="Fast Scratchpad" />
           </CardContent>
         </Card>
       </div>

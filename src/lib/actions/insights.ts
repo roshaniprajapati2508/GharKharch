@@ -437,3 +437,37 @@ export async function detectPriceChange(itemName: string) {
     return { direction, previousTypical, recent };
   });
 }
+
+export interface SpendingPaceBenchmark {
+  currentDay: number;
+  daysInMonth: number;
+  monthProgressPct: number;
+  currentMtdSpend: number;
+  projectedMonthEnd: number;
+  avg3mMtdSpend: number;
+  avg6mMtdSpend: number;
+  avg12mMtdSpend: number;
+  paceVs6mPct: number;
+  paceStatus: "frugal" | "on_track" | "elevated";
+}
+
+/** Rolling Spending Pace & Historical Benchmark (spec: Feature 2) - wraps get_spending_pace_benchmark() (migration 026), which does all the aggregation in Postgres against the household's own spend history. */
+export async function getSpendingPaceBenchmark() {
+  return runAction(async (): Promise<SpendingPaceBenchmark> => {
+    const { supabase, householdId } = await requireHouseholdContext();
+    const { data, error } = await supabase.rpc("get_spending_pace_benchmark", { p_household_id: householdId }).single();
+    if (error || !data) throw new ActionError(error?.message ?? "Couldn't load spending pace");
+    return {
+      currentDay: data.current_day,
+      daysInMonth: data.days_in_month,
+      monthProgressPct: Number(data.month_progress_pct),
+      currentMtdSpend: Number(data.current_mtd_spend),
+      projectedMonthEnd: Number(data.projected_month_end),
+      avg3mMtdSpend: Number(data.avg_3m_mtd_spend),
+      avg6mMtdSpend: Number(data.avg_6m_mtd_spend),
+      avg12mMtdSpend: Number(data.avg_12m_mtd_spend),
+      paceVs6mPct: Number(data.pace_vs_6m_pct),
+      paceStatus: data.pace_status,
+    };
+  });
+}

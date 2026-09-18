@@ -12,7 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { updateExpenseNotes, getReceiptSignedUrl } from "@/lib/actions/expenses";
 import { toast } from "sonner";
-import type { EnrichedExpense } from "@/lib/actions/expenses";
+import type { EnrichedExpense, InlineEditableField } from "@/lib/actions/expenses";
+import type { CategoryWithChildren } from "@/lib/actions/categories";
+import type { Tables } from "@/types/database";
 
 export function ExpenseList({
   expenses,
@@ -24,6 +26,9 @@ export function ExpenseList({
   selectedIds,
   onToggleSelect,
   onInlineUpdate,
+  categories,
+  paymentMethods,
+  onPaidByChange,
 }: {
   expenses: EnrichedExpense[];
   onEdit: (expense: EnrichedExpense) => void;
@@ -34,7 +39,11 @@ export function ExpenseList({
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (expense: EnrichedExpense) => void;
-  onInlineUpdate?: (expense: EnrichedExpense, field: "amount" | "item_name", value: string) => Promise<boolean>;
+  onInlineUpdate?: (expense: EnrichedExpense, field: InlineEditableField, value: string) => Promise<boolean>;
+  /** Desktop hover micro-action toolbar (spec: Feature 3.3) - category/payment quick-switch options. Omit to hide the toolbar entirely (e.g. the dashboard's compact list). */
+  categories?: CategoryWithChildren[];
+  paymentMethods?: Tables<"payment_methods">[];
+  onPaidByChange?: (expense: EnrichedExpense, userId: string, label: string) => void;
 }) {
   const [noteTarget, setNoteTarget] = useState<EnrichedExpense | null>(null);
   const [noteValue, setNoteValue] = useState("");
@@ -118,6 +127,9 @@ export function ExpenseList({
                 selected={selectedIds?.has(e.id) ?? false}
                 onToggleSelect={onToggleSelect ? () => onToggleSelect(e) : undefined}
                 onInlineUpdate={onInlineUpdate ? (field, value) => onInlineUpdate(e, field, value) : undefined}
+                categories={categories}
+                paymentMethods={paymentMethods}
+                onPaidByChange={onPaidByChange ? (userId, label) => onPaidByChange(e, userId, label) : undefined}
               />
             ))}
           </div>

@@ -228,19 +228,71 @@ export async function updateExpenseNotes(id: string, notes: string) {
  * tripping the entire expense for a single-field patch would be both more
  * code and a bigger blast radius if something else on the row is stale.
  */
-export async function updateExpenseField(id: string, field: "amount" | "item_name", value: string) {
+export type InlineEditableField =
+  | "amount"
+  | "item_name"
+  | "category_id"
+  | "merchant_id"
+  | "paid_by"
+  | "payment_method"
+  | "expense_date";
+
+/**
+ * Atomic single-field patch for the CRM power-table's inline editing (spec:
+ * Feature 3) - a lighter-weight sibling of updateExpense() that touches
+ * exactly one column instead of re-validating/re-writing the whole row, so
+ * a double-click-to-edit cell commit or a hover-toolbar 1-click switch
+ * stays fast. Kept name-compatible with the original amount/item_name
+ * 2-field version so every existing call site still works unchanged.
+ */
+export async function updateExpenseField(id: string, field: InlineEditableField, value: string | null) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();
 
-    let patch: { amount: number } | { item_name: string };
-    if (field === "amount") {
-      const amount = parseFloat(value);
-      if (!Number.isFinite(amount) || amount <= 0) throw new ActionError("Enter a valid amount");
-      patch = { amount };
-    } else {
-      const item_name = value.trim();
-      if (!item_name) throw new ActionError("Item name can't be empty");
-      patch = { item_name };
+    let patch: Partial<Tables<"expenses">>;
+    switch (field) {
+      case "amount": {
+        const amount = parseFloat(value ?? "");
+        if (!Number.isFinite(amount) || amount <= 0) throw new ActionError("Enter a valid amount");
+        patch = { amount: String(amount) };
+        break;
+      }
+      case "item_name": {
+        const item_name = (value ?? "").trim();
+        if (!item_name) throw new ActionError("Item name can't be empty");
+        patch = { item_name };
+        break;
+      }
+      case "category_id": {
+        if (!value) throw new ActionError("Choose a category");
+        // Switching category invalidates any subcategory that belonged to
+        // the old parent - clearing it here rather than trusting the
+        // caller to pass a matching subcategory_id avoids ending up with a
+        // subcategory that silently belongs to a different top-level
+        // category than the one now shown.
+        patch = { category_id: value, subcategory_id: null };
+        break;
+      }
+      case "merchant_id": {
+        patch = { merchant_id: value || null };
+        break;
+      }
+      case "paid_by": {
+        if (!value) throw new ActionError("Choose who paid");
+        patch = { paid_by: value };
+        break;
+      }
+      case "payment_method": {
+        patch = { payment_method: value || null };
+        break;
+      }
+      case "expense_date": {
+        if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new ActionError("Invalid date");
+        patch = { expense_date: value };
+        break;
+      }
+      default:
+        throw new ActionError("Unsupported field");
     }
 
     const { data, error } = await supabase
@@ -265,6 +317,87 @@ export async function updateExpenseField(id: string, field: "amount" | "item_nam
  * once the parent category changes, and there's no per-row subcategory
  * picker in the bulk bar to choose a new one.
  */
+export interface ScratchpadExpenseInput {
+  amount: number;
+  item_name: string;
+  category_id: string;
+  subcategory_id?: string | null;
+  merchant_id?: string | null;
+  paid_by: string;
+  payment_method: string;
+  entry_type: "expense" | "income";
+  expense_date: string;
+}
+
+/**
+ * Batch insert for the Fast Expense Scratchpad's "Save All to GharKharch"
+ * (spec: Feature 1) - every row the review table shows must already carry
+ * a real category_id/paid_by by the time this is called (the client-side
+ * parser + review table are what resolve/collect those; this action does
+ * not itself infer anything). Inserted one-by-one rather than a single
+ * multi-row insert so a single bad row (e.g. a stale category id after a
+ * category was deleted mid-review) fails just that row instead of the
+ * whole batch, and the caller gets a per-row result to show in the table.
+ */
+export async function bulkCreateExpenses(rows: ScratchpadExpenseInput[]) {
+  return runAction(async () => {
+    if (rows.length === 0) throw new ActionError("Nothing to save");
+    const { supabase, userId, householdId } = await requireHouseholdContext();
+
+    const results: { lineIndex: number; success: boolean; error?: string; expense?: Tables<"expenses"> }[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row.category_id || !row.paid_by || !row.amount || row.amount <= 0 || !row.item_name.trim()) {
+        results.push({ lineIndex: i, success: false, error: "Missing amount, item name, category, or payer" });
+        continue;
+      }
+      const { data, error } = await supabase
+        .from("expenses")
+        .insert({
+          household_id: householdId,
+          created_by: userId,
+          paid_by: row.paid_by,
+          expense_type: "household",
+          entry_type: row.entry_type,
+          amount: row.amount,
+          merchant_id: row.merchant_id ?? null,
+          item_name: row.item_name.trim(),
+          category_id: row.category_id,
+          subcategory_id: row.subcategory_id ?? null,
+          payment_method: row.payment_method || "UPI",
+          expense_date: row.expense_date,
+        })
+        .select()
+        .single();
+
+      if (error || !data) {
+        results.push({ lineIndex: i, success: false, error: error?.message ?? "Couldn't save this row" });
+        continue;
+      }
+      results.push({ lineIndex: i, success: true, expense: data as Tables<"expenses"> });
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+    if (successCount > 0) {
+      try {
+        await logActivityEvent(supabase, {
+          householdId,
+          actorId: userId,
+          eventType: "scratchpad_batch_created",
+          entityType: "expense",
+          summary: `Added ${successCount} expense${successCount === 1 ? "" : "s"} from the Scratchpad`,
+        });
+      } catch {
+        // Activity logging must never fail the batch save.
+      }
+      revalidateExpensePages();
+    }
+
+    return { results, successCount };
+  });
+}
+
 export async function bulkUpdateExpenses(
   ids: string[],
   patch: { category_id?: string; subcategory_id?: string | null; payment_method?: string }

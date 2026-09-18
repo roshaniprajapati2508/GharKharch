@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Pencil, Copy, Trash2, MessageSquarePlus, MoreVertical, Repeat, Sparkles, Paperclip, Check } from "lucide-react";
+import { Pencil, Copy, Trash2, MessageSquarePlus, MoreVertical, Repeat, Sparkles, Paperclip, Check, Tag, User, CreditCard } from "lucide-react";
 import { CategoryIcon } from "@/lib/icon-map";
 import { formatINR } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,12 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import type { EnrichedExpense } from "@/lib/actions/expenses";
+import { useHousehold } from "@/lib/context/household-context";
+import type { EnrichedExpense, InlineEditableField } from "@/lib/actions/expenses";
+import type { CategoryWithChildren } from "@/lib/actions/categories";
+import type { Tables } from "@/types/database";
+
+const QUICK_PAYMENT_METHODS = ["UPI", "Cash", "Credit Card", "Bank Transfer"];
 
 const SWIPE_REVEAL = 152;
 
@@ -54,6 +59,9 @@ export function ExpenseRow({
   selected = false,
   onToggleSelect,
   onInlineUpdate,
+  categories,
+  paymentMethods,
+  onPaidByChange,
 }: {
   expense: EnrichedExpense;
   onEdit: () => void;
@@ -67,8 +75,18 @@ export function ExpenseRow({
   selected?: boolean;
   onToggleSelect?: () => void;
   /** Inline double-click-to-edit on amount/item name (spec: Pillar 4). Omit to disable inline editing for this row (e.g. the compact dashboard "recent" list). */
-  onInlineUpdate?: (field: "amount" | "item_name", value: string) => Promise<boolean>;
+  onInlineUpdate?: (field: InlineEditableField, value: string) => Promise<boolean>;
+  /** Desktop hover micro-action toolbar (spec: Feature 3.3). Omit any of the three to drop that quick-action from the toolbar. */
+  categories?: CategoryWithChildren[];
+  paymentMethods?: Tables<"payment_methods">[];
+  onPaidByChange?: (userId: string, label: string) => void;
 }) {
+  const { userId, displayName, partner } = useHousehold();
+  const payerOptions = [
+    { id: userId, label: displayName },
+    ...(partner ? [{ id: partner.id, label: partner.displayName }] : []),
+  ];
+  const showToolbar = !selectionMode && (categories || paymentMethods || onPaidByChange);
   const [dragX, setDragX] = useState(0);
   const startX = useRef<number | null>(null);
   const dragging = useRef(false);
@@ -152,8 +170,21 @@ export function ExpenseRow({
         onClick={() => {
           if (selectionMode) onToggleSelect?.();
         }}
+        tabIndex={selectionMode ? undefined : 0}
+        onKeyDown={(e) => {
+          if (selectionMode) return;
+          const target = e.target as HTMLElement;
+          if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+          if ((e.key === "Delete" || e.key === "Backspace") && document.activeElement === e.currentTarget) {
+            e.preventDefault();
+            onDelete();
+          } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d") {
+            e.preventDefault();
+            onDuplicate();
+          }
+        }}
         className={cn(
-          "relative flex items-center gap-3 bg-card px-1 py-2.5 transition-transform",
+          "group relative flex items-center gap-3 bg-card px-1 py-2.5 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
           dragX === 0 && "duration-200",
           selectionMode && "cursor-pointer"
         )}
@@ -261,6 +292,88 @@ export function ExpenseRow({
               {formatINR(expense.amount)}
             </p>
           )}
+
+          {/* Desktop/tablet hover micro-action dock (spec: Feature 3.3) - a
+              frosted-glass toolbar for non-touch pointers only, revealed on
+              row hover/focus via the `group` class on the row wrapper above.
+              Touch devices already have swipe-to-reveal + the "..." menu
+              below, so this never renders as a second, redundant control
+              surface on mobile. */}
+          {showToolbar && (
+            <div
+              className="hidden shrink-0 items-center gap-0.5 rounded-full border border-border/60 bg-card/95 px-1 opacity-0 shadow-sm backdrop-blur-md transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 md:flex"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {categories && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none"
+                    title="Change category"
+                  >
+                    <Tag className="h-3.5 w-3.5" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
+                    {categories.map((c) => (
+                      <DropdownMenuItem key={c.id} onClick={() => onInlineUpdate?.("category_id", c.id)}>
+                        {c.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {onPaidByChange && payerOptions.length > 1 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none"
+                    title="Change who paid"
+                  >
+                    <User className="h-3.5 w-3.5" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {payerOptions.map((p) => (
+                      <DropdownMenuItem key={p.id} onClick={() => onPaidByChange(p.id, p.label)}>
+                        {p.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {(paymentMethods || onInlineUpdate) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none"
+                    title="Change payment method"
+                  >
+                    <CreditCard className="h-3.5 w-3.5" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {(paymentMethods?.map((m) => m.name) ?? QUICK_PAYMENT_METHODS).map((name) => (
+                      <DropdownMenuItem key={name} onClick={() => onInlineUpdate?.("payment_method", name)}>
+                        {name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <button
+                type="button"
+                onClick={onDuplicate}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+                title="Duplicate"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-destructive hover:bg-destructive/10"
+                title="Delete"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           {!selectionMode && <DropdownMenu>
             <DropdownMenuTrigger className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none">
               <MoreVertical className="h-4 w-4" />

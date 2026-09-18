@@ -297,6 +297,7 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
     "recurring"
     "pnl"
     "cashflow"
+    "pace"
     "activity";
 }
 
@@ -318,6 +319,7 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
       "calendar calendar"
       "recurring recurring"
       "pnl cashflow"
+      "pace pace"
       "activity activity";
   }
 }
@@ -336,6 +338,7 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
       "insights insights"
       "recurring pnl"
       "cashflow cashflow"
+      "pace pace"
       "activity activity"
       "calendar recent";
   }

@@ -20,11 +20,14 @@ import {
   bulkSoftDeleteExpenses,
   bulkRestoreExpenses,
   type EnrichedExpense,
+  type InlineEditableField,
 } from "@/lib/actions/expenses";
 import type { CategoryWithChildren } from "@/lib/actions/categories";
+import { listPaymentMethodsForHousehold } from "@/lib/actions/payment-methods";
 import { formatINR } from "@/lib/utils";
 import { toastUndo } from "@/lib/toast-helpers";
 import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
+import type { Tables } from "@/types/database";
 
 export function ExpensesPageClient({
   initialExpenses,
@@ -44,6 +47,13 @@ export function ExpensesPageClient({
   const [loading, setLoading] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [paymentMethods, setPaymentMethods] = useState<Tables<"payment_methods">[]>([]);
+
+  useEffect(() => {
+    listPaymentMethodsForHousehold().then((result) => {
+      if (result.data) setPaymentMethods(result.data);
+    });
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("focus") === "search") {
@@ -106,14 +116,46 @@ export function ExpensesPageClient({
     refetch(filters);
   }
 
-  async function handleInlineUpdate(expense: EnrichedExpense, field: "amount" | "item_name", value: string): Promise<boolean> {
+  // Ultra-Fast CRM Power-Table (spec: Feature 3) - a single atomic patch
+  // covers every inline-editable cell (double-click amount/item_name, plus
+  // the desktop hover toolbar's category/payer/payment quick-switches).
+  // updateExpenseField only returns the raw `expenses` row, not the
+  // enriched display fields (category_name/icon/color, payer_name) this
+  // list renders - so a category/paid_by change resolves those from data
+  // already in memory (the `categories` prop, `useHousehold`'s userId/
+  // partner) instead of a second round trip.
+  async function handleInlineUpdate(expense: EnrichedExpense, field: InlineEditableField, value: string): Promise<boolean> {
+    const previous = expenses;
+    // 0ms optimistic update - apply immediately, roll back on failure.
+    setExpenses((list) =>
+      list.map((e) => {
+        if (e.id !== expense.id) return e;
+        if (field === "category_id") {
+          const cat = categories.find((c) => c.id === value);
+          return { ...e, category_id: value, subcategory_id: null, category_name: cat?.name ?? e.category_name, category_icon: cat?.icon ?? e.category_icon, category_color: cat?.color ?? e.category_color, subcategory_name: null };
+        }
+        return { ...e, [field]: field === "amount" ? value : value } as EnrichedExpense;
+      })
+    );
+
     const result = await updateExpenseField(expense.id, field, value);
     if (result.error !== null) {
-      toast.error(result.error);
+      toast.error(result.error, { action: { label: "Undo", onClick: () => setExpenses(previous) } });
+      setExpenses(previous);
       return false;
     }
-    setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, [field]: result.data[field] } : e)));
     return true;
+  }
+
+  function handlePaidByChange(expense: EnrichedExpense, userId: string, label: string) {
+    const previous = expenses;
+    setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, paid_by: userId, payer_name: label } : e)));
+    updateExpenseField(expense.id, "paid_by", userId).then((result) => {
+      if (result.error !== null) {
+        toast.error(result.error);
+        setExpenses(previous);
+      }
+    });
   }
 
   function toggleSelectExpense(expense: EnrichedExpense) {
@@ -243,6 +285,9 @@ export function ExpensesPageClient({
           selectedIds={selectedIds}
           onToggleSelect={toggleSelectExpense}
           onInlineUpdate={handleInlineUpdate}
+          categories={categories}
+          paymentMethods={paymentMethods}
+          onPaidByChange={handlePaidByChange}
         />
       )}
 

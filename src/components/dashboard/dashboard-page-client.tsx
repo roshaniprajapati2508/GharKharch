@@ -24,6 +24,7 @@ import { RecurringSuggestionsCard } from "@/components/dashboard/recurring-sugge
 import { ActivityFeedCard } from "@/components/dashboard/activity-feed-card";
 import { MiniPnlCard } from "@/components/analytics/mini-pnl-card";
 import { CashflowWidget } from "@/components/dashboard/cashflow-widget";
+import { SpendingPaceCard } from "@/components/dashboard/spending-pace-card";
 import { ExecutiveCashflowCard } from "@/components/dashboard/executive-cashflow-card";
 import { motion, staggerContainer, fadeInUp } from "@/lib/motion";
 import { ExpenseList } from "@/components/expenses/expense-list";
@@ -242,6 +243,10 @@ export function DashboardPageClient({
 
           <motion.div variants={fadeInUp} style={{ gridArea: "cashflow" }}>
             <CashflowWidget />
+          </motion.div>
+
+          <motion.div variants={fadeInUp} style={{ gridArea: "pace" }}>
+            <SpendingPaceCard />
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "activity" }}>
