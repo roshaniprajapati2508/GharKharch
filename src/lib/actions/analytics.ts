@@ -33,15 +33,65 @@ type PaymentMethodBreakdownRow = Database["public"]["Functions"]["get_payment_me
 
 export type PersonFilter = "household" | "me" | "partner";
 
+/**
+ * "All" vs "Household Only" vs "Business Only" (spec: Task 4, separating the
+ * `Homemade Business` category tree - migration 020 - from everyday
+ * household living costs). "all" is the default and behaves exactly as
+ * before this filter existed.
+ */
+export type CategoryScope = "all" | "household" | "business";
+
 export interface AnalyticsFilters {
   range: DateRange;
   person: PersonFilter;
+  categoryScope?: CategoryScope;
 }
 
 function resolvePaidBy(filters: AnalyticsFilters, userId: string, partnerId: string | null): string | null {
   if (filters.person === "me") return userId;
   if (filters.person === "partner") return partnerId ?? userId;
   return null; // household — no filter
+}
+
+/** "all" -> no filter needed at all (skip the extra query, matches every RPC's own null default). */
+function resolveCategoryScopeArg(scope: CategoryScope | undefined): "household" | "business" | null {
+  if (scope === "household" || scope === "business") return scope;
+  return null;
+}
+
+/**
+ * Which category ids fall under "Homemade Business" (itself + its
+ * subcategories, migration 020) vs everything else, for the household. Only
+ * needed for the direct `topExpensesQuery` (it queries `expenses` directly,
+ * not through one of the RPCs in migration 021 that already do this
+ * filtering in SQL) - every other breakdown gets its scoping from
+ * `p_category_scope` on the RPC call itself.
+ */
+export async function resolveScopedCategoryIds(
+  supabase: Awaited<ReturnType<typeof requireHouseholdContext>>["supabase"],
+  householdId: string,
+  scope: CategoryScope | undefined
+): Promise<string[] | null> {
+  const resolved = resolveCategoryScopeArg(scope);
+  if (!resolved) return null;
+
+  const { data: allCategories } = await supabase
+    .from("categories")
+    .select("id, parent_id, name")
+    .or(`household_id.eq.${householdId},household_id.is.null`);
+  const rows = allCategories ?? [];
+
+  const businessTop = rows.find((cat) => cat.name === "Homemade Business");
+  const businessIds = new Set<string>();
+  if (businessTop) {
+    businessIds.add(businessTop.id);
+    for (const cat of rows) {
+      if (cat.parent_id === businessTop.id) businessIds.add(cat.id);
+    }
+  }
+
+  if (resolved === "business") return Array.from(businessIds);
+  return rows.map((cat) => cat.id).filter((id) => !businessIds.has(id));
 }
 
 const EMPTY_SUMMARY: ExpenseSummaryRow = {
@@ -218,6 +268,7 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
     const partnerId = (members ?? []).map((m) => m.user_id).find((id) => id !== userId) ?? null;
     const paidBy = resolvePaidBy(filters, userId, partnerId);
     const previousRange = getPreviousComparableRange(filters.range);
+    const categoryScope = resolveCategoryScopeArg(filters.categoryScope);
 
     let topExpensesQuery = supabase
       .from("expenses")
@@ -232,21 +283,28 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
     if (paidBy) {
       topExpensesQuery = topExpensesQuery.eq("paid_by", paidBy);
     }
+    // Top Expenses queries `expenses` directly rather than through one of the
+    // RPCs below, so it needs its own category-id filter for the scope
+    // toggle - every other breakdown gets its filtering from p_category_scope.
+    const scopedCategoryIds = await resolveScopedCategoryIds(supabase, householdId, filters.categoryScope);
+    if (scopedCategoryIds) {
+      topExpensesQuery = topExpensesQuery.in("category_id", scopedCategoryIds);
+    }
 
     const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, merchantRes, prevMerchantRes, itemRes, prevItemRes, dailyRes, topRes, personRes, paymentMethodRes] =
       await Promise.all([
-        supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy }),
-        supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_paid_by: paidBy }),
-        supabase.rpc("get_category_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy }),
-        supabase.rpc("get_category_breakdown", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_paid_by: paidBy }),
-        supabase.rpc("get_merchant_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_limit: 20 }),
-        supabase.rpc("get_merchant_breakdown", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_limit: 20 }),
-        supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_limit: 30 }),
-        supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_limit: 30 }),
-        supabase.rpc("get_daily_spending", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy }),
+        supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy, p_category_scope: categoryScope }),
+        supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_paid_by: paidBy, p_category_scope: categoryScope }),
+        supabase.rpc("get_category_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy, p_category_scope: categoryScope }),
+        supabase.rpc("get_category_breakdown", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_paid_by: paidBy, p_category_scope: categoryScope }),
+        supabase.rpc("get_merchant_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_limit: 20, p_category_scope: categoryScope }),
+        supabase.rpc("get_merchant_breakdown", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_limit: 20, p_category_scope: categoryScope }),
+        supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_limit: 30, p_category_scope: categoryScope }),
+        supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_limit: 30, p_category_scope: categoryScope }),
+        supabase.rpc("get_daily_spending", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy, p_category_scope: categoryScope }),
         topExpensesQuery,
-        supabase.rpc("get_person_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end }),
-        supabase.rpc("get_payment_method_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end }),
+        supabase.rpc("get_person_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_category_scope: categoryScope }),
+        supabase.rpc("get_payment_method_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_category_scope: categoryScope }),
       ]);
 
     if (summaryRes.error) throw new ActionError(summaryRes.error.message);

@@ -440,7 +440,7 @@ export interface Database {
         Returns: boolean;
       };
       get_expense_summary: {
-        Args: { p_household_id: string; p_start: string; p_end: string; p_paid_by?: string | null };
+        Args: { p_household_id: string; p_start: string; p_end: string; p_paid_by?: string | null; p_category_scope?: string | null };
         Returns: {
           total: string;
           txn_count: number;
@@ -451,7 +451,7 @@ export interface Database {
         }[];
       };
       get_category_breakdown: {
-        Args: { p_household_id: string; p_start: string; p_end: string; p_paid_by?: string | null };
+        Args: { p_household_id: string; p_start: string; p_end: string; p_paid_by?: string | null; p_category_scope?: string | null };
         Returns: {
           category_id: string;
           category_name: string;
@@ -466,11 +466,11 @@ export interface Database {
         }[];
       };
       get_person_breakdown: {
-        Args: { p_household_id: string; p_start: string; p_end: string };
+        Args: { p_household_id: string; p_start: string; p_end: string; p_category_scope?: string | null };
         Returns: { paid_by: string; total: string; txn_count: number; avg_transaction: string }[];
       };
       get_merchant_breakdown: {
-        Args: { p_household_id: string; p_start: string; p_end: string; p_limit?: number };
+        Args: { p_household_id: string; p_start: string; p_end: string; p_limit?: number; p_category_scope?: string | null };
         Returns: {
           merchant_id: string;
           merchant_name: string;
@@ -488,7 +488,7 @@ export interface Database {
         Returns: { month: string; total: string }[];
       };
       get_item_analytics: {
-        Args: { p_household_id: string; p_start: string; p_end: string; p_limit?: number };
+        Args: { p_household_id: string; p_start: string; p_end: string; p_limit?: number; p_category_scope?: string | null };
         Returns: {
           item_name: string;
           txn_count: number;
@@ -501,11 +501,11 @@ export interface Database {
         }[];
       };
       get_payment_method_breakdown: {
-        Args: { p_household_id: string; p_start: string; p_end: string };
+        Args: { p_household_id: string; p_start: string; p_end: string; p_category_scope?: string | null };
         Returns: { payment_method: string; total: string; txn_count: number; share_pct: string }[];
       };
       get_daily_spending: {
-        Args: { p_household_id: string; p_start: string; p_end: string; p_paid_by?: string | null };
+        Args: { p_household_id: string; p_start: string; p_end: string; p_paid_by?: string | null; p_category_scope?: string | null };
         Returns: { expense_date: string; total: string; txn_count: number }[];
       };
       get_top_expenses: {

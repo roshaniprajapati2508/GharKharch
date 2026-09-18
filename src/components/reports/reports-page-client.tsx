@@ -10,6 +10,8 @@ import { MonthlyReportView } from "@/components/reports/monthly-report-view";
 import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-context";
 import { useHousehold } from "@/lib/context/household-context";
 import { getReportData, exportExpensesCsv, exportExpensesJson, type ReportData } from "@/lib/actions/reports";
+import type { CategoryScope } from "@/lib/actions/analytics";
+import { CategoryScopeToggle } from "@/components/shared/category-scope-toggle";
 import { downloadReportPdf } from "@/lib/pdf/report-pdf";
 import {
   getTodayRange,
@@ -51,9 +53,13 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
   const [customOpen, setCustomOpen] = useState(false);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  // All / Household Only / Business Only - same filter as Analytics, so a
+  // report can be pulled for just the homemade business side or just
+  // everyday household spend (spec: Task 4).
+  const [categoryScope, setCategoryScope] = useState<CategoryScope>("all");
 
-  const load = useCallback(async (nextRange: DateRange) => {
-    const isDefaultMonth = nextRange.start === getMonthRange(0).start && nextRange.end === getMonthRange(0).end;
+  const load = useCallback(async (nextRange: DateRange, nextScope: CategoryScope) => {
+    const isDefaultMonth = nextRange.start === getMonthRange(0).start && nextRange.end === getMonthRange(0).end && nextScope === "all";
     if (isDefaultMonth) {
       const cached = getClientCachedData<ReportData>(REPORT_CACHE_KEY);
       if (cached) {
@@ -61,7 +67,7 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
         setLoading(false);
       }
     }
-    const result = await getReportData(nextRange);
+    const result = await getReportData(nextRange, nextScope);
     if (result.error !== null) {
       toast.error(result.error);
       setLoading(false);
@@ -76,21 +82,26 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
-    load(range);
+    load(range, categoryScope);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useOnExpenseSaved(
     useCallback(() => {
-      load(range);
-    }, [load, range])
+      load(range, categoryScope);
+    }, [load, range, categoryScope])
   );
 
   function handlePeriodChange(nextPeriod: ReportPeriod, nextRange: DateRange) {
     setPeriod(nextPeriod);
     setRange(nextRange);
     setCustomOpen(false);
-    load(nextRange);
+    load(nextRange, categoryScope);
+  }
+
+  function handleScopeChange(nextScope: CategoryScope) {
+    setCategoryScope(nextScope);
+    load(range, nextScope);
   }
 
   function applyCustomRange() {
@@ -189,6 +200,8 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
           Custom
         </button>
       </div>
+
+      <CategoryScopeToggle value={categoryScope} onChange={handleScopeChange} />
 
       {customOpen && (
         <div className="no-print flex items-end gap-2 rounded-xl border border-border bg-surface p-3">

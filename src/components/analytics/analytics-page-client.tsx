@@ -16,8 +16,9 @@ import { SpendingCalendar } from "@/components/analytics/spending-calendar";
 import { MonthlyComparisonCard } from "@/components/analytics/monthly-comparison-card";
 import { TopExpensesList } from "@/components/analytics/top-expenses-list";
 import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-context";
-import { getAnalyticsData, type AnalyticsPageData, type PersonFilter } from "@/lib/actions/analytics";
+import { getAnalyticsData, type AnalyticsPageData, type PersonFilter, type CategoryScope } from "@/lib/actions/analytics";
 import { getMonthRange, type DateRange } from "@/lib/date-utils";
+import { CategoryScopeToggle } from "@/components/shared/category-scope-toggle";
 
 import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";
 
@@ -28,6 +29,10 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
   const [period, setPeriod] = useState<QuickPeriod>("month");
   const [range, setRange] = useState<DateRange>(getMonthRange(0));
   const [person, setPerson] = useState<PersonFilter>("household");
+  // All / Household Only / Business Only - separates everyday household
+  // spend from the Homemade Business category tree (migration 020) so both
+  // can be reviewed (or reported on) independently.
+  const [categoryScope, setCategoryScope] = useState<CategoryScope>("all");
   const [data, setData] = useState<AnalyticsPageData | null>(() => {
     if (initialData) {
       setClientCachedData(ANALYTICS_CACHE_KEY, initialData);
@@ -37,8 +42,9 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
   });
   const [loading, setLoading] = useState(() => !initialData && !getClientCachedData<AnalyticsPageData>(ANALYTICS_CACHE_KEY));
 
-  const load = useCallback(async (nextRange: DateRange, nextPerson: PersonFilter) => {
-    const isDefaultMonth = nextRange.start === getMonthRange(0).start && nextRange.end === getMonthRange(0).end && nextPerson === "household";
+  const load = useCallback(async (nextRange: DateRange, nextPerson: PersonFilter, nextScope: CategoryScope) => {
+    const isDefaultMonth =
+      nextRange.start === getMonthRange(0).start && nextRange.end === getMonthRange(0).end && nextPerson === "household" && nextScope === "all";
     if (isDefaultMonth) {
       const cached = getClientCachedData<AnalyticsPageData>(ANALYTICS_CACHE_KEY);
       if (cached) {
@@ -46,7 +52,7 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
         setLoading(false);
       }
     }
-    const result = await getAnalyticsData({ range: nextRange, person: nextPerson });
+    const result = await getAnalyticsData({ range: nextRange, person: nextPerson, categoryScope: nextScope });
     if (result.error !== null) {
       toast.error(result.error);
       setLoading(false);
@@ -61,25 +67,30 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time data fetch on mount
-    load(range, person);
+    load(range, person, categoryScope);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useOnExpenseSaved(
     useCallback(() => {
-      load(range, person);
-    }, [load, range, person])
+      load(range, person, categoryScope);
+    }, [load, range, person, categoryScope])
   );
 
   function handlePeriodChange(nextPeriod: QuickPeriod, nextRange: DateRange) {
     setPeriod(nextPeriod);
     setRange(nextRange);
-    load(nextRange, person);
+    load(nextRange, person, categoryScope);
   }
 
   function handlePersonChange(nextPerson: PersonFilter) {
     setPerson(nextPerson);
-    load(range, nextPerson);
+    load(range, nextPerson, categoryScope);
+  }
+
+  function handleScopeChange(nextScope: CategoryScope) {
+    setCategoryScope(nextScope);
+    load(range, person, nextScope);
   }
 
   const hasActivity = data ? data.summary.txn_count > 0 : false;
@@ -89,6 +100,8 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
       <h1 className="text-2xl font-bold tracking-tight text-foreground">Analytics</h1>
 
       <DashboardFilters period={period} person={person} onPeriodChange={handlePeriodChange} onPersonChange={handlePersonChange} />
+
+      <CategoryScopeToggle value={categoryScope} onChange={handleScopeChange} />
 
       <Link
         href="/analytics/intelligence"

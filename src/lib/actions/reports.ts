@@ -8,7 +8,8 @@ import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/a
 import { getExpenses, createExpense as createExpenseAction, type EnrichedExpense } from "@/lib/actions/expenses";
 import { getPreviousComparableRange, type DateRange } from "@/lib/date-utils";
 import type { Database, Tables } from "@/types/database";
-import type { TopExpenseRow } from "@/lib/actions/analytics";
+import type { CategoryScope, TopExpenseRow } from "@/lib/actions/analytics";
+import { resolveScopedCategoryIds } from "@/lib/actions/analytics";
 
 type ExpenseSummaryRow = Database["public"]["Functions"]["get_expense_summary"]["Returns"][number];
 type CategoryBreakdownRow = Database["public"]["Functions"]["get_category_breakdown"]["Returns"][number];
@@ -40,12 +41,13 @@ export interface ReportData {
   topExpenses: TopExpenseRow[];
 }
 
-export async function getReportData(range: DateRange) {
+export async function getReportData(range: DateRange, categoryScope?: CategoryScope) {
   return runAction(async (): Promise<ReportData> => {
     const { supabase, householdId } = await requireHouseholdContext();
     const previousRange = getPreviousComparableRange(range);
+    const scopeArg = categoryScope === "household" || categoryScope === "business" ? categoryScope : null;
 
-    const topExpensesQuery = supabase
+    let topExpensesQuery = supabase
       .from("expenses")
       .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by")
       .eq("household_id", householdId)
@@ -55,15 +57,23 @@ export async function getReportData(range: DateRange) {
       .order("amount", { ascending: false })
       .limit(10);
 
+    // Same reasoning as Analytics: Top Expenses queries `expenses` directly,
+    // so it needs its own category-id filter - every RPC below does its own
+    // filtering in SQL via p_category_scope (migration 021).
+    const scopedCategoryIds = await resolveScopedCategoryIds(supabase, householdId, categoryScope);
+    if (scopedCategoryIds) {
+      topExpensesQuery = topExpensesQuery.in("category_id", scopedCategoryIds);
+    }
+
     const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, personRes, merchantRes, itemRes, dailyRes, topRes] = await Promise.all([
-      supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
-      supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end }),
-      supabase.rpc("get_category_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
-      supabase.rpc("get_category_breakdown", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end }),
-      supabase.rpc("get_person_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
-      supabase.rpc("get_merchant_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_limit: 10 }),
-      supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_limit: 10 }),
-      supabase.rpc("get_daily_spending", { p_household_id: householdId, p_start: range.start, p_end: range.end }),
+      supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_category_scope: scopeArg }),
+      supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_category_scope: scopeArg }),
+      supabase.rpc("get_category_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_category_scope: scopeArg }),
+      supabase.rpc("get_category_breakdown", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_category_scope: scopeArg }),
+      supabase.rpc("get_person_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_category_scope: scopeArg }),
+      supabase.rpc("get_merchant_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_limit: 10, p_category_scope: scopeArg }),
+      supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_limit: 10, p_category_scope: scopeArg }),
+      supabase.rpc("get_daily_spending", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_category_scope: scopeArg }),
       topExpensesQuery,
     ]);
 
