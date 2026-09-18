@@ -78,7 +78,7 @@ export function BulkActionBar({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
             aria-label="Clear selection"
           >
             <X className="h-4 w-4" />
@@ -91,7 +91,7 @@ export function BulkActionBar({
 
           <div className="flex flex-1 items-center justify-end gap-1.5 overflow-x-auto">
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none">
+              <DropdownMenuTrigger className="flex h-11 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none">
                 <Tag className="h-3.5 w-3.5" />
                 Category
               </DropdownMenuTrigger>
@@ -105,7 +105,7 @@ export function BulkActionBar({
             </DropdownMenu>
 
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none">
+              <DropdownMenuTrigger className="flex h-11 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none">
                 <CreditCard className="h-3.5 w-3.5" />
                 Payment
               </DropdownMenuTrigger>
@@ -125,7 +125,7 @@ export function BulkActionBar({
             <button
               type="button"
               onClick={exportSelected}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted"
               aria-label="Export selected as CSV"
               title="Export selected as CSV"
             >
@@ -135,7 +135,7 @@ export function BulkActionBar({
             <button
               type="button"
               onClick={() => setConfirmDeleteOpen(true)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10"
               aria-label="Delete selected"
               title="Delete selected"
             >

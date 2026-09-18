@@ -63,7 +63,7 @@ const DrawerContent = React.forwardRef<
           doesn't already know the gesture. */}
       {showClose && (
         <DrawerPrimitive.Close
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Close"
         >
           <X className="h-4 w-4" />

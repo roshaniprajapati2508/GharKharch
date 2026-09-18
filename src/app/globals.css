@@ -167,10 +167,22 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+html {
+  /* Belt-and-suspenders against unintentional horizontal scroll (spec:
+     responsive audit D3) - <main> already clips its own overflow, but this
+     catches anything at the document level (e.g. a wide fixed-position
+     element) that would otherwise let the whole page pan sideways on
+     mobile. */
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  overflow-x: hidden;
+  max-width: 100%;
   /* Money and other figures should line up in lists/tables instead of each
      digit having its own natural width - Linear/Mercury-style financial
      typography. Global rather than per-callsite (formatINR is called from

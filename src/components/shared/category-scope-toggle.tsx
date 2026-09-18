@@ -30,7 +30,7 @@ export function CategoryScopeToggle({ value, onChange }: { value: CategoryScope;
             type="button"
             onClick={() => onChange(opt.value)}
             className={cn(
-              "flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors",
+              "flex min-h-11 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors",
               active ? "bg-brand-primary text-white shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >

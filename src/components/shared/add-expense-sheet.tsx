@@ -1256,7 +1256,7 @@ export function AddExpenseSheet({
                   type="button"
                   onClick={() => setForm((f) => (f.entryType === "expense" ? f : { ...f, entryType: "expense", category: null }))}
                   className={cn(
-                    "rounded-xl border py-2.5 text-sm font-semibold transition-colors",
+                    "min-h-11 rounded-xl border py-2.5 text-sm font-semibold transition-colors",
                     form.entryType === "expense"
                       ? "border-destructive bg-destructive/10 text-destructive"
                       : "border-border text-muted-foreground hover:bg-muted"
@@ -1268,7 +1268,7 @@ export function AddExpenseSheet({
                   type="button"
                   onClick={() => setForm((f) => (f.entryType === "income" ? f : { ...f, entryType: "income", category: null }))}
                   className={cn(
-                    "rounded-xl border py-2.5 text-sm font-semibold transition-colors",
+                    "min-h-11 rounded-xl border py-2.5 text-sm font-semibold transition-colors",
                     form.entryType === "income"
                       ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                       : "border-border text-muted-foreground hover:bg-muted"
@@ -1408,8 +1408,13 @@ export function AddExpenseSheet({
                           type="button"
                           onClick={startVoiceInput}
                           title={listening ? "Stop listening" : "Speak your expense (Gujarati)"}
+                          aria-label={listening ? "Stop listening" : "Speak your expense"}
                           className={cn(
-                            "flex items-center gap-1 text-xs font-semibold hover:underline",
+                            // min-h/min-w-11 (44px) keeps the actual tap target at the
+                            // Apple HIG / Material minimum even though the visible
+                            // text+icon is small - the padding is invisible hit area,
+                            // not a layout change.
+                            "flex min-h-11 min-w-11 items-center justify-center gap-1 px-2 text-xs font-semibold hover:underline",
                             listening ? "text-destructive" : "text-brand-primary"
                           )}
                         >
