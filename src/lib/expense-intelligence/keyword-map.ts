@@ -20,13 +20,13 @@ export const KEYWORD_RULES: KeywordRule[] = [
   { keywords: ["curd", "dahi", "yogurt"], categoryName: "Food & Grocery", subcategoryName: "Curd" },
   { keywords: ["buttermilk", "chaas", "chhaas"], categoryName: "Food & Grocery", subcategoryName: "Buttermilk" },
   { keywords: ["paneer", "cottage cheese"], categoryName: "Food & Grocery", subcategoryName: "Paneer" },
-  { keywords: ["vegetable", "veggies", "sabzi", "bhaji", "shaak"], categoryName: "Food & Grocery", subcategoryName: "Vegetables" },
+  { keywords: ["vegetable", "veggies", "sabzi", "bhaji", "shaak", "shak"], categoryName: "Food & Grocery", subcategoryName: "Vegetables" },
   { keywords: ["fruit", "banana", "apple", "mango", "orange"], categoryName: "Food & Grocery", subcategoryName: "Fruits" },
-  { keywords: ["bread", "bun", "bakery", "pav"], categoryName: "Food & Grocery", subcategoryName: "Bakery" },
-  { keywords: ["snack", "chips", "biscuit", "namkeen", "farsan"], categoryName: "Food & Grocery", subcategoryName: "Snacks" },
-  { keywords: ["tea", "coffee", "juice", "cold drink", "soda"], categoryName: "Food & Grocery", subcategoryName: "Beverages" },
+  { keywords: ["bread", "bun", "bakery", "pav", "khari", "toast"], categoryName: "Food & Grocery", subcategoryName: "Bakery" },
+  { keywords: ["snack", "snacks", "chips", "biscuit", "namkeen", "farsan", "nasto", "nashto", "khaman", "dhokla", "jalebi", "samosa", "kachori", "gathiya", "locho", "bhajiya", "sev", "chaat", "bhel"], categoryName: "Food & Grocery", subcategoryName: "Snacks" },
+  { keywords: ["tea", "chai", "coffee", "juice", "cold drink", "soda", "sharbat"], categoryName: "Food & Grocery", subcategoryName: "Beverages" },
   { keywords: ["chicken", "mutton", "fish", "egg", "meat"], categoryName: "Food & Grocery", subcategoryName: "Meat" },
-  { keywords: ["grocery", "groceries", "kirana", "ration", "dmart", "d-mart"], categoryName: "Food & Grocery", subcategoryName: "Grocery" },
+  { keywords: ["grocery", "groceries", "kirana", "kariyana", "ration", "khiru", "batter", "dmart", "d-mart", "local vendor", "local shop"], categoryName: "Food & Grocery", subcategoryName: "Grocery" },
 
   // Transport
   { keywords: ["petrol", "petrol pump"], categoryName: "Transport", subcategoryName: "Petrol" },
@@ -81,9 +81,23 @@ export const KEYWORD_RULES: KeywordRule[] = [
   { keywords: ["decor", "curtain", "lamp"], categoryName: "Household", subcategoryName: "Home Decor" },
   { keywords: ["repair", "plumber", "electrician", "maintenance"], categoryName: "Household", subcategoryName: "Maintenance" },
 
+  // Shopping
+  { keywords: ["online shopping", "e-commerce"], categoryName: "Shopping", subcategoryName: "Online Shopping" },
+  { keywords: ["courier", "shiprocket", "shipment", "parcel", "speed post", "shipping charges"], categoryName: "Shopping", subcategoryName: "Online Shopping" },
+  { keywords: ["stationery", "xerox", "photocopy", "printout", "printing", "book stock", "books", "document"], categoryName: "Shopping", subcategoryName: "General Shopping" },
+
+  // Homemade Business
+  { keywords: ["luxekraft", "craft material", "craft raw material", "mobile cover", "phone cover", "mobile case", "blank cover", "blank case", "cover stock"], categoryName: "Homemade Business", subcategoryName: "LuxeKraft" },
+  { keywords: ["roshni mehndi", "mehndi art", "mehndi", "mehendi", "henna", "mehndi cone"], categoryName: "Homemade Business", subcategoryName: "Roshni's Mehndi Art" },
+  { keywords: ["satyam xerox", "yogesh bhai", "xerox", "photocopy", "printout", "printing", "book stock"], categoryName: "Homemade Business", subcategoryName: "Printing & Xerox" },
+  { keywords: ["shiprocket", "courier", "shipment", "parcel", "speed post", "shipping charge", "porter", "shree mahavir", "mahavir courier", "shree nandan", "nandan courier", "shree maruti", "maruti courier", "india post"], categoryName: "Homemade Business", subcategoryName: "Courier & Shipping" },
+  { keywords: ["raw material", "stock buy", "material buy"], categoryName: "Homemade Business", subcategoryName: "Raw Materials" },
+  { keywords: ["stationery", "office stationery", "business document"], categoryName: "Homemade Business", subcategoryName: "Stationery & Office" },
+
   // Personal
   { keywords: ["salon", "haircut", "barber", "grooming"], categoryName: "Personal", subcategoryName: "Grooming" },
   { keywords: ["hobby", "hobbies"], categoryName: "Personal", subcategoryName: "Hobbies" },
+  { keywords: ["facebook ads", "instagram ads", "meta ads", "google ads", "marketing", "advertising", "promotion"], categoryName: "Personal", subcategoryName: "Advertising & Marketing" },
 ];
 
 /** Finds the first keyword rule whose keyword appears in the (already-lowercased) text. */

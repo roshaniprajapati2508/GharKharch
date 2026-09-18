@@ -49,13 +49,14 @@ import { listPaymentMethodsForHousehold } from "@/lib/actions/payment-methods";
 import { listUserCards, listUpiProfiles, listBankAccounts, type EnrichedUserCard } from "@/lib/actions/payment-instruments";
 import { DEFAULT_HOUSEHOLD_CARDS } from "@/lib/constants/payment-cards";
 import { getQuickAddChips, type QuickAddChip } from "@/lib/actions/quick-add";
-import { getCategorySuggestion } from "@/lib/actions/intelligence";
+import { getCategorySuggestion, getPastExpensePredictions, type PastExpensePrediction } from "@/lib/actions/intelligence";
 import { getItemPriceMemory, type ItemPriceMemory } from "@/lib/actions/insights";
 import type { CategorySuggestion } from "@/lib/expense-intelligence/category-suggester";
 import { suggestMerchant } from "@/lib/expense-intelligence/merchant-suggester";
 import { isOffline, isNetworkError, queueExpense } from "@/lib/offline/offline-queue";
 import { useOffline } from "@/lib/context/offline-context";
 import { parseQuickEntry } from "@/lib/expense-intelligence/nl-parser";
+import { matchKeywordRule } from "@/lib/expense-intelligence/keyword-map";
 import { detectPriceChange, type PriceChangeFlag } from "@/lib/actions/insights";
 import { ReceiptReviewSheet, type ReceiptReviewValues } from "@/components/shared/receipt-review-sheet";
 import { checkAiConfigured, scanReceipt } from "@/lib/actions/receipts";
@@ -214,6 +215,9 @@ export function AddExpenseSheet({
   const [quickAddChips, setQuickAddChips] = useState<QuickAddChip[]>(
     () => getClientCachedData<QuickAddChip[]>("quick_add_chips") ?? []
   );
+  const [pastPredictions, setPastPredictions] = useState<PastExpensePrediction[]>(
+    () => getClientCachedData<PastExpensePrediction[]>("past_expense_predictions") ?? []
+  );
   // True while the background refresh below is still in flight - lets the
   // merchant picker show "Loading your merchants..." instead of a false
   // "No merchants match" if it's opened before this first fetch resolves
@@ -236,7 +240,8 @@ export function AddExpenseSheet({
       listUpiProfiles(),
       listBankAccounts(),
       getQuickAddChips(),
-    ]).then(([cats, merch, methods, userCards, upi, banks, chips]) => {
+      getPastExpensePredictions(),
+    ]).then(([cats, merch, methods, userCards, upi, banks, chips, preds]) => {
       setRefsLoading(false);
       if (cats.data && cats.data.tree.length > 0) {
         setCategoryTree(cats.data.tree);
@@ -286,6 +291,10 @@ export function AddExpenseSheet({
       if (chips.data) {
         setQuickAddChips(chips.data);
         setClientCachedData("quick_add_chips", chips.data);
+      }
+      if (preds.data) {
+        setPastPredictions(preds.data);
+        setClientCachedData("past_expense_predictions", preds.data);
       }
     }).catch(() => {
       // Network hiccup - stop showing "Loading..." so the merchant picker
@@ -454,6 +463,170 @@ export function AddExpenseSheet({
         toast.message(`Suggested category: ${parent.name} → ${sub.name}`);
       }
     }
+  }
+
+  // --- Real-time Predictive Autocomplete Intelligence ---
+  const [predictionDismissed, setPredictionDismissed] = useState(false);
+
+  useEffect(() => {
+    setPredictionDismissed(false);
+  }, [form.itemName]);
+
+  const predictiveMatches = useMemo(() => {
+    const q = form.itemName.trim().toLowerCase();
+    if (!q || isEditing || predictionDismissed) return [];
+
+    interface PredictiveCandidate {
+      key: string;
+      itemName: string;
+      amount: number | null;
+      categoryId: string;
+      subcategoryId: string | null;
+      categoryName: string;
+      subcategoryName: string | null;
+      categoryIcon: string;
+      categoryColor: string;
+      merchant: Tables<"merchants"> | null;
+      paymentMethod: string;
+      paidBy: string;
+      expenseType: ExpenseType;
+      matchType: "history" | "merchant" | "keyword";
+      badgeLabel: string;
+    }
+
+    const results: PredictiveCandidate[] = [];
+    const seenKeys = new Set<string>();
+
+    // 1. Check past expense history / patterns
+    for (const pred of pastPredictions) {
+      const itemMatch = pred.itemName.toLowerCase().includes(q);
+      const merchMatch = pred.merchantName?.toLowerCase().includes(q);
+      const catMatch =
+        pred.categoryName.toLowerCase().includes(q) ||
+        (pred.subcategoryName && pred.subcategoryName.toLowerCase().includes(q));
+
+      if (itemMatch || merchMatch || catMatch) {
+        const key = `${pred.itemName.toLowerCase()}::${pred.merchantId ?? ""}`;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          const merchObj = pred.merchantId ? merchants.find((m) => m.id === pred.merchantId) ?? null : null;
+          results.push({
+            key,
+            itemName: pred.itemName,
+            amount: pred.amount,
+            categoryId: pred.categoryId,
+            subcategoryId: pred.subcategoryId,
+            categoryName: pred.categoryName,
+            subcategoryName: pred.subcategoryName,
+            categoryIcon: pred.categoryIcon ?? "circle",
+            categoryColor: pred.categoryColor ?? "neutral",
+            merchant: merchObj,
+            paymentMethod: pred.paymentMethod || "UPI",
+            paidBy: pred.paidBy,
+            expenseType: pred.expenseType,
+            matchType: "history",
+            badgeLabel: pred.usageCount > 1 ? `${pred.usageCount}x frequent` : "Past expense",
+          });
+        }
+      }
+      if (results.length >= 4) break;
+    }
+
+    // 2. Check Merchants and Aliases
+    if (results.length < 4) {
+      for (const m of merchants) {
+        const nameMatch = m.name.toLowerCase().includes(q);
+        const aliasMatch = Array.isArray(m.aliases) && m.aliases.some((a) => a.toLowerCase().includes(q));
+
+        if (nameMatch || aliasMatch) {
+          const key = `${m.name.toLowerCase()}::${m.id}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            const sub = m.subcategory_id ? categoryFlat.find((c) => c.id === m.subcategory_id) : null;
+            const parent = sub?.parent_id ? categoryFlat.find((c) => c.id === sub.parent_id) : sub;
+            const topCat = parent ? categoryFlat.find((c) => c.id === parent.id) : null;
+
+            results.push({
+              key,
+              itemName: m.name,
+              amount: null,
+              categoryId: topCat?.id ?? "seed-shopping",
+              subcategoryId: sub?.id ?? null,
+              categoryName: topCat?.name ?? "Shopping",
+              subcategoryName: sub?.name ?? null,
+              categoryIcon: topCat?.icon ?? "store",
+              categoryColor: topCat?.color ?? "indigo",
+              merchant: m,
+              paymentMethod: "UPI",
+              paidBy: userId,
+              expenseType: "household",
+              matchType: "merchant",
+              badgeLabel: aliasMatch ? `Alias match: ${q}` : "Merchant",
+            });
+          }
+        }
+        if (results.length >= 4) break;
+      }
+    }
+
+    // 3. Check Keyword Map
+    if (results.length < 4) {
+      const rule = matchKeywordRule(q);
+      if (rule) {
+        const topCat = categoryFlat.find((c) => c.name.toLowerCase() === rule.categoryName.toLowerCase() && !c.parent_id);
+        const subCat = rule.subcategoryName
+          ? categoryFlat.find((c) => c.name.toLowerCase() === rule.subcategoryName?.toLowerCase() && c.parent_id === topCat?.id)
+          : null;
+
+        if (topCat) {
+          const key = `keyword::${rule.categoryName}::${rule.subcategoryName ?? ""}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            results.push({
+              key,
+              itemName: form.itemName.trim(),
+              amount: null,
+              categoryId: topCat.id,
+              subcategoryId: subCat?.id ?? null,
+              categoryName: topCat.name,
+              subcategoryName: subCat?.name ?? null,
+              categoryIcon: topCat.icon ?? "sparkles",
+              categoryColor: topCat.color ?? "brand",
+              merchant: null,
+              paymentMethod: "UPI",
+              paidBy: userId,
+              expenseType: "household",
+              matchType: "keyword",
+              badgeLabel: "Smart Category",
+            });
+          }
+        }
+      }
+    }
+
+    return results.slice(0, 4);
+  }, [form.itemName, isEditing, predictionDismissed, pastPredictions, merchants, categoryFlat, userId]);
+
+  function applyPredictiveMatch(pred: any) {
+    setForm((f) => ({
+      ...f,
+      itemName: pred.itemName,
+      amount: pred.amount ? String(pred.amount) : f.amount,
+      category: {
+        categoryId: pred.categoryId,
+        subcategoryId: pred.subcategoryId,
+        categoryName: pred.categoryName,
+        subcategoryName: pred.subcategoryName,
+      },
+      merchant: pred.merchant,
+      paymentMethod: pred.paymentMethod || f.paymentMethod || "UPI",
+      paidBy: pred.paidBy || f.paidBy,
+      expenseType: pred.expenseType || f.expenseType,
+    }));
+    if (pred.amount) setAmountTouched(true);
+    setCategoryTouched(true);
+    setPredictionDismissed(true);
+    toast.success(`⚡ 1-Tap Autofilled for "${pred.itemName}"`, { duration: 2000 });
   }
 
   function selectQuickCategory(cat: CategoryWithChildren) {
@@ -829,13 +1002,6 @@ export function AddExpenseSheet({
             <DrawerDescription className="sr-only">Enter expense amount, item name, and details</DrawerDescription>
           </DrawerHeader>
 
-          {/* Quick Add Chips (for new single expense) - Populates form on tap with fair review */}
-          {!isEditing && entryMode === "single" && quickAddChips.length > 0 && (
-            <div className="pt-2 pb-1.5 px-5 bg-surface-subtle/40 border-b border-border/30">
-              <QuickAddBar chips={quickAddChips} onPick={handleQuickAddPick} />
-            </div>
-          )}
-
           {/* SINGLE EXPENSE MODE BODY */}
           {entryMode === "single" ? (
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -954,7 +1120,7 @@ export function AddExpenseSheet({
               </div>
 
               {/* Item / Description Input */}
-              <div>
+              <div className="relative">
                 <div className="flex items-center justify-between mb-1.5">
                   <Label htmlFor="item-name" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                     Item / Description
@@ -1007,8 +1173,80 @@ export function AddExpenseSheet({
                   </div>
                 )}
 
+                {/* Real-time Predictive Autocomplete Suggestions */}
+                {predictiveMatches.length > 0 && !isEditing && (
+                  <div className="mt-2.5 rounded-2xl border border-brand-primary/20 bg-card p-2 shadow-lg space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150 ring-1 ring-black/5">
+                    <div className="flex items-center justify-between px-2 pt-0.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40">
+                      <span className="flex items-center gap-1 text-brand-primary font-bold">
+                        <Sparkles className="h-3 w-3 animate-pulse" /> Smart Predictions
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/80 font-normal">Tap to 1-click autofill all</span>
+                    </div>
+
+                    <div className="space-y-1 pt-1">
+                      {predictiveMatches.map((pred) => {
+                        const swatch = colorSwatch(pred.categoryColor);
+                        const Icon = getIcon(pred.categoryIcon);
+
+                        return (
+                          <button
+                            key={pred.key}
+                            type="button"
+                            onClick={() => applyPredictiveMatch(pred)}
+                            className="flex w-full items-center justify-between gap-3 rounded-xl p-2.5 text-left transition-all hover:bg-brand-mint/60 active:scale-[0.99] border border-transparent hover:border-brand-primary/20 group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-2xs group-hover:scale-105 transition-transform"
+                                style={{ backgroundColor: swatch.bg, color: swatch.fg }}
+                              >
+                                <Icon className="h-4 w-4" />
+                              </span>
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold text-foreground truncate group-hover:text-brand-primary transition-colors">
+                                  {pred.itemName}
+                                </div>
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <span className="truncate">
+                                    {pred.subcategoryName
+                                      ? `${pred.categoryName} → ${pred.subcategoryName}`
+                                      : pred.categoryName}
+                                  </span>
+                                  {pred.merchant && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="font-medium text-foreground/80 truncate">
+                                        {pred.merchant.name}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col items-end shrink-0 pl-2">
+                              {pred.amount !== null ? (
+                                <span className="text-sm font-bold text-brand-primary font-mono">
+                                  {formatINR(pred.amount)}
+                                </span>
+                              ) : (
+                                <span className="text-[11px] font-medium text-muted-foreground">
+                                  {pred.badgeLabel}
+                                </span>
+                              )}
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full mt-0.5 group-hover:bg-brand-primary group-hover:text-white transition-colors">
+                                <Zap className="h-2.5 w-2.5 fill-current" /> Autofill
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Merchant suggestion hint */}
-                {merchantHint && (
+                {merchantHint && !predictiveMatches.some((p) => p.merchant?.id === merchantHint.id) && (
                   <button
                     type="button"
                     onClick={() => applyMerchant(merchantHint)}
@@ -1020,7 +1258,7 @@ export function AddExpenseSheet({
                 )}
 
                 {/* Smart category hint */}
-                {suggestion && (
+                {suggestion && predictiveMatches.length === 0 && (
                   <button
                     type="button"
                     onClick={applySuggestion}
