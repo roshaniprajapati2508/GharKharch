@@ -20,6 +20,9 @@ import {
 
 export type QueryIntent =
   | { type: "total_spending"; period: DateRange; periodLabel: string }
+  | { type: "total_income"; period: DateRange; periodLabel: string }
+  | { type: "business_pnl"; period: DateRange; periodLabel: string }
+  | { type: "person_spending"; personName: string; period: DateRange; periodLabel: string }
   | { type: "category_spending"; categoryName: string; period: DateRange; periodLabel: string }
   | { type: "merchant_spending"; merchantName: string; period: DateRange; periodLabel: string }
   | { type: "top_category"; period: DateRange; periodLabel: string }
@@ -29,6 +32,7 @@ export type QueryIntent =
   | { type: "most_frequent_items"; period: DateRange; periodLabel: string; limit: number }
   | { type: "amount_threshold"; direction: "above" | "below"; amount: number; period: DateRange; periodLabel: string }
   | { type: "recurring_list" }
+  | { type: "general_financial"; period: DateRange; periodLabel: string }
   | { type: "unknown" };
 
 const WEEKDAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -115,6 +119,22 @@ export function detectIntent(question: string, ctx: IntentContext): QueryIntent 
   const q = question.toLowerCase();
   const { range, label } = detectPeriod(question);
 
+  // Business P&L / Homemade Business
+  if (/(business|pnl|p&l|profit|margin|luxekraft|mehndi business|homemade business|store profit)/.test(q)) {
+    return { type: "business_pnl", period: range, periodLabel: label };
+  }
+
+  // Total Income / Inflows / Earnings
+  if (/(income|earn|earned|earning|inflow|salary|payout|sales|received|deposit)/.test(q) && !/(expense|spend|spent)/.test(q)) {
+    return { type: "total_income", period: range, periodLabel: label };
+  }
+
+  // Person spending (e.g. "How much did Harsh spend?" or "How much did Roshni spend?")
+  if (/(harsh|roshni|partner|you|who spent|spend comparison)/.test(q)) {
+    const personName = /roshni/.test(q) ? "Roshni" : /harsh/.test(q) ? "Harsh" : "household";
+    return { type: "person_spending", personName, period: range, periodLabel: label };
+  }
+
   if (/recurring/.test(q) && /(what|which|list|show).*recurring|recurring.*(expenses|bills|payments)/.test(q)) {
     return { type: "recurring_list" };
   }
@@ -143,12 +163,12 @@ export function detectIntent(question: string, ctx: IntentContext): QueryIntent 
   }
 
   const merchantName = findKnownName(question, ctx.merchantNames);
-  if (merchantName && /spend|spent|spending/.test(q)) {
+  if (merchantName && /spend|spent|spending|cost|order|buy/.test(q)) {
     return { type: "merchant_spending", merchantName, period: range, periodLabel: label };
   }
 
   const categoryName = findKnownName(question, ctx.categoryNames);
-  if (categoryName && /spend|spent|spending/.test(q)) {
+  if (categoryName && /spend|spent|spending|cost|order|buy/.test(q)) {
     return { type: "category_spending", categoryName, period: range, periodLabel: label };
   }
 
@@ -161,5 +181,6 @@ export function detectIntent(question: string, ctx: IntentContext): QueryIntent 
     return { type: "total_spending", period: range, periodLabel: label };
   }
 
-  return { type: "unknown" };
+  // Fallback to rich general financial analysis rather than throwing unknown!
+  return { type: "general_financial", period: range, periodLabel: label };
 }

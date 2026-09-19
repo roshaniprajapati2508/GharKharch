@@ -756,7 +756,7 @@ export function AddExpenseSheet({
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Web Speech API has no shared TS lib typing across browsers
     const recognition: any = new (SpeechRecognitionCtor as any)();
-    recognition.lang = "gu-IN"; // Gujarati (India) - Chrome keeps English/Hinglish loanwords ("UPI", "cash") readable within the transcript too
+    recognition.lang = "en-IN"; // English (India) - transcribes speech in English with support for Indian accent and terms
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
     recognition.continuous = false;

@@ -52,33 +52,33 @@ interface ConversationTurn {
 
 const CATEGORIZED_SUGGESTIONS = [
   {
-    category: "Spending Overview",
-    icon: PieChart,
+    category: "Homemade Business",
+    icon: ShoppingBag,
+    color: "from-indigo-500/15 to-purple-500/15 border-indigo-500/30 text-indigo-700 dark:text-indigo-300",
+    questions: [
+      "What's our business profit this month?",
+      "How much did we spend on Meta Ads?",
+      "What are our courier & shipping expenses?",
+    ],
+  },
+  {
+    category: "Incomes & Cashflow",
+    icon: TrendingUp,
     color: "from-emerald-500/15 to-teal-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300",
     questions: [
+      "What are our total earnings this month?",
       "How much did I spend this month?",
-      "How much did I spend last month?",
-      "How much spent today?",
+      "How much did Harsh spend vs Roshni?",
     ],
   },
   {
-    category: "Categories & Insights",
-    icon: TrendingUp,
-    color: "from-blue-500/15 to-cyan-500/15 border-blue-500/30 text-blue-700 dark:text-blue-300",
-    questions: [
-      "What's my top category this month?",
-      "Which category increased the most?",
-      "How much on groceries last month?",
-    ],
-  },
-  {
-    category: "Merchants & Places",
-    icon: ShoppingBag,
+    category: "Household & Categories",
+    icon: PieChart,
     color: "from-amber-500/15 to-orange-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300",
     questions: [
-      "Who is our top merchant this month?",
-      "How much on Zomato last month?",
-      "How much spent on Swiggy?",
+      "What's my top category this month?",
+      "How much on groceries last month?",
+      "How much spent on Swiggy & Zomato?",
     ],
   },
 ];

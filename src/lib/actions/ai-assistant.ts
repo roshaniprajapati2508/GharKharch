@@ -252,6 +252,142 @@ async function resolveIntent(
       };
     }
 
+    case "business_pnl": {
+      const { data, error } = await supabase.rpc("get_business_pnl", {
+        p_household_id: householdId,
+        p_start: intent.period.start,
+        p_end: intent.period.end,
+      });
+      if (error) throw new ActionError(error.message);
+      const row = data?.[0];
+      const incomeTotal = Number(row?.income_total ?? 0);
+      const expenseTotal = Number(row?.expense_total ?? 0);
+      const netProfit = Number(row?.net_profit ?? 0);
+      const margin = incomeTotal > 0 ? ((netProfit / incomeTotal) * 100).toFixed(1) : "0";
+      const answer =
+        netProfit >= 0
+          ? `Your Homemade Business earned +${formatINR(incomeTotal)} in revenue against -${formatINR(expenseTotal)} in operating expenses ${intent.periodLabel}, generating a net profit of +${formatINR(netProfit)} (${margin}% net margin).`
+          : `Your Homemade Business had -${formatINR(expenseTotal)} in expenses and +${formatINR(incomeTotal)} in revenue ${intent.periodLabel}, resulting in a net loss of -${formatINR(Math.abs(netProfit))}.`;
+      return {
+        deterministicAnswer: answer,
+        facts: {
+          period: intent.periodLabel,
+          businessRevenue: incomeTotal,
+          businessExpenses: expenseTotal,
+          netProfit,
+          profitMarginPercent: margin,
+          incomeTxnCount: Number(row?.income_count ?? 0),
+          expenseTxnCount: Number(row?.expense_count ?? 0),
+        },
+      };
+    }
+
+    case "total_income": {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("id, item_name, amount, category_id, expense_date")
+        .eq("household_id", householdId)
+        .eq("entry_type", "income")
+        .is("deleted_at", null)
+        .gte("expense_date", intent.period.start)
+        .lte("expense_date", intent.period.end);
+      if (error) throw new ActionError(error.message);
+      const rows = data ?? [];
+      const totalIncome = rows.reduce((sum, r) => sum + Number(r.amount), 0);
+      return {
+        deterministicAnswer:
+          rows.length > 0
+            ? `Your household received +${formatINR(totalIncome)} in total earnings and inflows ${intent.periodLabel} across ${rows.length} transaction${rows.length === 1 ? "" : "s"}.`
+            : `No income or inflows recorded ${intent.periodLabel}.`,
+        facts: {
+          period: intent.periodLabel,
+          totalInflow: totalIncome,
+          transactionCount: rows.length,
+          topSources: rows.slice(0, 5).map((r) => ({ item: r.item_name, amount: Number(r.amount), date: r.expense_date })),
+        },
+      };
+    }
+
+    case "person_spending": {
+      const [membersRes, breakdownRes] = await Promise.all([
+        supabase.from("household_members").select("user_id, role"),
+        supabase.rpc("get_person_breakdown", {
+          p_household_id: householdId,
+          p_start: intent.period.start,
+          p_end: intent.period.end,
+        }),
+      ]);
+      if (breakdownRes.error) throw new ActionError(breakdownRes.error.message);
+      const personBreakdown = breakdownRes.data ?? [];
+      const list = personBreakdown.map((p) => `- Person ${p.paid_by.slice(0, 6)}: ${formatINR(Number(p.total))} (${p.txn_count} txns)`).join(", ");
+      return {
+        deterministicAnswer:
+          personBreakdown.length > 0
+            ? `Household spending breakdown ${intent.periodLabel}: ${list}.`
+            : `No spending records found ${intent.periodLabel}.`,
+        facts: {
+          period: intent.periodLabel,
+          personBreakdown: personBreakdown.map((p) => ({ id: p.paid_by, total: Number(p.total), txnCount: p.txn_count })),
+        },
+      };
+    }
+
+    case "general_financial": {
+      const [summaryRes, categoryRes, merchantRes, pnlRes, incomesRes] = await Promise.all([
+        supabase.rpc("get_expense_summary", {
+          p_household_id: householdId,
+          p_start: intent.period.start,
+          p_end: intent.period.end,
+        }),
+        supabase.rpc("get_category_breakdown", {
+          p_household_id: householdId,
+          p_start: intent.period.start,
+          p_end: intent.period.end,
+        }),
+        supabase.rpc("get_merchant_breakdown", {
+          p_household_id: householdId,
+          p_start: intent.period.start,
+          p_end: intent.period.end,
+          p_limit: 5,
+        }),
+        supabase.rpc("get_business_pnl", {
+          p_household_id: householdId,
+          p_start: intent.period.start,
+          p_end: intent.period.end,
+        }),
+        supabase
+          .from("expenses")
+          .select("amount")
+          .eq("household_id", householdId)
+          .eq("entry_type", "income")
+          .is("deleted_at", null)
+          .gte("expense_date", intent.period.start)
+          .lte("expense_date", intent.period.end),
+      ]);
+
+      const totalSpent = Number(summaryRes.data?.[0]?.total ?? 0);
+      const incomeRows = incomesRes.data ?? [];
+      const totalEarned = incomeRows.reduce((sum, r) => sum + Number(r.amount), 0);
+      const topCategories = (categoryRes.data ?? []).slice(0, 4).map((c) => `${c.category_name} (${formatINR(Number(c.total))})`).join(", ");
+      const pnlRow = pnlRes.data?.[0];
+      const netProfit = Number(pnlRow?.net_profit ?? 0);
+
+      const answer = `Summary for ${intent.periodLabel}: Total spent is ${formatINR(totalSpent)} across ${summaryRes.data?.[0]?.txn_count ?? 0} expenses. Total inflows are +${formatINR(totalEarned)}. Top categories: ${topCategories || "None"}.${pnlRow ? ` Business net profit: ${netProfit >= 0 ? "+" : ""}${formatINR(netProfit)}.` : ""}`;
+
+      return {
+        deterministicAnswer: answer,
+        facts: {
+          period: intent.periodLabel,
+          totalExpense: totalSpent,
+          totalIncome: totalEarned,
+          netBalance: totalEarned - totalSpent,
+          topCategories: (categoryRes.data ?? []).slice(0, 5).map((c) => ({ name: c.category_name, total: Number(c.total) })),
+          topMerchants: (merchantRes.data ?? []).slice(0, 5).map((m) => ({ name: m.merchant_name, total: Number(m.total) })),
+          businessPnl: pnlRow ? { revenue: Number(pnlRow.income_total), expenses: Number(pnlRow.expense_total), netProfit } : null,
+        },
+      };
+    }
+
     case "biggest_category_change": {
       const previousRange = getPreviousComparableRange(intent.period);
       const [currentRes, previousRes] = await Promise.all([
@@ -275,6 +411,27 @@ async function resolveIntent(
             ? `${biggest.name} rose the most, up ${formatINR(biggest.delta)} vs the previous period (${formatINR(biggest.previous)} -> ${formatINR(biggest.current)}).`
             : `No category increased vs the previous period.`,
         facts: { period: intent.periodLabel, biggestIncrease: biggest },
+      };
+    }
+
+    default: {
+      const anyIntent = intent as any;
+      const fallbackPeriod = anyIntent?.period ?? {
+        start: new Date().toISOString().slice(0, 10),
+        end: new Date().toISOString().slice(0, 10),
+      };
+      const fallbackLabel = anyIntent?.periodLabel ?? "this month";
+      const { data, error } = await supabase.rpc("get_expense_summary", {
+        p_household_id: householdId,
+        p_start: fallbackPeriod.start,
+        p_end: fallbackPeriod.end,
+      });
+      if (error) throw new ActionError(error.message);
+      const total = Number(data?.[0]?.total ?? 0);
+      const txnCount = data?.[0]?.txn_count ?? 0;
+      return {
+        deterministicAnswer: `You've spent ${formatINR(total)} ${fallbackLabel} across ${txnCount} transactions.`,
+        facts: { period: fallbackLabel, total, txnCount },
       };
     }
   }
