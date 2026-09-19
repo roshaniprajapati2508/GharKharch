@@ -77,32 +77,37 @@ export const KEYWORD_RULES: KeywordRule[] = [
   { keywords: ["fridge", "refrigerator", "washing machine", "ac", "air conditioner", "microwave"], categoryName: "Electronics", subcategoryName: "Appliances" },
 
   // Household
-  { keywords: ["cleaning", "detergent", "soap", "dishwash"], categoryName: "Household", subcategoryName: "Cleaning" },
-  { keywords: ["utensil", "cookware", "kitchenware"], categoryName: "Household", subcategoryName: "Kitchen" },
-  { keywords: ["furniture", "sofa", "bed", "table", "chair"], categoryName: "Household", subcategoryName: "Furniture" },
-  { keywords: ["decor", "curtain", "lamp"], categoryName: "Household", subcategoryName: "Home Decor" },
-  { keywords: ["repair", "plumber", "electrician", "maintenance"], categoryName: "Household", subcategoryName: "Maintenance" },
+  { keywords: ["maid", "kamvali", "bai", "cook", "maharaj", "car wash", "dhobi", "safai", "sweeper", "cleaning lady", "house help"], categoryName: "Household", subcategoryName: "Maid & Domestic Help" },
+  { keywords: ["pooja", "puja", "agarbatti", "dhoop", "diya oil", "phool", "prasad", "mandir", "daan", "temple", "pooja samagri", "havan", "garland", "chandan", "kapoor"], categoryName: "Household", subcategoryName: "Pooja & Spiritual" },
+  { keywords: ["society maintenance", "maintenance fee", "maintenance bill", "society bill", "rwa bill", "building maintenance", "society charge"], categoryName: "Household", subcategoryName: "Society Maintenance" },
+  { keywords: ["cleaning", "detergent", "soap", "dishwash", "harpic", "surf excel", "ariel", "vim"], categoryName: "Household", subcategoryName: "Cleaning" },
+  { keywords: ["utensil", "cookware", "kitchenware", "bartan"], categoryName: "Household", subcategoryName: "Kitchen" },
+  { keywords: ["furniture", "sofa", "bed", "table", "chair", "mattress"], categoryName: "Household", subcategoryName: "Furniture" },
+  { keywords: ["decor", "curtain", "lamp", "cushion", "bedsheet"], categoryName: "Household", subcategoryName: "Home Decor" },
+  { keywords: ["repair", "plumber", "electrician", "maintenance", "urban company", "urbanclap", "ac service", "carpenter"], categoryName: "Household", subcategoryName: "Maintenance" },
 
   // Income & Marketplace Payouts (High Priority so Payouts & Book Sales match Business Sales / Homemade Business)
-  { keywords: ["flipkart seller", "amazon seller", "meesho seller", "seller payout", "payout", "marketplace payout", "website orders", "website order", "book payout", "books payout", "seller payout books", "book sale", "book sales"], categoryName: "Business Sales & Payouts" },
+  { keywords: ["flipkart seller", "amazon seller", "meesho seller", "seller payout", "payout", "marketplace payout", "website orders", "website order", "book payout", "books payout", "seller payout books", "book sale", "book sales", "bridal mehndi", "mehndi booking", "mehndi client"], categoryName: "Business Sales & Payouts" },
   { keywords: ["salary", "payroll", "monthly salary", "salary credit"], categoryName: "Salary" },
-  { keywords: ["freelance", "freelancing", "consulting", "client payment", "project payout"], categoryName: "Freelancing & Consulting" },
+  { keywords: ["freelance", "freelancing", "consulting", "client payment", "project payout", "web dev"], categoryName: "Freelancing & Consulting" },
 
   // Homemade Business
-  { keywords: ["meta ads", "facebook ads", "instagram ads", "fb ads", "google ads", "ad spend", "ads", "advertisement", "advertising", "marketing", "promotion"], categoryName: "Homemade Business", subcategoryName: "Advertising & Marketing" },
-  { keywords: ["luxekraft", "craft material", "craft raw material", "mobile cover", "phone cover", "mobile case", "blank cover", "blank case", "cover stock"], categoryName: "Homemade Business", subcategoryName: "LuxeKraft" },
-  { keywords: ["roshni mehndi", "mehndi art", "mehndi", "mehendi", "henna", "mehndi cone", "mehndi books", "mehndi book", "henna book"], categoryName: "Homemade Business", subcategoryName: "Roshni's Mehndi Art" },
-  { keywords: ["satyam xerox", "yogesh bhai", "xerox", "photocopy", "printout", "printing", "book stock", "book printing", "binding"], categoryName: "Homemade Business", subcategoryName: "Printing & Xerox" },
-  { keywords: ["shiprocket", "courier", "shipment", "parcel", "speed post", "shipping charge", "porter", "shree mahavir", "mahavir courier", "shree nandan", "nandan courier", "shree maruti", "maruti courier", "india post"], categoryName: "Homemade Business", subcategoryName: "Courier & Shipping" },
+  { keywords: ["meta ads", "facebook ads", "instagram ads", "fb ads", "google ads", "ad spend", "ads", "advertisement", "advertising", "marketing", "promotion", "ad campaign"], categoryName: "Homemade Business", subcategoryName: "Advertising & Marketing" },
+  { keywords: ["packaging", "packaging box", "corrugated box", "bubble wrap", "courier bag", "packing tape", "brown tape", "shipping label", "fragile tape", "packaging material", "parcel box"], categoryName: "Homemade Business", subcategoryName: "Packaging & Shipping Supplies" },
+  { keywords: ["luxekraft", "craft material", "craft raw material", "mobile cover", "phone cover", "mobile case", "blank cover", "blank case", "cover stock", "sublimation case", "acrylic cover", "resin", "epoxy"], categoryName: "Homemade Business", subcategoryName: "LuxeKraft" },
+  { keywords: ["roshni mehndi", "mehndi art", "mehndi", "mehendi", "henna", "mehndi cone", "mehndi books", "mehndi book", "henna book", "nilgiri", "eucalyptus oil", "cajeput", "acrylic practice hand", "cone sheet", "cello cone"], categoryName: "Homemade Business", subcategoryName: "Roshni's Mehndi Art" },
+  { keywords: ["satyam xerox", "yogesh bhai", "xerox", "photocopy", "printout", "printing", "book stock", "book printing", "binding", "spiral binding", "laminating"], categoryName: "Homemade Business", subcategoryName: "Printing & Xerox" },
+  { keywords: ["shiprocket", "courier", "shipment", "parcel", "speed post", "shipping charge", "porter", "shree mahavir", "mahavir courier", "shree nandan", "nandan courier", "shree maruti", "maruti courier", "india post", "delhivery", "dtdc", "bluedart"], categoryName: "Homemade Business", subcategoryName: "Courier & Shipping" },
   { keywords: ["raw material", "stock buy", "material buy"], categoryName: "Homemade Business", subcategoryName: "Raw Materials" },
-  { keywords: ["stationery", "office stationery", "business document"], categoryName: "Homemade Business", subcategoryName: "Stationery & Office" },
+  { keywords: ["stationery", "office stationery", "business document", "shopify", "godaddy", "domain renewal", "hosting", "canva pro"], categoryName: "Homemade Business", subcategoryName: "Stationery & Office" },
 
   // Shopping
   { keywords: ["online shopping", "e-commerce", "shopping mall", "general shopping"], categoryName: "Shopping", subcategoryName: "Online Shopping" },
   { keywords: ["novel", "magazine", "reading book"], categoryName: "Shopping", subcategoryName: "General Shopping" },
 
   // Personal
-  { keywords: ["salon", "haircut", "barber", "grooming"], categoryName: "Personal", subcategoryName: "Grooming" },
+  { keywords: ["tuition", "coaching", "school fee", "college fee", "class fee", "exam fee", "tuition fee", "course fee", "study material"], categoryName: "Personal", subcategoryName: "Education & Tuition" },
+  { keywords: ["salon", "haircut", "barber", "grooming", "parlour", "spa"], categoryName: "Personal", subcategoryName: "Grooming" },
   { keywords: ["hobby", "hobbies"], categoryName: "Personal", subcategoryName: "Hobbies" },
 ];
 
