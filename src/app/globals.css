@@ -285,8 +285,8 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
     "header"
     "brief"
     "forecast"
-    "summary"
     "pace"
+    "summary"
     "trend"
     "category"
     "insights"
@@ -309,9 +309,8 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
     grid-template-areas:
       "header header"
       "brief brief"
-      "forecast forecast"
+      "forecast pace"
       "summary summary"
-      "pace pace"
       "trend trend"
       "category category"
       "insights insights"
@@ -331,7 +330,7 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
     grid-template-areas:
       "header header"
       "brief brief"
-      "forecast forecast"
+      "forecast pace"
       "summary summary"
       "trend category"
       "merchants person"
@@ -339,7 +338,7 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
       "insights insights"
       "cashflow-exec cashflow-exec"
       "recurring pnl"
-      "cashflow pace"
+      "cashflow cashflow"
       "activity activity"
       "calendar recent";
   }

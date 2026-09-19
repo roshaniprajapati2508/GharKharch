@@ -95,7 +95,7 @@ export function SidebarNav({ onAddClick }: { onAddClick: () => void }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-20 shrink-0 flex-col border-r border-border bg-card sm:flex md:w-64">
       {/* Top Header: Logo */}
-      <div className="flex shrink-0 items-center justify-center border-b border-border/40 px-3 py-4 md:justify-start md:px-5">
+      <div className="flex shrink-0 items-center justify-center border-b border-border/40 px-3 py-4 md:px-5">
         <FullLogo width={40} className="h-auto w-auto md:hidden" />
         <FullLogo width={140} className="hidden h-auto md:block" />
       </div>

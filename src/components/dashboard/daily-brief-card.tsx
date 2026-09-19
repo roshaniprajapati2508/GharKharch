@@ -62,7 +62,7 @@ export function DailyBriefCard({
   const isDown = hasChange && (snapshot.weekChangePct as number) <= 0;
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/90 shadow-xs backdrop-blur-md p-4.5 space-y-3.5">
+    <div className="flex h-full flex-col justify-between rounded-2xl border border-border/60 bg-card/90 p-4 sm:p-4.5 shadow-xs backdrop-blur-md space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
           <Clock className="h-4 w-4 text-brand-primary" /> {greeting()}

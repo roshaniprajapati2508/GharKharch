@@ -26,6 +26,9 @@ export type TopExpenseRow = {
   expense_time?: string | null;
   created_at?: string | null;
   category_id: string;
+  category_name?: string | null;
+  category_icon?: string | null;
+  category_color?: string | null;
   merchant_id: string | null;
   paid_by: string;
 };
@@ -113,6 +116,7 @@ export interface DashboardData {
   itemAnalytics: ItemAnalyticsRow[];
   dailySpending: DailySpendingRow[];
   topExpenses: TopExpenseRow[];
+  topInflows: TopExpenseRow[];
   recentExpenses: EnrichedExpense[];
   range: DateRange;
   previousRange: DateRange;
@@ -137,8 +141,20 @@ export async function getDashboardData(filters: AnalyticsFilters) {
 
     let topExpensesQuery = supabase
       .from("expenses")
-      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by")
+      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by, categories(name, icon, color)")
       .eq("household_id", householdId)
+      .eq("entry_type", "expense")
+      .is("deleted_at", null)
+      .gte("expense_date", filters.range.start)
+      .lte("expense_date", filters.range.end)
+      .order("amount", { ascending: false })
+      .limit(5);
+
+    let topInflowsQuery = supabase
+      .from("expenses")
+      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by, categories(name, icon, color)")
+      .eq("household_id", householdId)
+      .eq("entry_type", "income")
       .is("deleted_at", null)
       .gte("expense_date", filters.range.start)
       .lte("expense_date", filters.range.end)
@@ -147,9 +163,10 @@ export async function getDashboardData(filters: AnalyticsFilters) {
 
     if (paidBy) {
       topExpensesQuery = topExpensesQuery.eq("paid_by", paidBy);
+      topInflowsQuery = topInflowsQuery.eq("paid_by", paidBy);
     }
 
-    const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, personRes, merchantRes, itemRes, dailyRes, topRes, recentRes] = await Promise.all([
+    const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, personRes, merchantRes, itemRes, dailyRes, topRes, topInflowsRes, recentRes] = await Promise.all([
       supabase.rpc("get_expense_summary", {
         p_household_id: householdId,
         p_start: filters.range.start,
@@ -198,6 +215,7 @@ export async function getDashboardData(filters: AnalyticsFilters) {
         p_paid_by: paidBy,
       }),
       topExpensesQuery,
+      topInflowsQuery,
       getExpenses({ start: filters.range.start, end: filters.range.end, paidBy: paidBy ?? "all", sort: "newest", limit: 8 }),
     ]);
 
@@ -208,6 +226,7 @@ export async function getDashboardData(filters: AnalyticsFilters) {
     if (itemRes.error) throw new ActionError(itemRes.error.message);
     if (dailyRes.error) throw new ActionError(dailyRes.error.message);
     if (topRes.error) throw new ActionError(topRes.error.message);
+    if (topInflowsRes.error) throw new ActionError(topInflowsRes.error.message);
     if (recentRes.error !== null) throw new ActionError(recentRes.error);
 
     return {
@@ -219,7 +238,7 @@ export async function getDashboardData(filters: AnalyticsFilters) {
       topMerchants: merchantRes.data ?? [],
       itemAnalytics: itemRes.data ?? [],
       dailySpending: dailyRes.data ?? [],
-      topExpenses: (topRes.data ?? []).map((e) => ({
+      topExpenses: (topRes.data ?? []).map((e: any) => ({
         id: e.id,
         item_name: e.item_name,
         amount: String(e.amount),
@@ -227,6 +246,23 @@ export async function getDashboardData(filters: AnalyticsFilters) {
         expense_time: e.expense_time ?? null,
         created_at: e.created_at ?? null,
         category_id: e.category_id,
+        category_name: e.categories?.name ?? null,
+        category_icon: e.categories?.icon ?? null,
+        category_color: e.categories?.color ?? null,
+        merchant_id: e.merchant_id ?? null,
+        paid_by: e.paid_by,
+      })),
+      topInflows: (topInflowsRes.data ?? []).map((e: any) => ({
+        id: e.id,
+        item_name: e.item_name,
+        amount: String(e.amount),
+        expense_date: e.expense_date,
+        expense_time: e.expense_time ?? null,
+        created_at: e.created_at ?? null,
+        category_id: e.category_id,
+        category_name: e.categories?.name ?? null,
+        category_icon: e.categories?.icon ?? null,
+        category_color: e.categories?.color ?? null,
         merchant_id: e.merchant_id ?? null,
         paid_by: e.paid_by,
       })),
@@ -246,6 +282,7 @@ export interface AnalyticsPageData {
   previousItemAnalytics: ItemAnalyticsRow[];
   dailySpending: DailySpendingRow[];
   topExpenses: TopExpenseRow[];
+  topInflows: TopExpenseRow[];
   summary: ExpenseSummaryRow;
   previousSummary: ExpenseSummaryRow;
   personBreakdown: PersonBreakdownRow[];
@@ -272,8 +309,20 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
 
     let topExpensesQuery = supabase
       .from("expenses")
-      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by")
+      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by, categories(name, icon, color)")
       .eq("household_id", householdId)
+      .eq("entry_type", "expense")
+      .is("deleted_at", null)
+      .gte("expense_date", filters.range.start)
+      .lte("expense_date", filters.range.end)
+      .order("amount", { ascending: false })
+      .limit(10);
+
+    let topInflowsQuery = supabase
+      .from("expenses")
+      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by, categories(name, icon, color)")
+      .eq("household_id", householdId)
+      .eq("entry_type", "income")
       .is("deleted_at", null)
       .gte("expense_date", filters.range.start)
       .lte("expense_date", filters.range.end)
@@ -282,6 +331,7 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
 
     if (paidBy) {
       topExpensesQuery = topExpensesQuery.eq("paid_by", paidBy);
+      topInflowsQuery = topInflowsQuery.eq("paid_by", paidBy);
     }
     // Top Expenses queries `expenses` directly rather than through one of the
     // RPCs below, so it needs its own category-id filter for the scope
@@ -289,9 +339,10 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
     const scopedCategoryIds = await resolveScopedCategoryIds(supabase, householdId, filters.categoryScope);
     if (scopedCategoryIds) {
       topExpensesQuery = topExpensesQuery.in("category_id", scopedCategoryIds);
+      topInflowsQuery = topInflowsQuery.in("category_id", scopedCategoryIds);
     }
 
-    const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, merchantRes, prevMerchantRes, itemRes, prevItemRes, dailyRes, topRes, personRes, paymentMethodRes] =
+    const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, merchantRes, prevMerchantRes, itemRes, prevItemRes, dailyRes, topRes, topInflowsRes, personRes, paymentMethodRes] =
       await Promise.all([
         supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy, p_category_scope: categoryScope }),
         supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_paid_by: paidBy, p_category_scope: categoryScope }),
@@ -303,6 +354,7 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
         supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_limit: 30, p_category_scope: categoryScope }),
         supabase.rpc("get_daily_spending", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_paid_by: paidBy, p_category_scope: categoryScope }),
         topExpensesQuery,
+        topInflowsQuery,
         supabase.rpc("get_person_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_category_scope: categoryScope }),
         supabase.rpc("get_payment_method_breakdown", { p_household_id: householdId, p_start: filters.range.start, p_end: filters.range.end, p_category_scope: categoryScope }),
       ]);
@@ -313,6 +365,7 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
     if (itemRes.error) throw new ActionError(itemRes.error.message);
     if (dailyRes.error) throw new ActionError(dailyRes.error.message);
     if (topRes.error) throw new ActionError(topRes.error.message);
+    if (topInflowsRes.error) throw new ActionError(topInflowsRes.error.message);
     if (personRes.error) throw new ActionError(personRes.error.message);
     if (paymentMethodRes.error) throw new ActionError(paymentMethodRes.error.message);
 
@@ -324,7 +377,7 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
       itemAnalytics: itemRes.data ?? [],
       previousItemAnalytics: prevItemRes.data ?? [],
       dailySpending: dailyRes.data ?? [],
-      topExpenses: (topRes.data ?? []).map((e) => ({
+      topExpenses: (topRes.data ?? []).map((e: any) => ({
         id: e.id,
         item_name: e.item_name,
         amount: String(e.amount),
@@ -332,6 +385,23 @@ export async function getAnalyticsData(filters: AnalyticsFilters) {
         expense_time: e.expense_time ?? null,
         created_at: e.created_at ?? null,
         category_id: e.category_id,
+        category_name: e.categories?.name ?? null,
+        category_icon: e.categories?.icon ?? null,
+        category_color: e.categories?.color ?? null,
+        merchant_id: e.merchant_id ?? null,
+        paid_by: e.paid_by,
+      })),
+      topInflows: (topInflowsRes.data ?? []).map((e: any) => ({
+        id: e.id,
+        item_name: e.item_name,
+        amount: String(e.amount),
+        expense_date: e.expense_date,
+        expense_time: e.expense_time ?? null,
+        created_at: e.created_at ?? null,
+        category_id: e.category_id,
+        category_name: e.categories?.name ?? null,
+        category_icon: e.categories?.icon ?? null,
+        category_color: e.categories?.color ?? null,
         merchant_id: e.merchant_id ?? null,
         paid_by: e.paid_by,
       })),

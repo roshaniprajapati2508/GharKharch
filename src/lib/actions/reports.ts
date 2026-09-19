@@ -49,8 +49,9 @@ export async function getReportData(range: DateRange, categoryScope?: CategorySc
 
     let topExpensesQuery = supabase
       .from("expenses")
-      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by")
+      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by, categories(name, icon, color)")
       .eq("household_id", householdId)
+      .eq("entry_type", "expense")
       .is("deleted_at", null)
       .gte("expense_date", range.start)
       .lte("expense_date", range.end)
@@ -96,7 +97,7 @@ export async function getReportData(range: DateRange, categoryScope?: CategorySc
       merchantBreakdown: merchantRes.data ?? [],
       itemAnalytics: itemRes.data ?? [],
       dailySpending: dailyRes.data ?? [],
-      topExpenses: (topRes.data ?? []).map((e) => ({
+      topExpenses: (topRes.data ?? []).map((e: any) => ({
         id: e.id,
         item_name: e.item_name,
         amount: String(e.amount),
@@ -104,6 +105,9 @@ export async function getReportData(range: DateRange, categoryScope?: CategorySc
         expense_time: e.expense_time ?? null,
         created_at: e.created_at ?? null,
         category_id: e.category_id,
+        category_name: e.categories?.name ?? null,
+        category_icon: e.categories?.icon ?? null,
+        category_color: e.categories?.color ?? null,
         merchant_id: e.merchant_id ?? null,
         paid_by: e.paid_by,
       })),

@@ -17,6 +17,7 @@ import { TopMerchantsCard } from "@/components/dashboard/top-merchants-card";
 import { PersonComparisonCard } from "@/components/dashboard/person-comparison-card";
 import { MostFrequentCard } from "@/components/dashboard/most-frequent-card";
 import { TopExpensesList } from "@/components/analytics/top-expenses-list";
+import { TopInflowsList } from "@/components/dashboard/top-inflows-list";
 import { SpendingCalendar } from "@/components/analytics/spending-calendar";
 import { DashboardBackgroundDecoration } from "@/components/dashboard/background-decoration";
 import { InsightsList } from "@/components/dashboard/insights-list";
@@ -170,11 +171,11 @@ export function DashboardPageClient({
             <ExecutiveCashflowCard />
           </motion.div>
 
-          <motion.div variants={fadeInUp} style={{ gridArea: "brief" }}>
+          <motion.div variants={fadeInUp} style={{ gridArea: "brief" }} className="h-full flex flex-col">
             <DailyBriefCard initialData={initialBrief} />
           </motion.div>
 
-          <motion.div variants={fadeInUp} style={{ gridArea: "forecast" }}>
+          <motion.div variants={fadeInUp} style={{ gridArea: "forecast" }} className="h-full flex flex-col">
             <ForecastCard initialForecast={initialForecast} />
           </motion.div>
 
@@ -209,8 +210,11 @@ export function DashboardPageClient({
             <MostFrequentCard items={data.itemAnalytics} />
           </motion.div>
 
-          <motion.div variants={fadeInUp} style={{ gridArea: "largest" }}>
+          <motion.div variants={fadeInUp} style={{ gridArea: "largest" }} className="flex flex-col gap-4">
             <TopExpensesList expenses={data.topExpenses.slice(0, 5)} categories={data.categoryBreakdown} />
+            {data.topInflows && data.topInflows.length > 0 && (
+              <TopInflowsList inflows={data.topInflows.slice(0, 5)} />
+            )}
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "insights" }}>

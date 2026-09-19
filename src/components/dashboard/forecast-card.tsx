@@ -42,18 +42,35 @@ export function ForecastCard({
   if (!loaded || !forecast) return null;
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-mint text-brand-primary">
-        <TrendingUp className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-foreground">
-          {formatINR(forecast.spentSoFar)} spent so far
-          <span className="text-muted-foreground"> · ~{formatINR(forecast.projected)} projected by month end</span>
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Estimate based on this month&apos;s pace ({forecast.daysElapsed} of {forecast.daysInMonth} days) — not a guarantee.
-        </p>
+    <div className="flex h-full flex-col justify-between rounded-2xl border border-border/60 bg-card/90 p-4 sm:p-4.5 shadow-xs backdrop-blur-md space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="flex items-center gap-1.5 text-sm font-bold text-foreground">
+          <TrendingUp className="h-4 w-4 text-brand-primary" /> Month Forecast
+        </h3>
+        <span className="rounded-full bg-brand-mint/80 px-2.5 py-0.5 text-[11px] font-semibold text-brand-primary">
+          Day {forecast.daysElapsed}/{forecast.daysInMonth}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl bg-muted/40 p-3">
+          <p className="text-xs font-medium text-muted-foreground">Spent so far</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-foreground">
+            {formatINR(forecast.spentSoFar)}
+          </p>
+          <p className="text-[11px] text-muted-foreground">{forecast.daysElapsed} days logged</p>
+        </div>
+        <div className="rounded-xl bg-muted/40 p-3">
+          <p className="text-xs font-medium text-muted-foreground">Projected</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-foreground">
+            ~{formatINR(forecast.projected)}
+          </p>
+          <p className="text-[11px] text-muted-foreground">by month end</p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border/50 bg-muted/20 px-3.5 py-2.5 text-xs text-muted-foreground">
+        Estimate based on current pace ({Math.round((forecast.daysElapsed / forecast.daysInMonth) * 100)}% of month elapsed).
       </div>
     </div>
   );

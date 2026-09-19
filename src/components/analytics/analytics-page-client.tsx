@@ -15,6 +15,7 @@ import { PaymentMethodAnalyticsTab } from "@/components/analytics/payment-method
 import { SpendingCalendar } from "@/components/analytics/spending-calendar";
 import { MonthlyComparisonCard } from "@/components/analytics/monthly-comparison-card";
 import { TopExpensesList } from "@/components/analytics/top-expenses-list";
+import { TopInflowsList } from "@/components/dashboard/top-inflows-list";
 import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-context";
 import { getAnalyticsData, type AnalyticsPageData, type PersonFilter, type CategoryScope } from "@/lib/actions/analytics";
 import { getMonthRange, type DateRange } from "@/lib/date-utils";
@@ -160,6 +161,9 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
               previousMerchants={data.previousMerchantBreakdown}
             />
             <TopExpensesList expenses={data.topExpenses} categories={data.categoryBreakdown} />
+            {data.topInflows && data.topInflows.length > 0 && (
+              <TopInflowsList inflows={data.topInflows} />
+            )}
           </TabsContent>
 
           <TabsContent value="categories">
