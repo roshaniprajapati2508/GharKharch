@@ -97,7 +97,7 @@ where m.household_id is null
     or (m.normalized_name = 'urbancompany' and p.name = 'Household' and c.name = 'Maintenance')
     
     -- Food & Grocery
-    (m.normalized_name in ('dmart', 'reliancesmartfresh', 'jiomart') and p.name = 'Food & Grocery' and c.name = 'Grocery')
+    or (m.normalized_name in ('dmart', 'reliancesmartfresh', 'jiomart') and p.name = 'Food & Grocery' and c.name = 'Grocery')
     or (m.normalized_name = 'amulparlour' and p.name = 'Food & Grocery' and c.name = 'Milk')
     or (m.normalized_name = 'localsabjimandi' and p.name = 'Food & Grocery' and c.name = 'Vegetables')
     or (m.normalized_name = 'localfruitvendor' and p.name = 'Food & Grocery' and c.name = 'Fruits')
