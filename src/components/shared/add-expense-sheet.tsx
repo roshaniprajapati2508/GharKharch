@@ -156,6 +156,12 @@ const DEFAULT_TOP_CATEGORIES: CategoryWithChildren[] = [
   { id: "seed-personal", name: "Personal", icon: "user", color: "teal", sort_order: 80, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
 ];
 
+const DEFAULT_TOP_INCOME_CATEGORIES: CategoryWithChildren[] = [
+  { id: "seed-business-sales", name: "Business Sales & Payouts", icon: "shopping-bag", color: "indigo", sort_order: 102, parent_id: null, household_id: null, is_active: true, type: "income", created_at: "", children: [] },
+  { id: "seed-salary", name: "Salary", icon: "banknote", color: "emerald", sort_order: 100, parent_id: null, household_id: null, is_active: true, type: "income", created_at: "", children: [] },
+  { id: "seed-freelance", name: "Freelancing & Consulting", icon: "laptop", color: "blue", sort_order: 101, parent_id: null, household_id: null, is_active: true, type: "income", created_at: "", children: [] },
+];
+
 const DEFAULT_PRESEEDED_CARDS: EnrichedUserCard[] = DEFAULT_HOUSEHOLD_CARDS.map((c, idx) => ({
   id: `preseeded-${idx}`,
   household_id: "",
@@ -367,10 +373,14 @@ export function AddExpenseSheet({
       setCategoryTouched(true);
       setAmountTouched(true);
       setEntryMode("single");
+      setNlEntryOpen(false);
+      setNlText("");
     } else {
       setForm(emptySingleState(userId));
       setCategoryTouched(false);
       setAmountTouched(false);
+      setNlEntryOpen(true);
+      setNlText("");
     }
     setReceiptFile(null);
     setParsedReceipt(null);
@@ -517,23 +527,169 @@ export function AddExpenseSheet({
   }, [form.itemName, form.merchant, merchants]);
 
   // Natural Language Entry
-  const [nlEntryOpen, setNlEntryOpen] = useState(false);
+  const [nlEntryOpen, setNlEntryOpen] = useState(!editExpense && !duplicateFrom);
   const [nlText, setNlText] = useState("");
 
   function applyNaturalLanguageEntry() {
     if (!nlText || typeof nlText !== "string" || !nlText.trim()) return;
     const parsed = parseQuickEntry(nlText);
+
+    // 1. Merchant Resolution
+    let matchedMerchant: Tables<"merchants"> | null = null;
+    const merchantCandidate = parsed.merchantHint || parsed.itemName;
+    if (merchantCandidate && merchants.length > 0) {
+      const match = suggestMerchant(merchantCandidate, merchants);
+      if (match && match.confidence >= 0.6) {
+        matchedMerchant = match.merchant;
+      }
+    }
+
+    // 2. Category Resolution
+    let matchedCategory: CategorySelection | null = null;
+    const activeTree = parsed.entryType === "income" ? incomeCategoryTree : expenseCategoryTree;
+    
+    // (a) Keyword rule match
+    const keywordMatch = matchKeywordRule(parsed.itemName.toLowerCase());
+    if (keywordMatch) {
+      const top = activeTree.find(
+        (c) => c.name.toLowerCase() === keywordMatch.categoryName.toLowerCase()
+      );
+      if (top) {
+        const sub = keywordMatch.subcategoryName
+          ? top.children.find((s) => s.name.toLowerCase() === keywordMatch.subcategoryName?.toLowerCase())
+          : null;
+        matchedCategory = {
+          categoryId: top.id,
+          subcategoryId: sub?.id ?? null,
+          categoryName: top.name,
+          subcategoryName: sub?.name ?? null,
+        };
+      }
+    }
+
+    // (b) Category tree substring match if no keyword match
+    if (!matchedCategory) {
+      const lower = parsed.itemName.toLowerCase();
+      for (const top of activeTree) {
+        if (lower.includes(top.name.toLowerCase())) {
+          matchedCategory = {
+            categoryId: top.id,
+            subcategoryId: null,
+            categoryName: top.name,
+            subcategoryName: null,
+          };
+          break;
+        }
+        for (const sub of top.children) {
+          if (lower.includes(sub.name.toLowerCase())) {
+            matchedCategory = {
+              categoryId: top.id,
+              subcategoryId: sub.id,
+              categoryName: top.name,
+              subcategoryName: sub.name,
+            };
+            break;
+          }
+        }
+        if (matchedCategory) break;
+      }
+    }
+
+    // 3. Card & Bank instrument match
+    let resolvedCardId: string | null = null;
+    let resolvedUpiId: string | null = null;
+    let resolvedBankId: string | null = null;
+    let resolvedPaymentMethod = parsed.paymentMethod ?? form.paymentMethod ?? "UPI";
+
+    if (parsed.cardHint && cards.length > 0) {
+      const foundCard = cards.find(
+        (c) =>
+          c.issuer_name?.toLowerCase().includes(parsed.cardHint!.toLowerCase()) ||
+          c.custom_name?.toLowerCase().includes(parsed.cardHint!.toLowerCase())
+      );
+      if (foundCard) {
+        resolvedCardId = foundCard.id;
+        resolvedPaymentMethod = foundCard.card_type === "debit" ? "Debit Card" : "Credit Card";
+      }
+    }
+
+    if (parsed.upiHint && upiProfiles.length > 0) {
+      const hintLower = parsed.upiHint.toLowerCase();
+      const foundUpi = upiProfiles.find(
+        (u) =>
+          u.label?.toLowerCase().includes(hintLower) ||
+          u.upi_app?.toLowerCase().includes(hintLower) ||
+          u.linked_bank_name?.toLowerCase().includes(hintLower)
+      );
+      if (foundUpi) {
+        resolvedUpiId = foundUpi.id;
+        resolvedPaymentMethod = "UPI";
+      }
+    }
+
+    if (parsed.bankHint && bankAccounts.length > 0) {
+      const foundBank = bankAccounts.find((b) =>
+        b.bank_name.toLowerCase().includes(parsed.bankHint!.toLowerCase())
+      );
+      if (foundBank) {
+        resolvedBankId = foundBank.id;
+        resolvedPaymentMethod = "Bank Transfer";
+      }
+    }
+
+    // 4. Paid by resolution
+    let resolvedPaidBy = form.paidBy;
+    if (parsed.paidByHint) {
+      const pLower = parsed.paidByHint.toLowerCase();
+      if (displayName.toLowerCase().includes(pLower)) {
+        resolvedPaidBy = userId;
+      } else if (partner && partner.displayName.toLowerCase().includes(pLower)) {
+        resolvedPaidBy = partner.id;
+      }
+    }
+
+    // 5. Automation rules check
+    const members = [
+      { id: userId, displayName },
+      ...(partner ? [{ id: partner.id, displayName: partner.displayName }] : []),
+    ];
+    const rule = matchAutomationRule(parsed.itemName, automationRules, {
+      amount: parsed.amount,
+      entryType: parsed.entryType ?? form.entryType,
+    });
+
+    if (rule) {
+      const resolved = resolveRuleActions(rule, categoryTree, merchants, members);
+      applyMatchedRule(rule, resolved);
+    }
+
+    // Update form state
     setForm((f) => ({
       ...f,
       itemName: parsed.itemName || f.itemName,
       amount: parsed.amount !== null ? String(parsed.amount) : f.amount,
-      paymentMethod: parsed.paymentMethod ?? f.paymentMethod ?? "UPI",
+      paymentMethod: resolvedPaymentMethod,
+      cardId: resolvedCardId ?? f.cardId,
+      upiProfileId: resolvedUpiId ?? f.upiProfileId,
+      bankAccountId: resolvedBankId ?? f.bankAccountId,
       date: parsed.expenseDate,
-      merchant: null,
+      merchant: matchedMerchant ?? f.merchant,
+      category: matchedCategory ?? f.category,
+      entryType: parsed.entryType ?? f.entryType,
+      expenseType: parsed.expenseTypeHint ?? f.expenseType,
+      paidBy: resolvedPaidBy,
     }));
-    setNlText("");
-    setNlEntryOpen(false);
-    toast.message("Parsed — review details");
+
+    if (matchedCategory) setCategoryTouched(true);
+    if (parsed.amount !== null) setAmountTouched(true);
+
+    const parts: string[] = [];
+    if (parsed.itemName) parts.push(parsed.itemName);
+    if (parsed.amount !== null) parts.push(`₹${parsed.amount}`);
+    if (matchedCategory) parts.push(matchedCategory.subcategoryName ?? matchedCategory.categoryName);
+    if (matchedMerchant) parts.push(matchedMerchant.name);
+
+    toast.success(parts.length > 0 ? `Smart parsed: ${parts.join(" • ")}` : "Smart parsed — review details");
   }
 
   // Apply a quick-entry string handed in from outside (Cmd+K command palette
@@ -814,22 +970,29 @@ export function AddExpenseSheet({
             seenKeys.add(key);
             const sub = m.subcategory_id ? categoryFlat.find((c) => c.id === m.subcategory_id) : null;
             const parent = sub?.parent_id ? categoryFlat.find((c) => c.id === sub.parent_id) : sub;
-            const topCat = parent ? categoryFlat.find((c) => c.id === parent.id) : null;
+            let topCat = parent ? categoryFlat.find((c) => c.id === parent.id) : null;
+            if (!topCat && m.category_id) {
+              topCat = categoryFlat.find((c) => c.id === m.category_id) ?? null;
+            }
+
+            const isPayout = m.name.toLowerCase().includes("seller payout") || m.name.toLowerCase().includes("website orders") || m.name.toLowerCase().includes("freelance client");
+            const defaultCategoryName = isPayout ? "Business Sales & Payouts" : "Shopping";
+            const fallbackCat = categoryFlat.find((c) => c.name.toLowerCase() === defaultCategoryName.toLowerCase() && !c.parent_id);
 
             results.push({
               key,
               itemName: m.name,
               amount: null,
-              categoryId: topCat?.id ?? "seed-shopping",
+              categoryId: topCat?.id ?? fallbackCat?.id ?? (isPayout ? "seed-business-sales" : "seed-shopping"),
               subcategoryId: sub?.id ?? null,
-              categoryName: topCat?.name ?? "Shopping",
+              categoryName: topCat?.name ?? fallbackCat?.name ?? defaultCategoryName,
               subcategoryName: sub?.name ?? null,
-              categoryIcon: topCat?.icon ?? "store",
-              categoryColor: topCat?.color ?? "indigo",
+              categoryIcon: topCat?.icon ?? fallbackCat?.icon ?? (isPayout ? "shopping-bag" : "store"),
+              categoryColor: topCat?.color ?? fallbackCat?.color ?? "indigo",
               merchant: m,
               paymentMethod: "UPI",
-              paidBy: userId,
-              expenseType: "household",
+              paidBy: isPayout && partner?.displayName?.toLowerCase().includes("roshni") ? partner.id : userId,
+              expenseType: isPayout ? "household" : "household",
               matchType: "merchant",
               badgeLabel: aliasMatch ? `Alias match: ${q}` : "Merchant",
             });
@@ -850,22 +1013,29 @@ export function AddExpenseSheet({
           seenKeys.add(key);
           const sub = m.subcategory_id ? categoryFlat.find((c) => c.id === m.subcategory_id) : null;
           const parent = sub?.parent_id ? categoryFlat.find((c) => c.id === sub.parent_id) : sub;
-          const topCat = parent ? categoryFlat.find((c) => c.id === parent.id) : null;
+          let topCat = parent ? categoryFlat.find((c) => c.id === parent.id) : null;
+          if (!topCat && m.category_id) {
+            topCat = categoryFlat.find((c) => c.id === m.category_id) ?? null;
+          }
+
+          const isPayout = m.name.toLowerCase().includes("seller payout") || m.name.toLowerCase().includes("website orders") || m.name.toLowerCase().includes("freelance client");
+          const defaultCategoryName = isPayout ? "Business Sales & Payouts" : "Shopping";
+          const fallbackCat = categoryFlat.find((c) => c.name.toLowerCase() === defaultCategoryName.toLowerCase() && !c.parent_id);
 
           results.push({
             key,
             itemName: m.name,
             amount: null,
-            categoryId: topCat?.id ?? "seed-shopping",
+            categoryId: topCat?.id ?? fallbackCat?.id ?? (isPayout ? "seed-business-sales" : "seed-shopping"),
             subcategoryId: sub?.id ?? null,
-            categoryName: topCat?.name ?? "Shopping",
+            categoryName: topCat?.name ?? fallbackCat?.name ?? defaultCategoryName,
             subcategoryName: sub?.name ?? null,
-            categoryIcon: topCat?.icon ?? "store",
-            categoryColor: topCat?.color ?? "indigo",
+            categoryIcon: topCat?.icon ?? fallbackCat?.icon ?? (isPayout ? "shopping-bag" : "store"),
+            categoryColor: topCat?.color ?? fallbackCat?.color ?? "indigo",
             merchant: m,
             paymentMethod: "UPI",
-            paidBy: userId,
-            expenseType: "household",
+            paidBy: isPayout && partner?.displayName?.toLowerCase().includes("roshni") ? partner.id : userId,
+            expenseType: isPayout ? "household" : "household",
             matchType: "merchant",
             badgeLabel: "Did you mean this?",
           });
@@ -911,7 +1081,7 @@ export function AddExpenseSheet({
     }
 
     return results.slice(0, 4);
-  }, [form.itemName, form.amount, amountTouched, isEditing, predictionDismissed, pastPredictions, merchants, categoryFlat, userId]);
+  }, [form.itemName, form.amount, amountTouched, isEditing, predictionDismissed, pastPredictions, merchants, categoryFlat, userId, partner]);
 
   interface PredictiveMatchItem {
     itemName: string;
@@ -927,8 +1097,17 @@ export function AddExpenseSheet({
   }
 
   function applyPredictiveMatch(pred: PredictiveMatchItem) {
+    const matchedCategory = categoryFlat.find((c) => c.id === pred.categoryId);
+    const isIncome =
+      matchedCategory?.type === "income" ||
+      pred.categoryName.toLowerCase().includes("income") ||
+      pred.categoryName.toLowerCase().includes("salary") ||
+      pred.categoryName.toLowerCase().includes("business sales") ||
+      pred.categoryName.toLowerCase().includes("freelancing");
+
     setForm((f) => ({
       ...f,
+      entryType: isIncome ? "income" : f.entryType,
       itemName: pred.itemName,
       amount: pred.amount ? String(pred.amount) : f.amount,
       category: {
@@ -1244,13 +1423,19 @@ export function AddExpenseSheet({
     }
   };
 
-  // Top 7 categories for 1-tap quick select (never empty)
+  // Top 7 categories for 1-tap quick select (never empty, scoped to current entryType)
   const topCategories = useMemo(() => {
-    if (categoryTree && categoryTree.length > 0) {
-      return categoryTree.slice(0, 7);
+    if (form.entryType === "income") {
+      if (incomeCategoryTree && incomeCategoryTree.length > 0) {
+        return incomeCategoryTree.slice(0, 7);
+      }
+      return DEFAULT_TOP_INCOME_CATEGORIES;
+    }
+    if (expenseCategoryTree && expenseCategoryTree.length > 0) {
+      return expenseCategoryTree.slice(0, 7);
     }
     return DEFAULT_TOP_CATEGORIES.slice(0, 7);
-  }, [categoryTree]);
+  }, [form.entryType, incomeCategoryTree, expenseCategoryTree]);
 
   const activeShoppingRow = shoppingRows.find((r) => r.key === shoppingCategoryRowKey) ?? null;
 
@@ -1262,7 +1447,13 @@ export function AddExpenseSheet({
           <DrawerHeader className="px-5 pt-4 pb-2.5 border-b border-border/40">
             <div className="flex items-center justify-between">
               <DrawerTitle className="text-lg font-bold tracking-tight text-foreground">
-                {isEditing ? "Edit Expense" : "Add Expense"}
+                {isEditing
+                  ? form.entryType === "income"
+                    ? "Edit Income"
+                    : "Edit Expense"
+                  : form.entryType === "income"
+                    ? "Add Income"
+                    : "Add Expense"}
               </DrawerTitle>
 
               <div className="flex items-center gap-1.5">
@@ -1489,8 +1680,9 @@ export function AddExpenseSheet({
               {/* Item / Description Input */}
               <div className="relative">
                 <div className="flex items-center justify-between mb-1.5">
-                  <Label htmlFor="item-name" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    Item / Description
+                  <Label htmlFor="item-name" className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    {nlEntryOpen && <Sparkles className="h-3.5 w-3.5 text-brand-primary animate-pulse" />}
+                    {nlEntryOpen ? "Smart Parse Text" : "Item / Description"}
                   </Label>
                   {!isEditing && (
                     <div className="flex items-center gap-3">
@@ -1498,7 +1690,7 @@ export function AddExpenseSheet({
                         <button
                           type="button"
                           onClick={startVoiceInput}
-                          title={listening ? "Stop listening" : "Speak your expense (Gujarati)"}
+                          title={listening ? "Stop listening" : "Speak your expense (Gujarati / English)"}
                           aria-label={listening ? "Stop listening" : "Speak your expense"}
                           className={cn(
                             // min-h/min-w-11 (44px) keeps the actual tap target at the
@@ -1522,11 +1714,19 @@ export function AddExpenseSheet({
                       )}
                       <button
                         type="button"
-                        onClick={() => setNlEntryOpen(!nlEntryOpen)}
+                        onClick={() => {
+                          if (nlEntryOpen) {
+                            if (nlText.trim()) applyNaturalLanguageEntry();
+                            setNlEntryOpen(false);
+                          } else {
+                            if (form.itemName && !nlText) setNlText(form.itemName);
+                            setNlEntryOpen(true);
+                          }
+                        }}
                         className="text-xs text-brand-primary flex items-center gap-1 hover:underline font-semibold"
                       >
                         <Sparkles className="h-3 w-3" />
-                        {nlEntryOpen ? "Normal input" : "Smart parse text"}
+                        {nlEntryOpen ? "Normal text" : "Smart parse text"}
                       </button>
                     </div>
                   )}
@@ -1539,10 +1739,17 @@ export function AddExpenseSheet({
                       value={nlText}
                       onChange={(e) => setNlText(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && applyNaturalLanguageEntry()}
-                      placeholder='e.g. "Milk 60" or "Zudio 1500 card"'
-                      className="flex-1 text-sm h-11"
+                      placeholder='e.g. "Milk 60", "Zudio 1.5k card", "Petrol 500 yesterday"'
+                      className="flex-1 text-sm h-11 bg-background ring-1 ring-brand-primary/20 focus:ring-brand-primary"
                     />
-                    <Button type="button" size="sm" onClick={applyNaturalLanguageEntry} disabled={!nlText || typeof nlText !== "string" || !nlText.trim()} className="h-11 px-4 font-semibold">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={applyNaturalLanguageEntry}
+                      disabled={!nlText || typeof nlText !== "string" || !nlText.trim()}
+                      className="h-11 px-4 font-semibold"
+                    >
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                       Parse
                     </Button>
                   </div>
@@ -1920,7 +2127,11 @@ export function AddExpenseSheet({
                 onClick={handleSubmitSingle}
                 loading={submitting}
               >
-                {isEditing ? "Save changes" : "Save Expense"}
+                {isEditing
+                  ? "Save changes"
+                  : form.entryType === "income"
+                    ? "Save Income"
+                    : "Save Expense"}
               </Button>
             ) : (
               <div className="flex flex-col gap-2.5 w-full">

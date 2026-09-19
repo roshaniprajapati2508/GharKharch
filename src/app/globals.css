@@ -263,12 +263,14 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
 }
 
 /* Respect device safe areas (spec item: accessibility - safe-area insets) */
-.safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 
-.safe-top {
-  padding-top: env(safe-area-inset-top);
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
 }
 
 /* Dashboard information architecture (spec items 33-34, 93-94) */

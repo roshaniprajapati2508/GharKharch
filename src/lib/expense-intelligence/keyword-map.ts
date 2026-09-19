@@ -83,18 +83,22 @@ export const KEYWORD_RULES: KeywordRule[] = [
   { keywords: ["decor", "curtain", "lamp"], categoryName: "Household", subcategoryName: "Home Decor" },
   { keywords: ["repair", "plumber", "electrician", "maintenance"], categoryName: "Household", subcategoryName: "Maintenance" },
 
-  // Shopping
-  { keywords: ["online shopping", "e-commerce"], categoryName: "Shopping", subcategoryName: "Online Shopping" },
-  { keywords: ["courier", "shiprocket", "shipment", "parcel", "speed post", "shipping charges"], categoryName: "Shopping", subcategoryName: "Online Shopping" },
-  { keywords: ["stationery", "xerox", "photocopy", "printout", "printing", "book stock", "books", "document"], categoryName: "Shopping", subcategoryName: "General Shopping" },
+  // Income & Marketplace Payouts (High Priority so Payouts & Book Sales match Business Sales / Homemade Business)
+  { keywords: ["flipkart seller", "amazon seller", "meesho seller", "seller payout", "payout", "marketplace payout", "website orders", "website order", "book payout", "books payout", "seller payout books", "book sale", "book sales"], categoryName: "Business Sales & Payouts" },
+  { keywords: ["salary", "payroll", "monthly salary", "salary credit"], categoryName: "Salary" },
+  { keywords: ["freelance", "freelancing", "consulting", "client payment", "project payout"], categoryName: "Freelancing & Consulting" },
 
   // Homemade Business
   { keywords: ["luxekraft", "craft material", "craft raw material", "mobile cover", "phone cover", "mobile case", "blank cover", "blank case", "cover stock"], categoryName: "Homemade Business", subcategoryName: "LuxeKraft" },
-  { keywords: ["roshni mehndi", "mehndi art", "mehndi", "mehendi", "henna", "mehndi cone"], categoryName: "Homemade Business", subcategoryName: "Roshni's Mehndi Art" },
-  { keywords: ["satyam xerox", "yogesh bhai", "xerox", "photocopy", "printout", "printing", "book stock"], categoryName: "Homemade Business", subcategoryName: "Printing & Xerox" },
+  { keywords: ["roshni mehndi", "mehndi art", "mehndi", "mehendi", "henna", "mehndi cone", "mehndi books", "mehndi book", "henna book"], categoryName: "Homemade Business", subcategoryName: "Roshni's Mehndi Art" },
+  { keywords: ["satyam xerox", "yogesh bhai", "xerox", "photocopy", "printout", "printing", "book stock", "book printing", "binding"], categoryName: "Homemade Business", subcategoryName: "Printing & Xerox" },
   { keywords: ["shiprocket", "courier", "shipment", "parcel", "speed post", "shipping charge", "porter", "shree mahavir", "mahavir courier", "shree nandan", "nandan courier", "shree maruti", "maruti courier", "india post"], categoryName: "Homemade Business", subcategoryName: "Courier & Shipping" },
   { keywords: ["raw material", "stock buy", "material buy"], categoryName: "Homemade Business", subcategoryName: "Raw Materials" },
   { keywords: ["stationery", "office stationery", "business document"], categoryName: "Homemade Business", subcategoryName: "Stationery & Office" },
+
+  // Shopping
+  { keywords: ["online shopping", "e-commerce", "shopping mall", "general shopping"], categoryName: "Shopping", subcategoryName: "Online Shopping" },
+  { keywords: ["novel", "magazine", "reading book"], categoryName: "Shopping", subcategoryName: "General Shopping" },
 
   // Personal
   { keywords: ["salon", "haircut", "barber", "grooming"], categoryName: "Personal", subcategoryName: "Grooming" },

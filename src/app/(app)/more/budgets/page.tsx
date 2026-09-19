@@ -260,7 +260,7 @@ export default function BudgetsPage() {
 
       {form && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setForm(null)}>
-          <div className="safe-bottom w-full max-w-md rounded-t-2xl bg-card p-5 sm:rounded-2xl sm:pb-5" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-t-2xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:rounded-2xl sm:p-5" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-4 text-lg font-semibold text-foreground">{form.id ? "Edit budget" : "Set a budget"}</h2>
 
             {!form.id && (

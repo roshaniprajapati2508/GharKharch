@@ -233,6 +233,14 @@ export function ExpenseRow({
                 {expense.merchant_name ?? expense.item_name}
               </p>
             )}
+            {expense.entry_type === "income" && (
+              <span
+                className="flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                title="Incoming money / Income"
+              >
+                + Incoming
+              </span>
+            )}
             {expense.recurring_rule_id && (
               <span
                 className="flex shrink-0 items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
@@ -258,7 +266,7 @@ export function ExpenseRow({
             )}
           </div>
           <p className="truncate text-xs text-muted-foreground">
-            {expense.category_name ?? "Uncategorized"}
+            {expense.category_name ?? (expense.entry_type === "income" ? "Income" : "Uncategorized")}
             {expense.subcategory_name ? ` › ${expense.subcategory_name}` : ""} · {expense.payer_name}
             {timeLabel ? ` · ${timeLabel}` : ""}
           </p>
@@ -288,10 +296,16 @@ export function ExpenseRow({
                 e.stopPropagation();
                 startInlineEdit("amount");
               }}
-              className={cn("text-sm font-semibold text-foreground", onInlineUpdate && !selectionMode && "cursor-text")}
+              className={cn(
+                "text-sm font-semibold tabular-nums",
+                expense.entry_type === "income"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-foreground",
+                onInlineUpdate && !selectionMode && "cursor-text"
+              )}
               title={onInlineUpdate && !selectionMode ? "Double-click to edit amount" : undefined}
             >
-              {formatINR(expense.amount)}
+              {expense.entry_type === "income" ? `+${formatINR(expense.amount)}` : `-${formatINR(expense.amount)}`}
             </p>
           )}
 

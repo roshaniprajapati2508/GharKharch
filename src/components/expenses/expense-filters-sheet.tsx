@@ -101,7 +101,32 @@ export function ExpenseFiltersSheet({
             </div>
 
             <div>
-              <Label>Who paid</Label>
+              <Label>Type</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[
+                  { value: "all", label: "All" },
+                  { value: "expense", label: "Spend only" },
+                  { value: "income", label: "Incoming only" },
+                ].map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setDraft({ ...draft, entryType: t.value as ExpenseFilters["entryType"] })}
+                    className={cn(
+                      "h-9 rounded-full border px-3 text-sm font-medium",
+                      (draft.entryType ?? "all") === t.value
+                        ? "border-primary bg-secondary text-secondary-foreground"
+                        : "border-border text-muted-foreground"
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label>Who paid / received</Label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {[
                   { id: "all", label: "Household" },

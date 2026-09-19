@@ -140,23 +140,23 @@ values
 
   -- B. Business & personal incomes
   (null, 'Amazon Seller Payout', 100,
-    '{"keywords": ["amazon", "amzn", "seller payout"], "entry_type": "income"}'::jsonb,
+    '{"keywords": ["amazon seller", "amazon payout", "amzn payout", "amazon books", "amzn seller"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Business Sales & Payouts", "merchant_name": "Amazon Seller Payout", "paid_by_name": "Roshni"}'::jsonb),
 
   (null, 'Meesho / Flipkart Payout', 100,
-    '{"keywords": ["meesho", "flipkart", "fipkart"], "entry_type": "income"}'::jsonb,
-    '{"entry_type": "income", "category_name": "Business Sales & Payouts", "merchant_name": "Meesho Seller Payout", "paid_by_name": "Roshni"}'::jsonb),
+    '{"keywords": ["meesho", "flipkart", "fipkart", "flipkart seller", "meesho seller", "seller payout", "seller payout books", "books payout", "book payout", "website orders", "website order"], "entry_type": null}'::jsonb,
+    '{"entry_type": "income", "category_name": "Business Sales & Payouts", "merchant_name": "Flipkart Seller Payout", "paid_by_name": "Roshni"}'::jsonb),
 
   (null, 'Mehndi Client Order', 100,
-    '{"keywords": ["mehndi order", "bridal mehndi", "henna client"], "entry_type": "income"}'::jsonb,
+    '{"keywords": ["mehndi order", "bridal mehndi", "henna client", "mehndi client"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Business Sales & Payouts", "paid_by_name": "Roshni"}'::jsonb),
 
   (null, 'Harsh Salary Deposit', 100,
-    '{"keywords": ["salary", "payroll", "monthly salary"], "entry_type": "income"}'::jsonb,
+    '{"keywords": ["salary", "payroll", "monthly salary", "salary credit"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Salary", "paid_by_name": "Harsh", "payment_method": "Bank Transfer"}'::jsonb),
 
   (null, 'Freelancing Payment', 100,
-    '{"keywords": ["freelance", "consulting", "web dev", "client payment"], "entry_type": "income"}'::jsonb,
+    '{"keywords": ["freelance", "consulting", "web dev", "client payment", "project payout"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Freelancing & Consulting", "paid_by_name": "Harsh"}'::jsonb),
 
   -- C. Household & daily local food

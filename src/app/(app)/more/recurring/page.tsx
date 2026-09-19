@@ -349,7 +349,7 @@ export default function RecurringExpensesPage() {
 
       {form && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setForm(null)}>
-          <div className="safe-bottom w-full max-w-md rounded-t-2xl bg-card p-5 sm:rounded-2xl sm:pb-5" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-t-2xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:rounded-2xl sm:p-5" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-4 text-lg font-semibold text-foreground">{form.id ? "Edit recurring expense" : "Add recurring expense"}</h2>
 
             <div className="flex flex-col gap-3">
@@ -434,7 +434,7 @@ export default function RecurringExpensesPage() {
 
       {logTarget && logForm && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setLogTarget(null)}>
-          <div className="safe-bottom w-full max-w-md rounded-t-2xl bg-card p-5 sm:rounded-2xl sm:pb-5" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-t-2xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:rounded-2xl sm:p-5" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-1 text-lg font-semibold text-foreground">Log this bill</h2>
             <p className="mb-4 text-xs text-muted-foreground">
               Adds a real expense for {logTarget.name} and moves its next due date forward. Review the amount before saving — prices change.

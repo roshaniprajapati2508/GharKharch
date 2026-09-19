@@ -47,7 +47,13 @@ export default function MerchantsSettingsPage() {
   const [hiding, setHiding] = useState(false);
 
   async function load() {
-    if (merchants.length === 0) setLoading(true);
+    const cached = getClientCachedData<Tables<"merchants">[]>("merchants_list");
+    if (cached) {
+      setMerchants(cached);
+      setLoading(false);
+    } else if (merchants.length === 0) {
+      setLoading(true);
+    }
     const result = await listMerchantsForHousehold();
     if (result.data) {
       setMerchants(result.data);
@@ -80,6 +86,7 @@ export default function MerchantsSettingsPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("merchants_");
     toast.success(`"${result.data.name}" added`);
     setNewName("");
     load();
@@ -92,6 +99,7 @@ export default function MerchantsSettingsPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("merchants_");
     toast.success("Merchant removed");
     load();
   }
@@ -105,6 +113,7 @@ export default function MerchantsSettingsPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("merchants_");
     setAliasInput("");
     toast.success(`"${aliasInput.trim()}" added as an alias`);
     load();
@@ -119,6 +128,7 @@ export default function MerchantsSettingsPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("merchants_");
     toast.success(`"${alias}" removed`);
     load();
   }
@@ -132,6 +142,7 @@ export default function MerchantsSettingsPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("merchants_");
     toast.success("Merchant renamed");
     load();
   }
@@ -145,6 +156,7 @@ export default function MerchantsSettingsPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("merchants_");
     toast.success(`"${result.data.name}" is now yours to edit`);
     setCustomizeTarget(null);
     load();
@@ -159,6 +171,7 @@ export default function MerchantsSettingsPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("merchants_");
     toast.success(`"${hideTarget.name}" removed from your merchants`);
     setHideTarget(null);
     load();
@@ -173,6 +186,7 @@ export default function MerchantsSettingsPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("merchants_");
     toast.success(parentId ? "Grouped under parent merchant" : "Ungrouped");
     load();
   }
@@ -389,7 +403,7 @@ export default function MerchantsSettingsPage() {
 
       {customizeTarget && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setCustomizeTarget(null)}>
-          <div className="safe-bottom w-full max-w-md rounded-t-2xl bg-card p-5 sm:rounded-2xl sm:pb-5" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-t-2xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:rounded-2xl sm:p-5" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-1 text-lg font-semibold text-foreground">Customize this merchant</h2>
             <p className="mb-3 text-xs text-muted-foreground">
               This is a shared/system merchant, so saving creates your own editable copy and removes the original from your list - nothing changes for anyone else. Once saved, you can add aliases and grouping on your copy same as any merchant you add yourself.

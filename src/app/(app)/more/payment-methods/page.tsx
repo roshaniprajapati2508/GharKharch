@@ -187,7 +187,7 @@ function MethodsTab() {
 
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setEditTarget(null)}>
-          <div className="safe-bottom w-full max-w-md rounded-t-2xl bg-card p-5 sm:rounded-2xl sm:pb-5" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-t-2xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:rounded-2xl sm:p-5" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-4 text-lg font-semibold text-foreground">Rename payment method</h2>
             <Input value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus onKeyDown={(e) => e.key === "Enter" && saveRename()} />
             <div className="mt-4 flex gap-2">
@@ -473,7 +473,7 @@ function UpiTab() {
 
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setEditTarget(null)}>
-          <div className="safe-bottom w-full max-w-md rounded-t-2xl bg-card p-5 sm:rounded-2xl sm:pb-5" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-t-2xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:rounded-2xl sm:p-5" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-4 text-lg font-semibold text-foreground">Rename UPI profile</h2>
             <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} autoFocus onKeyDown={(e) => e.key === "Enter" && saveRename()} />
             <div className="mt-4 flex gap-2">
@@ -607,7 +607,7 @@ function BanksTab() {
 
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setEditTarget(null)}>
-          <div className="safe-bottom w-full max-w-md rounded-t-2xl bg-card p-5 sm:rounded-2xl sm:pb-5" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-t-2xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:rounded-2xl sm:p-5" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-4 text-lg font-semibold text-foreground">Edit bank account</h2>
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <Input value={editBankName} onChange={(e) => setEditBankName(e.target.value)} placeholder="Bank name" autoFocus />

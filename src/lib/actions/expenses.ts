@@ -235,7 +235,8 @@ export type InlineEditableField =
   | "merchant_id"
   | "paid_by"
   | "payment_method"
-  | "expense_date";
+  | "expense_date"
+  | "entry_type";
 
 /**
  * Atomic single-field patch for the CRM power-table's inline editing (spec:
@@ -289,6 +290,11 @@ export async function updateExpenseField(id: string, field: InlineEditableField,
       case "expense_date": {
         if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new ActionError("Invalid date");
         patch = { expense_date: value };
+        break;
+      }
+      case "entry_type": {
+        if (value !== "expense" && value !== "income") throw new ActionError("Invalid entry type");
+        patch = { entry_type: value };
         break;
       }
       default:
@@ -554,6 +560,7 @@ export interface ExpenseFilters {
   paymentMethod?: string;
   minAmount?: number;
   maxAmount?: number;
+  entryType?: "all" | "expense" | "income";
   sort?: "newest" | "oldest" | "highest" | "lowest";
   limit?: number;
 }
@@ -585,6 +592,7 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
     if (filters.paymentMethod) query = query.eq("payment_method", filters.paymentMethod);
     if (typeof filters.minAmount === "number") query = query.gte("amount", filters.minAmount);
     if (typeof filters.maxAmount === "number") query = query.lte("amount", filters.maxAmount);
+    if (filters.entryType && filters.entryType !== "all") query = query.eq("entry_type", filters.entryType);
 
     switch (filters.sort) {
       case "oldest":

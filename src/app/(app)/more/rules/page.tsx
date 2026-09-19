@@ -14,6 +14,7 @@ import { listAutomationRules, createAutomationRule, updateAutomationRule, toggle
 import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/actions/categories";
 import { listMerchantsForHousehold } from "@/lib/actions/merchants";
 import { useHousehold } from "@/lib/context/household-context";
+import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
 import type { AutomationRule } from "@/lib/expense-intelligence/automation-rules";
 import type { Tables } from "@/types/database";
 
@@ -71,10 +72,16 @@ function ruleToForm(rule: AutomationRule): RuleFormState {
  */
 export default function AutomationRulesPage() {
   const { displayName, partner } = useHousehold();
-  const [rules, setRules] = useState<AutomationRule[]>([]);
-  const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>([]);
-  const [merchants, setMerchants] = useState<Tables<"merchants">[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [rules, setRules] = useState<AutomationRule[]>(() => {
+    return getClientCachedData<AutomationRule[]>("automation_rules_list") ?? [];
+  });
+  const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>(() => {
+    return getClientCachedData<CategoryWithChildren[]>("categories_tree_active") ?? [];
+  });
+  const [merchants, setMerchants] = useState<Tables<"merchants">[]>(() => {
+    return getClientCachedData<Tables<"merchants">[]>("merchants_list") ?? [];
+  });
+  const [loading, setLoading] = useState(() => !getClientCachedData<AutomationRule[]>("automation_rules_list"));
   const [editorOpen, setEditorOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<AutomationRule | null>(null);
   const [form, setForm] = useState<RuleFormState>(emptyForm());
@@ -84,14 +91,26 @@ export default function AutomationRulesPage() {
   const paidByOptions = [displayName, partner?.displayName].filter(Boolean) as string[];
 
   async function load() {
+    const cachedRules = getClientCachedData<AutomationRule[]>("automation_rules_list");
+    if (!cachedRules && rules.length === 0) setLoading(true);
+
     const [rulesResult, catResult, merchResult] = await Promise.all([
       listAutomationRules(),
       listCategoriesForHousehold(),
       listMerchantsForHousehold(),
     ]);
-    if (rulesResult.data) setRules(rulesResult.data);
-    if (catResult.data) setCategoryTree(catResult.data.tree);
-    if (merchResult.data) setMerchants(merchResult.data);
+    if (rulesResult.data) {
+      setRules(rulesResult.data);
+      setClientCachedData("automation_rules_list", rulesResult.data);
+    }
+    if (catResult.data) {
+      setCategoryTree(catResult.data.tree);
+      setClientCachedData("categories_tree_active", catResult.data.tree);
+    }
+    if (merchResult.data) {
+      setMerchants(merchResult.data);
+      setClientCachedData("merchants_list", merchResult.data);
+    }
     setLoading(false);
   }
 
@@ -132,6 +151,7 @@ export default function AutomationRulesPage() {
 
   async function handleToggle(rule: AutomationRule, isActive: boolean) {
     setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, is_active: isActive } : r)));
+    invalidateClientCache("automation_rules_");
     const result = await toggleAutomationRule(rule.id, isActive);
     if (result.error !== null) {
       toast.error(result.error);
@@ -175,6 +195,7 @@ export default function AutomationRulesPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("automation_rules_");
     toast.success(editTarget ? "Rule updated" : "Rule created");
     setEditorOpen(false);
     load();
@@ -187,6 +208,7 @@ export default function AutomationRulesPage() {
       toast.error(result.error);
       return;
     }
+    invalidateClientCache("automation_rules_");
     toast.success("Rule deleted");
     setDeleteTarget(null);
     load();

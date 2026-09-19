@@ -22,6 +22,7 @@ import {
   markAllActivityRead,
   type ActivityEventView,
 } from "@/lib/actions/activity-events";
+import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
 
 type FilterKey = "all" | "expenses" | "rules" | "alerts" | "partner";
 
@@ -95,16 +96,27 @@ function formatEventTime(iso: string): string {
  * with date grouping, full details, search filtering, and deep links.
  */
 export default function ActivityPage() {
-  const [events, setEvents] = useState<ActivityEventView[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [events, setEvents] = useState<ActivityEventView[]>(() => {
+    return getClientCachedData<ActivityEventView[]>("activity_events_all") ?? [];
+  });
+  const [loading, setLoading] = useState(() => !getClientCachedData<ActivityEventView[]>("activity_events_all"));
   const [searchQuery, setSearchQuery] = useState("");
   const [markingAll, setMarkingAll] = useState(false);
 
   async function load(f: FilterKey) {
-    setLoading(true);
+    const cached = getClientCachedData<ActivityEventView[]>(`activity_events_${f}`);
+    if (cached) {
+      setEvents(cached);
+      setLoading(false);
+    } else if (events.length === 0) {
+      setLoading(true);
+    }
     const result = await getActivityEvents({ filter: f, limit: 150 });
-    if (result.data) setEvents(result.data);
+    if (result.data) {
+      setEvents(result.data);
+      setClientCachedData(`activity_events_${f}`, result.data);
+    }
     setLoading(false);
   }
 
@@ -142,7 +154,11 @@ export default function ActivityPage() {
 
   async function handleMarkEventRead(event: ActivityEventView) {
     if (!event.isRead) {
-      setEvents((prev) => prev.map((e) => (e.id === event.id ? { ...e, isRead: true } : e)));
+      setEvents((prev) => {
+        const next = prev.map((e) => (e.id === event.id ? { ...e, isRead: true } : e));
+        setClientCachedData(`activity_events_${filter}`, next);
+        return next;
+      });
       await markActivityEventRead(event.id);
     }
   }
@@ -152,7 +168,12 @@ export default function ActivityPage() {
     const result = await markAllActivityRead();
     setMarkingAll(false);
     if (result.error === null) {
-      setEvents((prev) => prev.map((e) => ({ ...e, isRead: true })));
+      setEvents((prev) => {
+        const next = prev.map((e) => ({ ...e, isRead: true }));
+        invalidateClientCache("activity_events_");
+        setClientCachedData(`activity_events_${filter}`, next);
+        return next;
+      });
     }
   }
 

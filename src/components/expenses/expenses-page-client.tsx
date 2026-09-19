@@ -227,6 +227,12 @@ export function ExpensesPageClient({
   if (filters.merchantIds?.length) {
     activeChips.push({ key: "merchantIds", label: `${filters.merchantIds.length} merchant${filters.merchantIds.length > 1 ? "s" : ""}` });
   }
+  if (filters.entryType && filters.entryType !== "all") {
+    activeChips.push({
+      key: "entryType",
+      label: filters.entryType === "income" ? "Incoming only" : "Spend only",
+    });
+  }
   if (typeof filters.minAmount === "number" || typeof filters.maxAmount === "number") activeChips.push({ key: "minAmount", label: "Amount" });
 
   return (

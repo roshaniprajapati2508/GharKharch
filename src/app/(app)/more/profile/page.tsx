@@ -19,13 +19,13 @@ const MAX_BYTES = 5 * 1024 * 1024; // 5MB, matches the storage bucket's file_siz
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export default function ProfilePage() {
-  const { userId, displayName: contextDisplayName } = useHousehold();
+  const { userId, displayName: contextDisplayName, username: contextUsername, avatarUrl: contextAvatarUrl } = useHousehold();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [loading, setLoading] = useState(true);
-  const [displayName, setDisplayName] = useState("");
-  const [username, setUsername] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [displayName, setDisplayName] = useState(() => contextDisplayName || "");
+  const [username, setUsername] = useState(() => contextUsername || "");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => contextAvatarUrl || null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +39,6 @@ export default function ProfilePage() {
         setUsername(result.data.username ?? "");
         setAvatarUrl(result.data.avatar_url);
       }
-      setLoading(false);
     })();
   }, []);
 

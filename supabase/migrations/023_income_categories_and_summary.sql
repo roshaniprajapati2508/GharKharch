@@ -32,12 +32,23 @@ do nothing;
 insert into merchants (household_id, name, normalized_name, merchant_type, channel, is_system, aliases)
 values
   (null, 'Amazon Seller Payout', 'amazonsellerpayout', 'marketplace', 'online', true, array['amazon seller', 'amazon payout']),
-  (null, 'Flipkart Seller Payout', 'flipkartsellerpayout', 'marketplace', 'online', true, array['flipkart seller', 'flipkart payout']),
-  (null, 'Meesho Seller Payout', 'meeshosellerpayout', 'marketplace', 'online', true, array['meesho seller', 'meesho payout']),
-  (null, 'Website Orders', 'websiteorders', 'marketplace', 'online', true, array['website sales', 'shopify order', 'direct order']),
+  (null, 'Flipkart Seller Payout', 'flipkartsellerpayout', 'marketplace', 'online', true, array['flipkart seller', 'flipkart payout', 'flipkart seller payout']),
+  (null, 'Meesho Seller Payout', 'meeshosellerpayout', 'marketplace', 'online', true, array['meesho seller', 'meesho payout', 'meesho seller payout']),
+  (null, 'Website Orders', 'websiteorders', 'marketplace', 'online', true, array['website sales', 'shopify order', 'direct order', 'website payout']),
   (null, 'Freelance Client', 'freelanceclient', 'other', 'mixed', true, array['client payment', 'consulting'])
 on conflict (normalized_name) where household_id is null
 do nothing;
+
+-- Auto-link marketplace and client merchants to their default income categories
+update merchants m
+set category_id = c.id
+from categories c
+where m.household_id is null
+  and (
+    (m.normalized_name in ('amazonsellerpayout', 'flipkartsellerpayout', 'meeshosellerpayout', 'websiteorders') and c.name = 'Business Sales & Payouts' and c.type = 'income')
+    or (m.normalized_name = 'freelanceclient' and c.name = 'Freelancing & Consulting' and c.type = 'income')
+  )
+  and m.category_id is null;
 
 -- Total household inflow (spec: Module A cashflow cards) - every
 -- entry_type = 'income' row, grouped by its top-level category so the

@@ -62,11 +62,16 @@ export function ExpenseList({
   }
 
   const groups = useMemo(() => {
-    const map = new Map<string, { label: string; total: number; items: EnrichedExpense[] }>();
+    const map = new Map<string, { label: string; expenseTotal: number; incomeTotal: number; items: EnrichedExpense[] }>();
     for (const e of expenses) {
       const label = dayGroupLabel(e.expense_date);
-      const group = map.get(e.expense_date) ?? { label, total: 0, items: [] };
-      group.total += parseFloat(e.amount);
+      const group = map.get(e.expense_date) ?? { label, expenseTotal: 0, incomeTotal: 0, items: [] };
+      const amt = parseFloat(e.amount) || 0;
+      if (e.entry_type === "income") {
+        group.incomeTotal += amt;
+      } else {
+        group.expenseTotal += amt;
+      }
       group.items.push(e);
       map.set(e.expense_date, group);
     }
@@ -107,7 +112,17 @@ export function ExpenseList({
         <div key={group.date}>
           <div className="mb-2 flex items-baseline justify-between px-1">
             <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
-            <span className="text-xs text-muted-foreground">{formatINR(group.total)}</span>
+            <div className="flex items-center gap-2 text-xs font-medium">
+              {group.incomeTotal > 0 && (
+                <span className="text-emerald-600 dark:text-emerald-400">+{formatINR(group.incomeTotal)}</span>
+              )}
+              {group.expenseTotal > 0 && (
+                <span className="text-muted-foreground">-{formatINR(group.expenseTotal)}</span>
+              )}
+              {group.incomeTotal === 0 && group.expenseTotal === 0 && (
+                <span className="text-muted-foreground">{formatINR(0)}</span>
+              )}
+            </div>
           </div>
           <div className="flex flex-col gap-1.5">
             {group.items.map((e) => (
