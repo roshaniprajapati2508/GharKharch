@@ -19,6 +19,7 @@ import { TopInflowsList } from "@/components/dashboard/top-inflows-list";
 import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-context";
 import { getAnalyticsData, type AnalyticsPageData, type PersonFilter, type CategoryScope } from "@/lib/actions/analytics";
 import { getMonthRange, type DateRange } from "@/lib/date-utils";
+import { cn } from "@/lib/utils";
 import { CategoryScopeToggle } from "@/components/shared/category-scope-toggle";
 import { MiniPnlCard } from "@/components/analytics/mini-pnl-card";
 
@@ -95,7 +96,9 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
     load(range, person, nextScope);
   }
 
-  const hasActivity = data ? data.summary.txn_count > 0 : false;
+  const [flowFilter, setFlowFilter] = useState<"all" | "expenses" | "inflows">("all");
+
+  const hasActivity = data ? data.summary.txn_count > 0 || (data.topInflows && data.topInflows.length > 0) : false;
 
   return (
     <div className="flex flex-col gap-5 pb-10">
@@ -160,8 +163,49 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
               merchants={data.merchantBreakdown}
               previousMerchants={data.previousMerchantBreakdown}
             />
-            <TopExpensesList expenses={data.topExpenses} categories={data.categoryBreakdown} />
-            {data.topInflows && data.topInflows.length > 0 && (
+
+            <div className="flex items-center justify-between pt-2">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                Transaction Cashflow
+              </h2>
+              <div className="flex gap-1 rounded-lg bg-muted p-0.5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setFlowFilter("all")}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 transition-colors",
+                    flowFilter === "all" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  All Flow
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFlowFilter("expenses")}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 transition-colors",
+                    flowFilter === "expenses" ? "bg-card text-rose-600 dark:text-rose-400 shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Debits (-)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFlowFilter("inflows")}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 transition-colors",
+                    flowFilter === "inflows" ? "bg-card text-emerald-600 dark:text-emerald-400 shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Credits (+)
+                </button>
+              </div>
+            </div>
+
+            {(flowFilter === "all" || flowFilter === "expenses") && (
+              <TopExpensesList expenses={data.topExpenses} categories={data.categoryBreakdown} />
+            )}
+            {(flowFilter === "all" || flowFilter === "inflows") && data.topInflows && data.topInflows.length > 0 && (
               <TopInflowsList inflows={data.topInflows} />
             )}
           </TabsContent>

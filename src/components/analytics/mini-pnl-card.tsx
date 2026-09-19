@@ -51,30 +51,45 @@ export function MiniPnlCard({ range }: { range?: DateRange }) {
         <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
           <Wallet className="h-3.5 w-3.5" /> Business Mini P&amp;L
         </p>
-        <span
-          className={cn(
-            "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
-            profitable ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+        <div className="flex items-center gap-2">
+          {pnl.incomeTotal > 0 && (
+            <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              {((pnl.netProfit / pnl.incomeTotal) * 100).toFixed(1)}% Margin
+            </span>
           )}
-        >
-          {profitable ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-          {profitable ? "Profit" : "Loss"}
-        </span>
+          <span
+            className={cn(
+              "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
+              profitable ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+            )}
+          >
+            {profitable ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            {profitable ? "Net Profit" : "Net Loss"}
+          </span>
+        </div>
       </div>
 
-      <p className="text-2xl font-bold tabular-nums text-foreground">
-        {profitable ? "+" : ""}
-        {formatINR(pnl.netProfit)}
+      <p className={cn("text-2xl font-bold tabular-nums", profitable ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+        {profitable ? "+" : "-"}
+        {formatINR(Math.abs(pnl.netProfit))}
       </p>
 
       <div className="grid grid-cols-2 gap-3 pt-1">
-        <div>
-          <p className="text-[10px] font-medium text-muted-foreground">Income ({pnl.incomeCount})</p>
-          <p className="text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatINR(pnl.incomeTotal)}</p>
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+            Total Inflow / Sales ({pnl.incomeCount})
+          </p>
+          <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+            +{formatINR(pnl.incomeTotal)}
+          </p>
         </div>
-        <div>
-          <p className="text-[10px] font-medium text-muted-foreground">Expenses ({pnl.expenseCount})</p>
-          <p className="text-sm font-semibold tabular-nums text-rose-600 dark:text-rose-400">{formatINR(pnl.expenseTotal)}</p>
+        <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+            Total Outflow / Cost ({pnl.expenseCount})
+          </p>
+          <p className="text-base font-bold tabular-nums text-rose-600 dark:text-rose-400">
+            -{formatINR(pnl.expenseTotal)}
+          </p>
         </div>
       </div>
     </div>

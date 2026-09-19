@@ -118,9 +118,9 @@ export function downloadReportPdf(data: ReportData, people?: ReportPdfPeople) {
     y += 8;
   }
 
-  // Top purchases
+  // Top purchases (Outflows)
   if (data.topExpenses.length > 0) {
-    y = sectionHeading(doc, "Top purchases", margin, y);
+    y = sectionHeading(doc, "Top Debits & Expenses", margin, y);
     doc.setFontSize(10);
     data.topExpenses.slice(0, 8).forEach((e, i) => {
       y = ensureRoom(doc, y, 16);
@@ -128,9 +128,28 @@ export function downloadReportPdf(data: ReportData, people?: ReportPdfPeople) {
       doc.text(`${i + 1}. ${e.item_name}`, margin, y, { maxWidth: pageWidth - margin * 2 - 100 });
       doc.setTextColor(...TEXT_MUTED);
       doc.text(dayGroupLabel(e.expense_date), margin + 200, y);
-      doc.setTextColor(...TEXT_DARK);
+      doc.setTextColor(225, 29, 72); // Rose
       doc.setFont("helvetica", "bold");
-      doc.text(formatRupeesForPdf(e.amount), pageWidth - margin, y, { align: "right" });
+      doc.text(`-${formatRupeesForPdf(e.amount)}`, pageWidth - margin, y, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      y += 16;
+    });
+    y += 8;
+  }
+
+  // Top Inflows & Credits
+  if (data.topInflows && data.topInflows.length > 0) {
+    y = sectionHeading(doc, "Top Inflows & Credits", margin, y);
+    doc.setFontSize(10);
+    data.topInflows.slice(0, 8).forEach((e, i) => {
+      y = ensureRoom(doc, y, 16);
+      doc.setTextColor(...TEXT_DARK);
+      doc.text(`${i + 1}. ${e.item_name}`, margin, y, { maxWidth: pageWidth - margin * 2 - 100 });
+      doc.setTextColor(...TEXT_MUTED);
+      doc.text(dayGroupLabel(e.expense_date), margin + 200, y);
+      doc.setTextColor(4, 120, 87); // Emerald
+      doc.setFont("helvetica", "bold");
+      doc.text(`+${formatRupeesForPdf(e.amount)}`, pageWidth - margin, y, { align: "right" });
       doc.setFont("helvetica", "normal");
       y += 16;
     });

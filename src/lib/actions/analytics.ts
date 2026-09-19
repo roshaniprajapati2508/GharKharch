@@ -84,12 +84,13 @@ export async function resolveScopedCategoryIds(
     .or(`household_id.eq.${householdId},household_id.is.null`);
   const rows = allCategories ?? [];
 
-  const businessTop = rows.find((cat) => cat.name === "Homemade Business");
+  const businessNames = ["Homemade Business", "Business Sales & Payouts"];
+  const businessTops = rows.filter((cat) => businessNames.includes(cat.name));
   const businessIds = new Set<string>();
-  if (businessTop) {
-    businessIds.add(businessTop.id);
+  for (const bTop of businessTops) {
+    businessIds.add(bTop.id);
     for (const cat of rows) {
-      if (cat.parent_id === businessTop.id) businessIds.add(cat.id);
+      if (cat.parent_id === bTop.id) businessIds.add(cat.id);
     }
   }
 
