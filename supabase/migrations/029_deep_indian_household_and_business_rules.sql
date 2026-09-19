@@ -48,11 +48,11 @@ on conflict (
 -- =========================================================
 insert into merchants (household_id, name, normalized_name, merchant_type, channel, is_system, aliases) values
   -- Domestic Services & Household
-  (null, 'Urban Company', 'urbancompany', 'services', 'online', true, array['urban clap', 'urbancompany', 'uc home service', 'ac service']),
-  (null, 'House Maid', 'housemaid', 'services', 'offline', true, array['maid', 'kamvali', 'bai', 'safai wali', 'cleaning lady']),
-  (null, 'Cook / Maharaj', 'cookmaharaj', 'services', 'offline', true, array['cook', 'maharaj', 'rasoiya', 'kitchen cook']),
+  (null, 'Urban Company', 'urbancompany', 'other', 'online', true, array['urban clap', 'urbancompany', 'uc home service', 'ac service']),
+  (null, 'House Maid', 'housemaid', 'other', 'offline', true, array['maid', 'kamvali', 'bai', 'safai wali', 'cleaning lady']),
+  (null, 'Cook / Maharaj', 'cookmaharaj', 'food', 'offline', true, array['cook', 'maharaj', 'rasoiya', 'kitchen cook']),
   (null, 'Local Pooja & Phool Bhandar', 'localpoojaphoolbhandar', 'shopping', 'offline', true, array['phool wala', 'pooja shop', 'agarbatti store', 'mandir phool']),
-  (null, 'Society Office / RWA', 'societyofficerwa', 'services', 'offline', true, array['society maintenance', 'rwa maintenance', 'building maintenance']),
+  (null, 'Society Office / RWA', 'societyofficerwa', 'utility', 'offline', true, array['society maintenance', 'rwa maintenance', 'building maintenance']),
   
   -- Supermarkets, Dairy & Grocery
   (null, 'D-Mart', 'dmart', 'grocery', 'offline', true, array['d mart', 'dmart ready', 'avenue supermarts']),
@@ -69,7 +69,7 @@ insert into merchants (household_id, name, normalized_name, merchant_type, chann
   (null, 'Local Medical Store', 'localmedicalstore', 'pharmacy', 'offline', true, array['chemist', 'medical store', 'dawa shop', 'pharmacy shop']),
 
   -- Fuel & Travel
-  (null, 'Indian Oil / HP / BPCL', 'indianoilhpbpcl', 'transport', 'offline', true, array['petrol pump', 'hp petrol', 'indian oil', 'bpcl', 'cng station', 'cng pump']),
+  (null, 'Indian Oil / HP / BPCL', 'indianoilhpbpcl', 'fuel', 'offline', true, array['petrol pump', 'hp petrol', 'indian oil', 'bpcl', 'cng station', 'cng pump']),
 
   -- Business Logistics & Marketing
   (null, 'Packaging Supplies Vendor', 'packagingsuppliesvendor', 'shopping', 'mixed', true, array['box supplier', 'bubble wrap vendor', 'packing box', 'corrugated box']),
@@ -78,7 +78,7 @@ insert into merchants (household_id, name, normalized_name, merchant_type, chann
   (null, 'Google Ads', 'googleads', 'advertising', 'online', true, array['adwords', 'google advertisement']),
   
   -- Education & Tuition
-  (null, 'Tuition / Coaching Classes', 'tuitioncoachingclasses', 'services', 'offline', true, array['tuition fee', 'coaching fee', 'classes fee', 'tutor'])
+  (null, 'Tuition / Coaching Classes', 'tuitioncoachingclasses', 'other', 'offline', true, array['tuition fee', 'coaching fee', 'classes fee', 'tutor'])
 on conflict (normalized_name) where household_id is null do nothing;
 
 -- =========================================================
