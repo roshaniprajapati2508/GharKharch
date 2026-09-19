@@ -89,6 +89,7 @@ export const KEYWORD_RULES: KeywordRule[] = [
   { keywords: ["freelance", "freelancing", "consulting", "client payment", "project payout"], categoryName: "Freelancing & Consulting" },
 
   // Homemade Business
+  { keywords: ["meta ads", "facebook ads", "instagram ads", "fb ads", "google ads", "ad spend", "ads", "advertisement", "advertising", "marketing", "promotion"], categoryName: "Homemade Business", subcategoryName: "Advertising & Marketing" },
   { keywords: ["luxekraft", "craft material", "craft raw material", "mobile cover", "phone cover", "mobile case", "blank cover", "blank case", "cover stock"], categoryName: "Homemade Business", subcategoryName: "LuxeKraft" },
   { keywords: ["roshni mehndi", "mehndi art", "mehndi", "mehendi", "henna", "mehndi cone", "mehndi books", "mehndi book", "henna book"], categoryName: "Homemade Business", subcategoryName: "Roshni's Mehndi Art" },
   { keywords: ["satyam xerox", "yogesh bhai", "xerox", "photocopy", "printout", "printing", "book stock", "book printing", "binding"], categoryName: "Homemade Business", subcategoryName: "Printing & Xerox" },
@@ -103,7 +104,6 @@ export const KEYWORD_RULES: KeywordRule[] = [
   // Personal
   { keywords: ["salon", "haircut", "barber", "grooming"], categoryName: "Personal", subcategoryName: "Grooming" },
   { keywords: ["hobby", "hobbies"], categoryName: "Personal", subcategoryName: "Hobbies" },
-  { keywords: ["facebook ads", "instagram ads", "meta ads", "google ads", "marketing", "advertising", "promotion"], categoryName: "Personal", subcategoryName: "Advertising & Marketing" },
 ];
 
 /** Finds the first keyword rule whose keyword appears in the (already-lowercased) text. */
