@@ -49,7 +49,7 @@ export async function getReportData(range: DateRange, categoryScope?: CategorySc
 
     let topExpensesQuery = supabase
       .from("expenses")
-      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by, categories(name, icon, color)")
+      .select("id, item_name, amount, expense_date, expense_time, created_at, category_id, merchant_id, paid_by")
       .eq("household_id", householdId)
       .eq("entry_type", "expense")
       .is("deleted_at", null)
@@ -66,7 +66,7 @@ export async function getReportData(range: DateRange, categoryScope?: CategorySc
       topExpensesQuery = topExpensesQuery.in("category_id", scopedCategoryIds);
     }
 
-    const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, personRes, merchantRes, itemRes, dailyRes, topRes] = await Promise.all([
+    const [summaryRes, prevSummaryRes, categoryRes, prevCategoryRes, personRes, merchantRes, itemRes, dailyRes, topRes, allCategoriesRes] = await Promise.all([
       supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_category_scope: scopeArg }),
       supabase.rpc("get_expense_summary", { p_household_id: householdId, p_start: previousRange.start, p_end: previousRange.end, p_category_scope: scopeArg }),
       supabase.rpc("get_category_breakdown", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_category_scope: scopeArg }),
@@ -76,6 +76,7 @@ export async function getReportData(range: DateRange, categoryScope?: CategorySc
       supabase.rpc("get_item_analytics", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_limit: 10, p_category_scope: scopeArg }),
       supabase.rpc("get_daily_spending", { p_household_id: householdId, p_start: range.start, p_end: range.end, p_category_scope: scopeArg }),
       topExpensesQuery,
+      supabase.from("categories").select("id, name, icon, color"),
     ]);
 
     if (summaryRes.error) throw new ActionError(summaryRes.error.message);
@@ -85,6 +86,8 @@ export async function getReportData(range: DateRange, categoryScope?: CategorySc
     if (itemRes.error) throw new ActionError(itemRes.error.message);
     if (dailyRes.error) throw new ActionError(dailyRes.error.message);
     if (topRes.error) throw new ActionError(topRes.error.message);
+
+    const catMap = new Map((allCategoriesRes.data ?? []).map((c) => [c.id, c]));
 
     return {
       range,
@@ -97,20 +100,23 @@ export async function getReportData(range: DateRange, categoryScope?: CategorySc
       merchantBreakdown: merchantRes.data ?? [],
       itemAnalytics: itemRes.data ?? [],
       dailySpending: dailyRes.data ?? [],
-      topExpenses: (topRes.data ?? []).map((e: any) => ({
-        id: e.id,
-        item_name: e.item_name,
-        amount: String(e.amount),
-        expense_date: e.expense_date,
-        expense_time: e.expense_time ?? null,
-        created_at: e.created_at ?? null,
-        category_id: e.category_id,
-        category_name: e.categories?.name ?? null,
-        category_icon: e.categories?.icon ?? null,
-        category_color: e.categories?.color ?? null,
-        merchant_id: e.merchant_id ?? null,
-        paid_by: e.paid_by,
-      })),
+      topExpenses: (topRes.data ?? []).map((e: any) => {
+        const cat = catMap.get(e.category_id);
+        return {
+          id: e.id,
+          item_name: e.item_name,
+          amount: String(e.amount),
+          expense_date: e.expense_date,
+          expense_time: e.expense_time ?? null,
+          created_at: e.created_at ?? null,
+          category_id: e.category_id,
+          category_name: cat?.name ?? null,
+          category_icon: cat?.icon ?? null,
+          category_color: cat?.color ?? null,
+          merchant_id: e.merchant_id ?? null,
+          paid_by: e.paid_by,
+        };
+      }),
     };
   });
 }
