@@ -18,45 +18,56 @@ on conflict (
 -- =========================================================
 -- 2. Link system merchant 'Meta Ads' to Homemade Business > Advertising & Marketing
 -- =========================================================
-update merchants m
-set subcategory_id = c.id,
-    category_id = p.id,
+update merchants
+set subcategory_id = (
+      select c.id
+      from categories c
+      join categories p on p.id = c.parent_id
+      where p.name = 'Homemade Business'
+        and c.name = 'Advertising & Marketing'
+        and c.household_id is null
+      limit 1
+    ),
+    category_id = (
+      select id
+      from categories
+      where name = 'Homemade Business'
+        and household_id is null
+        and parent_id is null
+      limit 1
+    ),
     aliases = array['facebook ads', 'instagram ads', 'fb ads', 'meta ads', 'google ads', 'ad spend']
-from categories c
-join categories p on p.id = c.parent_id
-where m.household_id is null
-  and m.normalized_name = 'metaads'
-  and p.name = 'Homemade Business'
-  and c.name = 'Advertising & Marketing';
+where household_id is null
+  and normalized_name = 'metaads';
 
 -- =========================================================
 -- 3. Re-assign any existing expenses from Personal > Advertising & Marketing to Homemade Business > Advertising & Marketing
 -- =========================================================
-update expenses e
-set category_id = c_new.id
-from categories c_old
-join categories p_old on p_old.id = c_old.parent_id
-cross join lateral (
+update expenses
+set category_id = (
   select c.id
   from categories c
   join categories p on p.id = c.parent_id
   where p.name = 'Homemade Business'
     and c.name = 'Advertising & Marketing'
-    and (c.household_id = e.household_id or c.household_id is null)
-  order by c.household_id nulls last
+    and c.household_id is null
   limit 1
-) c_new
-where e.category_id = c_old.id
-  and c_old.name = 'Advertising & Marketing'
-  and p_old.name = 'Personal';
+)
+where category_id in (
+  select c.id
+  from categories c
+  join categories p on p.id = c.parent_id
+  where p.name = 'Personal'
+    and c.name = 'Advertising & Marketing'
+);
 
 -- =========================================================
 -- 4. Deactivate old global 'Personal > Advertising & Marketing' subcategory
 -- =========================================================
-update categories c
+update categories
 set is_active = false
-from categories p
-where c.parent_id = p.id
-  and p.name = 'Personal'
-  and c.name = 'Advertising & Marketing'
-  and c.household_id is null;
+where name = 'Advertising & Marketing'
+  and parent_id in (
+    select id from categories where name = 'Personal' and household_id is null and parent_id is null
+  )
+  and household_id is null;
