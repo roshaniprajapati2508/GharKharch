@@ -91,12 +91,13 @@ export default function MorePage() {
   }
 
   async function saveRename() {
-    if (!nameDraft.trim() || nameDraft.trim() === householdName) {
+    const cleanDraft = (typeof nameDraft === "string" ? nameDraft : "").trim();
+    if (!cleanDraft || cleanDraft === householdName) {
       setRenaming(false);
       return;
     }
     setSavingName(true);
-    const result = await renameHousehold(nameDraft.trim());
+    const result = await renameHousehold(cleanDraft);
     setSavingName(false);
     if (result.error !== null) {
       toast.error(result.error);

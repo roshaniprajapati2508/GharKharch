@@ -1,14 +1,18 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
-function initialsOf(name: string) {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+function initialsOf(name?: string | null) {
+  if (!name || typeof name !== "string") return "?";
+  return (
+    name
+      .trim()
+      .split(" ")
+      .map((p) => p[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "?"
+  );
 }
 
 /** Shared avatar-with-initials-fallback used throughout the app (spec item 51). */
@@ -18,7 +22,7 @@ export function UserAvatar({
   className,
   textClassName,
 }: {
-  name: string;
+  name?: string | null;
   avatarUrl?: string | null;
   className?: string;
   /** Overrides the fallback initials' text size - AvatarFallback hardcodes `text-sm`, which doesn't inherit from a larger `className` on the wrapper. */
@@ -26,7 +30,7 @@ export function UserAvatar({
 }) {
   return (
     <Avatar className={cn(className)}>
-      {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
+      {avatarUrl && <AvatarImage src={avatarUrl} alt={name ?? undefined} />}
       <AvatarFallback className={textClassName}>{initialsOf(name)}</AvatarFallback>
     </Avatar>
   );

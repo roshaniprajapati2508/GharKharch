@@ -56,20 +56,20 @@ export async function listUserCards() {
     const issuerMap = new Map(issuers.map((i) => [i.name.toLowerCase(), i.id]));
     let cards = initialCards ?? [];
 
-    const targetNames = new Set(DEFAULT_HOUSEHOLD_CARDS.map((c) => c.custom_name.toLowerCase()));
+    const targetNames = new Set(DEFAULT_HOUSEHOLD_CARDS.map((c) => (c.custom_name || "").toLowerCase()));
 
     // Deactivate other cards not in the requested 14 list
-    const toDeactivate = cards.filter((c) => !targetNames.has(c.custom_name.toLowerCase()));
+    const toDeactivate = cards.filter((c) => c.custom_name && !targetNames.has(c.custom_name.toLowerCase()));
     if (toDeactivate.length > 0) {
       await supabase
         .from("user_cards")
         .update({ is_active: false })
         .in("id", toDeactivate.map((c) => c.id));
-      cards = cards.filter((c) => targetNames.has(c.custom_name.toLowerCase()));
+      cards = cards.filter((c) => c.custom_name && targetNames.has(c.custom_name.toLowerCase()));
     }
 
     // Ensure all 14 requested cards exist in the database
-    const activeExistingNames = new Set(cards.map((c) => c.custom_name.toLowerCase()));
+    const activeExistingNames = new Set(cards.filter((c) => c.custom_name).map((c) => c.custom_name.toLowerCase()));
     const missingCards = DEFAULT_HOUSEHOLD_CARDS.filter((c) => !activeExistingNames.has(c.custom_name.toLowerCase()));
 
     if (missingCards.length > 0) {

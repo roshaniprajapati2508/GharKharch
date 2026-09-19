@@ -24,7 +24,7 @@ export function percentChange(current: number, previous: number): number | null 
 }
 
 export function getShortBankName(name?: string | null): string {
-  if (!name) return "";
+  if (!name || typeof name !== "string") return "";
   const clean = name.trim();
   const map: Record<string, string> = {
     "HDFC Bank": "HDFC",
@@ -46,9 +46,10 @@ export function getShortBankName(name?: string | null): string {
   return map[clean] ?? clean.replace(/ Bank$/i, "");
 }
 
-export function formatCardLabel(card: { custom_name: string; issuer_name?: string | null; last4?: string | null }): string {
+export function formatCardLabel(card?: { custom_name?: string | null; issuer_name?: string | null; last4?: string | null } | null): string {
+  if (!card) return "";
   const bank = getShortBankName(card.issuer_name);
-  const name = card.custom_name.trim();
+  const name = (typeof card.custom_name === "string" ? card.custom_name : "").trim();
   const last4 = card.last4 ? ` •••• ${card.last4}` : "";
 
   if (bank) {

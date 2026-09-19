@@ -168,8 +168,8 @@ export function getCurrentKolkataTime(): string {
 
 /** Formats an expense_time (HH:mm or HH:mm:ss) or created_at ISO string into 12-hour format e.g. "5:30 PM". */
 export function formatExpenseTime(timeStr?: string | null, createdAt?: string | null): string | null {
-  if (timeStr && timeStr.trim()) {
-    const parts = timeStr.split(":");
+  if (timeStr && typeof timeStr === "string" && timeStr.trim()) {
+    const parts = timeStr.trim().split(":");
     const hh = parseInt(parts[0], 10);
     const mm = parseInt(parts[1], 10);
     if (!isNaN(hh) && !isNaN(mm)) {
@@ -177,8 +177,9 @@ export function formatExpenseTime(timeStr?: string | null, createdAt?: string | 
       const h12 = hh % 12 === 0 ? 12 : hh % 12;
       return `${h12}:${String(mm).padStart(2, "0")} ${period}`;
     }
+    return timeStr.slice(0, 5);
   }
-  if (createdAt) {
+  if (createdAt && typeof createdAt === "string") {
     try {
       const d = new Date(createdAt);
       if (!isNaN(d.getTime())) {

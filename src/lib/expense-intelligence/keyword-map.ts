@@ -104,6 +104,7 @@ export const KEYWORD_RULES: KeywordRule[] = [
 
 /** Finds the first keyword rule whose keyword appears in the (already-lowercased) text. */
 export function matchKeywordRule(text: string): KeywordRule | null {
+  if (typeof text !== "string") return null;
   // Exact/substring pass first - cheap, and correctly-spelled text should
   // never need the fuzzy fallback below.
   for (const rule of KEYWORD_RULES) {

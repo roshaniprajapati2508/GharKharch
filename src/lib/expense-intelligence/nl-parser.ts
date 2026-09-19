@@ -41,7 +41,7 @@ const DATE_KEYWORDS: { pattern: RegExp; resolve: () => string }[] = [
 const AMOUNT_PATTERN = /₹?\s*(\d[\d,]*(?:\.\d{1,2})?)/;
 
 export function parseQuickEntry(input: string): ParsedQuickEntry {
-  let remaining = input.trim();
+  let remaining = (typeof input === "string" ? input : "").trim();
   let paymentMethod: string | null = null;
   let expenseDate = getTodayISO();
 

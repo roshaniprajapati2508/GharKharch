@@ -69,7 +69,9 @@ function findByName(tree: CategoryWithChildren[], categoryName: string, subcateg
 
 /** Pure scoring function - every DB read happens in the caller (a server action), so this stays trivially testable. */
 export function suggestCategory(itemName: string, ctx: CategorySuggesterContext): CategorySuggestion | null {
+  if (typeof itemName !== "string") return null;
   const normalized = itemName.trim().toLowerCase();
+  if (!normalized) return null;
 
   // Tier 1+3: exact (item, merchant) pairing - the most specific and most
   // recently-corrected signal available.

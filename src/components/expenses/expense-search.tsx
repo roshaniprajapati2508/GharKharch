@@ -33,15 +33,17 @@ const RECENT_KEY = "gharkharch:recent-searches";
 function loadRecent(): string[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(window.localStorage.getItem(RECENT_KEY) ?? "[]");
+    const parsed = JSON.parse(window.localStorage.getItem(RECENT_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((q): q is string => typeof q === "string" && q.trim().length > 0) : [];
   } catch {
     return [];
   }
 }
 
 function saveRecent(query: string) {
-  if (typeof window === "undefined" || !query.trim()) return;
-  const recent = [query.trim(), ...loadRecent().filter((q) => q.toLowerCase() !== query.trim().toLowerCase())].slice(0, 6);
+  if (typeof window === "undefined" || !query || typeof query !== "string" || !query.trim()) return;
+  const clean = query.trim();
+  const recent = [clean, ...loadRecent().filter((q) => typeof q === "string" && q.toLowerCase() !== clean.toLowerCase())].slice(0, 6);
   window.localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
 }
 
@@ -59,7 +61,7 @@ function parseSearchIntent(
   categories: CategoryLite[],
   merchants: MerchantLite[]
 ) {
-  const trimmed = query.trim();
+  const trimmed = (typeof query === "string" ? query : "").trim();
   if (!trimmed) return { type: "empty" as const, label: "" };
 
   const amountMatch = trimmed.match(/^([<>]=?)\s*(\d+(\.\d+)?)$/);
@@ -193,10 +195,10 @@ export function ExpenseSearch({
   // needs both a plausible item name and a parsed amount to avoid firing on
   // an ordinary search term that happens to contain a number.
   const quickEntry = useMemo(() => {
-    const trimmed = query.trim();
+    const trimmed = (typeof query === "string" ? query : "").trim();
     if (trimmed.length < 4 || intent.type !== "text") return null;
     const parsed = parseQuickEntry(trimmed);
-    if (parsed.amount === null || !parsed.itemName.trim()) return null;
+    if (parsed.amount === null || !parsed.itemName || !parsed.itemName.trim()) return null;
     return parsed;
   }, [query, intent]);
 

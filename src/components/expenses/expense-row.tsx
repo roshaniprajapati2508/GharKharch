@@ -22,7 +22,7 @@ const QUICK_PAYMENT_METHODS = ["UPI", "Cash", "Credit Card", "Bank Transfer"];
 const SWIPE_REVEAL = 152;
 
 function formatExpenseTime(expenseTime: string | null | undefined, createdAt: string | null | undefined): string | null {
-  if (expenseTime) {
+  if (expenseTime && typeof expenseTime === "string") {
     const [h, m] = expenseTime.split(":").map(Number);
     if (!isNaN(h) && !isNaN(m)) {
       const period = h >= 12 ? "PM" : "AM";
@@ -31,15 +31,17 @@ function formatExpenseTime(expenseTime: string | null | undefined, createdAt: st
     }
     return expenseTime.slice(0, 5);
   }
-  if (createdAt) {
+  if (createdAt && typeof createdAt === "string") {
     try {
       const date = new Date(createdAt);
-      return date.toLocaleTimeString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleTimeString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+      }
     } catch {
       return null;
     }
@@ -103,7 +105,7 @@ export function ExpenseRow({
   async function commitInlineEdit() {
     if (!editingField || !onInlineUpdate) return;
     const field = editingField;
-    const value = editValue.trim();
+    const value = (typeof editValue === "string" ? editValue : "").trim();
     const original = field === "amount" ? String(parseFloat(expense.amount)) : expense.item_name;
     if (!value || value === original) {
       setEditingField(null);

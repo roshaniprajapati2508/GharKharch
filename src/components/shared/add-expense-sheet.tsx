@@ -399,12 +399,13 @@ export function AddExpenseSheet({
 
   // Price memory suggestion
   useEffect(() => {
-    if (!isNewExpense || amountTouched || !open || !form.itemName.trim()) {
+    const rawName = typeof form.itemName === "string" ? form.itemName.trim() : "";
+    if (!isNewExpense || amountTouched || !open || !rawName) {
       setPriceMemory(null);
       setPriceChange(null);
       return;
     }
-    const itemName = form.itemName;
+    const itemName = rawName;
     const timer = setTimeout(() => {
       getItemPriceMemory(itemName).then((result) => {
         if (result.error === null) setPriceMemory(result.data);
@@ -425,11 +426,12 @@ export function AddExpenseSheet({
 
   // Category suggestions
   useEffect(() => {
-    if (categoryTouched || !open || !form.itemName.trim()) {
+    const rawName = typeof form.itemName === "string" ? form.itemName.trim() : "";
+    if (categoryTouched || !open || !rawName) {
       setSuggestion(null);
       return;
     }
-    const itemName = form.itemName;
+    const itemName = rawName;
     const merchantId = form.merchant?.id ?? null;
     const timer = setTimeout(() => {
       getCategorySuggestion(itemName, merchantId).then((result) => {
@@ -464,7 +466,7 @@ export function AddExpenseSheet({
   // so retyping the same text doesn't keep re-triggering it.
   useEffect(() => {
     if (!open || isEditing) return;
-    const text = form.itemName.trim();
+    const text = typeof form.itemName === "string" ? form.itemName.trim() : "";
     if (!text) {
       setAppliedRule(null);
       lastRuleCheckedText.current = null;
@@ -506,9 +508,10 @@ export function AddExpenseSheet({
   }
 
   const merchantHint = useMemo(() => {
-    if (form.merchant || !form.itemName.trim()) return null;
-    const match = suggestMerchant(form.itemName, merchants);
-    return match && match.confidence >= 0.7 && match.merchant.name.toLowerCase() !== form.itemName.trim().toLowerCase()
+    const rawName = typeof form.itemName === "string" ? form.itemName.trim() : "";
+    if (form.merchant || !rawName) return null;
+    const match = suggestMerchant(rawName, merchants);
+    return match && match.confidence >= 0.7 && match.merchant.name.toLowerCase() !== rawName.toLowerCase()
       ? match.merchant
       : null;
   }, [form.itemName, form.merchant, merchants]);
@@ -518,7 +521,7 @@ export function AddExpenseSheet({
   const [nlText, setNlText] = useState("");
 
   function applyNaturalLanguageEntry() {
-    if (!nlText.trim()) return;
+    if (!nlText || typeof nlText !== "string" || !nlText.trim()) return;
     const parsed = parseQuickEntry(nlText);
     setForm((f) => ({
       ...f,
@@ -650,7 +653,7 @@ export function AddExpenseSheet({
   }, [form.itemName]);
 
   const predictiveMatches = useMemo(() => {
-    const q = form.itemName.trim().toLowerCase();
+    const q = (typeof form.itemName === "string" ? form.itemName : "").trim().toLowerCase();
     if (isEditing || predictionDismissed) return [];
 
     interface PredictiveCandidate {
@@ -887,7 +890,7 @@ export function AddExpenseSheet({
             seenKeys.add(key);
             results.push({
               key,
-              itemName: form.itemName.trim(),
+              itemName: (typeof form.itemName === "string" ? form.itemName : "").trim(),
               amount: null,
               categoryId: topCat.id,
               subcategoryId: subCat?.id ?? null,
@@ -998,7 +1001,7 @@ export function AddExpenseSheet({
     }));
     if (values.amount) setAmountTouched(true);
 
-    if (values.categoryGuess) {
+    if (values.categoryGuess && typeof values.categoryGuess === "string") {
       const guess = values.categoryGuess.trim().toLowerCase();
       const match = categoryFlat.find((c) => !c.parent_id && c.name.toLowerCase().includes(guess));
       if (match) {
@@ -1070,7 +1073,8 @@ export function AddExpenseSheet({
       toast.error("Enter an amount");
       return;
     }
-    if (!form.itemName.trim()) {
+    const cleanItemName = (typeof form.itemName === "string" ? form.itemName : "").trim();
+    if (!cleanItemName) {
       toast.error("Enter an item or merchant name");
       return;
     }
@@ -1084,7 +1088,7 @@ export function AddExpenseSheet({
     setSubmitting(true);
     const payload = {
       amount,
-      item_name: form.itemName.trim(),
+      item_name: cleanItemName,
       category_id: finalCatId,
       subcategory_id: form.category.subcategoryId,
       merchant_id: form.merchant?.id ?? null,
@@ -1097,7 +1101,7 @@ export function AddExpenseSheet({
       bank_account_id: form.bankAccountId,
       expense_date: form.date,
       expense_time: form.time ? `${form.time}:00` : null,
-      notes: form.notes.trim() || null,
+      notes: (typeof form.notes === "string" ? form.notes : "").trim() || null,
     };
 
     if (!isEditing && isOffline()) {
@@ -1153,7 +1157,7 @@ export function AddExpenseSheet({
     setShoppingRows((list) => (list.length > 1 ? list.filter((r) => r.key !== key) : list));
   }
 
-  const validShoppingRows = shoppingRows.filter((r) => r.itemName.trim() && parseFloat(r.amount) > 0 && r.category);
+  const validShoppingRows = shoppingRows.filter((r) => r && typeof r.itemName === "string" && r.itemName.trim() && parseFloat(r.amount) > 0 && r.category);
   const shoppingTotal = validShoppingRows.reduce((sum, r) => sum + parseFloat(r.amount), 0);
 
   async function handleSaveShopping() {
@@ -1172,7 +1176,7 @@ export function AddExpenseSheet({
 
       const result = await createExpense({
         amount: parseFloat(row.amount),
-        item_name: row.itemName.trim(),
+        item_name: (typeof row.itemName === "string" ? row.itemName : "").trim(),
         category_id: finalCatId,
         subcategory_id: row.category!.subcategoryId,
         merchant_id: null,
@@ -1525,7 +1529,7 @@ export function AddExpenseSheet({
                       placeholder='e.g. "Milk 60" or "Zudio 1500 card"'
                       className="flex-1 text-sm h-11"
                     />
-                    <Button type="button" size="sm" onClick={applyNaturalLanguageEntry} disabled={!nlText.trim()} className="h-11 px-4 font-semibold">
+                    <Button type="button" size="sm" onClick={applyNaturalLanguageEntry} disabled={!nlText || typeof nlText !== "string" || !nlText.trim()} className="h-11 px-4 font-semibold">
                       Parse
                     </Button>
                   </div>

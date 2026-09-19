@@ -13,19 +13,22 @@ export interface MerchantSuggestion {
 
 /** Pure text match - no DB access, so it can run on every keystroke without a round trip. */
 export function suggestMerchant(text: string, merchants: Tables<"merchants">[]): MerchantSuggestion | null {
+  if (typeof text !== "string") return null;
   const normalized = text.trim().toLowerCase();
   if (!normalized) return null;
 
   let best: MerchantSuggestion | null = null;
 
-  for (const merchant of merchants) {
+  for (const merchant of merchants ?? []) {
+    if (!merchant || typeof merchant.name !== "string") continue;
     const name = merchant.name.toLowerCase();
 
     if (name === normalized) {
       return { merchant, confidence: 0.99, reason: "Exact match" };
     }
 
-    if (merchant.aliases.some((a) => a.toLowerCase() === normalized)) {
+    const aliases = Array.isArray(merchant.aliases) ? merchant.aliases : [];
+    if (aliases.some((a) => typeof a === "string" && a.toLowerCase() === normalized)) {
       return { merchant, confidence: 0.95, reason: "Matches a known alias" };
     }
 

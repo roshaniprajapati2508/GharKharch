@@ -62,7 +62,8 @@ export interface HouseholdMemberOption {
   displayName: string;
 }
 
-function normalizeText(text: string): string {
+function normalizeText(text?: string | null): string {
+  if (!text || typeof text !== "string") return "";
   return text.toLowerCase().trim();
 }
 
@@ -82,9 +83,9 @@ export function matchAutomationRule(
   const text = normalizeText(rawText);
   if (!text) return null;
 
-  const candidates = rules
-    .filter((r) => r.is_active)
-    .filter((r) => r.conditions.keywords.some((kw) => kw && text.includes(normalizeText(kw))))
+  const candidates = (rules ?? [])
+    .filter((r) => r && r.is_active && r.conditions)
+    .filter((r) => Array.isArray(r.conditions.keywords) && r.conditions.keywords.some((kw) => kw && text.includes(normalizeText(kw))))
     .filter((r) => {
       const amount = context?.amount ?? null;
       if (r.conditions.min_amount !== null && r.conditions.min_amount !== undefined && amount !== null && amount < r.conditions.min_amount) return false;
@@ -92,7 +93,7 @@ export function matchAutomationRule(
       if (r.conditions.entry_type && context?.entryType && r.conditions.entry_type !== context.entryType) return false;
       return true;
     })
-    .sort((a, b) => b.priority - a.priority);
+    .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
 
   return candidates[0] ?? null;
 }

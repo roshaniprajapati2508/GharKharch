@@ -50,6 +50,7 @@ function editToleranceForLength(len: number): number {
  * length difference can't exceed the tolerance either.
  */
 export function isFuzzyWordMatch(a: string, b: string): boolean {
+  if (typeof a !== "string" || typeof b !== "string") return false;
   const x = a.trim().toLowerCase();
   const y = b.trim().toLowerCase();
   if (!x || !y) return false;
@@ -72,6 +73,7 @@ export function isFuzzyWordMatch(a: string, b: string): boolean {
  * plausibly present).
  */
 export function fuzzyMatches(haystack: string, needle: string): boolean {
+  if (typeof haystack !== "string" || typeof needle !== "string") return false;
   const h = haystack.trim().toLowerCase();
   const n = needle.trim().toLowerCase();
   if (!h || !n) return false;
