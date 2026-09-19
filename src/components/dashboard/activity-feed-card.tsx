@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Plus, Pencil, Trash2, ChevronRight, History } from "lucide-react";
 import { getRecentActivity, type ActivityEvent } from "@/lib/actions/activity";
 import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
 import { formatINR, cn } from "@/lib/utils";
@@ -36,7 +37,7 @@ export function ActivityFeedCard() {
 
   async function load() {
     const result = await getRecentActivity(10);
-    if (result.data) setEvents(result.data);
+    setEvents(result.data ?? []);
   }
 
   useEffect(() => {
@@ -52,7 +53,14 @@ export function ActivityFeedCard() {
 
   return (
     <div className="rounded-2xl border border-border/50 bg-card/90 shadow-xs backdrop-blur-md p-4 space-y-3">
-      <p className="text-xs font-semibold text-muted-foreground">Recent Activity</p>
+      <div className="flex items-center justify-between">
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+          <History className="h-3.5 w-3.5" /> Recent Activity
+        </p>
+        <Link href="/more/activity" className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-0.5">
+          View full log <ChevronRight className="h-3 w-3" />
+        </Link>
+      </div>
 
       {events === null ? (
         <div className="space-y-2">

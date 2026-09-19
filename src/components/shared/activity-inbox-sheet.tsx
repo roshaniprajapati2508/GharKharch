@@ -169,7 +169,7 @@ export function ActivityInboxSheet({ open, onOpenChange, onReadStateChange }: { 
               return (
                 <div key={event.id} onClick={() => handleOpenEvent(event)}>
                   {href ? (
-                    <Link href={href} prefetch={false} className="block">
+                    <Link href={href} prefetch={false} className="block" onClick={() => onOpenChange(false)}>
                       {body}
                     </Link>
                   ) : (
@@ -178,6 +178,16 @@ export function ActivityInboxSheet({ open, onOpenChange, onReadStateChange }: { 
                 </div>
               );
             })}
+        </div>
+
+        <div className="border-t border-border/60 p-3 text-center bg-card/90">
+          <Link
+            href="/more/activity"
+            onClick={() => onOpenChange(false)}
+            className="text-xs font-semibold text-brand-primary hover:underline"
+          >
+            View full historical audit log &rarr;
+          </Link>
         </div>
       </DrawerContent>
     </Drawer>

@@ -18,9 +18,9 @@ function statusFor(currentMtd: number, avg: number): { pct: number; status: "fru
 }
 
 const STATUS_STYLE = {
-  frugal: { color: "text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500", icon: TrendingDown, label: "Frugal / Controlled" },
-  on_track: { color: "text-amber-600 dark:text-amber-400", bar: "bg-amber-500", icon: Minus, label: "On Track" },
-  elevated: { color: "text-rose-600 dark:text-rose-400", bar: "bg-rose-500", icon: TrendingUp, label: "Elevated Spend" },
+  frugal: { color: "text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500", bg: "bg-emerald-500/10", icon: TrendingDown, label: "Frugal / Controlled" },
+  on_track: { color: "text-amber-600 dark:text-amber-400", bar: "bg-amber-500", bg: "bg-amber-500/10", icon: Minus, label: "On Track" },
+  elevated: { color: "text-rose-600 dark:text-rose-400", bar: "bg-rose-500", bg: "bg-rose-500/10", icon: TrendingUp, label: "Elevated Spend" },
 } as const;
 
 /**
@@ -88,7 +88,7 @@ export function SpendingPaceCard() {
       </div>
 
       <div className="flex items-center gap-2">
-        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", style.bar, "bg-opacity-10")}>
+        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", style.bg)}>
           <Icon className={cn("h-4.5 w-4.5", style.color)} />
         </span>
         <div className="min-w-0">

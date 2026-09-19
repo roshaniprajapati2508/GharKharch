@@ -913,7 +913,20 @@ export function AddExpenseSheet({
     return results.slice(0, 4);
   }, [form.itemName, form.amount, amountTouched, isEditing, predictionDismissed, pastPredictions, merchants, categoryFlat, userId]);
 
-  function applyPredictiveMatch(pred: any) {
+  interface PredictiveMatchItem {
+    itemName: string;
+    amount: number | null;
+    categoryId: string;
+    subcategoryId: string | null;
+    categoryName: string;
+    subcategoryName: string | null;
+    merchant: Tables<"merchants"> | null;
+    paymentMethod?: string | null;
+    paidBy?: string | null;
+    expenseType?: ExpenseType | null;
+  }
+
+  function applyPredictiveMatch(pred: PredictiveMatchItem) {
     setForm((f) => ({
       ...f,
       itemName: pred.itemName,
@@ -927,7 +940,7 @@ export function AddExpenseSheet({
       merchant: pred.merchant,
       paymentMethod: pred.paymentMethod || f.paymentMethod || "UPI",
       paidBy: pred.paidBy || f.paidBy,
-      expenseType: pred.expenseType || f.expenseType,
+      expenseType: (pred.expenseType as ExpenseType) || f.expenseType,
     }));
     if (pred.amount) setAmountTouched(true);
     setCategoryTouched(true);

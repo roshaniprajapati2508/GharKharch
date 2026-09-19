@@ -35,7 +35,6 @@ import { toastUndo } from "@/lib/toast-helpers";
 import { getMonthRange, type DateRange } from "@/lib/date-utils";
 import { formatINR } from "@/lib/utils";
 import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
-import type { QuickAddChip } from "@/lib/actions/quick-add";
 import type { HouseholdForecast } from "@/lib/actions/insights";
 
 function getDashboardCacheKey(range: DateRange, person: PersonFilter) {
@@ -45,14 +44,12 @@ function getDashboardCacheKey(range: DateRange, person: PersonFilter) {
 interface DashboardPageClientProps {
   initialData?: DashboardData | null;
   initialBrief?: BriefData | null;
-  initialChips?: QuickAddChip[];
   initialForecast?: HouseholdForecast | null;
 }
 
 export function DashboardPageClient({
   initialData,
   initialBrief,
-  initialChips,
   initialForecast,
 }: DashboardPageClientProps) {
   const { displayName } = useHousehold();
@@ -174,7 +171,7 @@ export function DashboardPageClient({
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "brief" }}>
-            <DailyBriefCard initialData={initialBrief} initialChips={initialChips} />
+            <DailyBriefCard initialData={initialBrief} />
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "forecast" }}>

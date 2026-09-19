@@ -31,7 +31,7 @@ export interface ParsedScratchpadLine {
   amount: number | null;
   itemName: string;
   paymentMethod: string | null;
-  paidByName: "Harsh" | "Roshni" | null;
+  paidByName: string | null;
   entryType: "expense" | "income";
   /** Keyword-map fallback guess (spec step 6) - may be null if nothing matched. */
   categoryName: string | null;
@@ -169,8 +169,19 @@ export function resolveScratchpadLine(
 
   const merchantMatch = suggestMerchant(parsed.itemName, merchants);
   const merchant = merchantMatch && merchantMatch.confidence >= 0.7 ? merchantMatch.merchant : null;
+  let payer = parsed.paidByName
+    ? members.find((m) => m.displayName.toLowerCase().includes(parsed.paidByName!.toLowerCase()) || parsed.paidByName!.toLowerCase().includes(m.displayName.toLowerCase()))
+    : null;
 
-  const payer = parsed.paidByName ? members.find((m) => m.displayName.toLowerCase() === parsed.paidByName!.toLowerCase()) : null;
+  if (!payer && parsed.raw) {
+    for (const m of members) {
+      const firstName = m.displayName.split(" ")[0].toLowerCase();
+      if (firstName.length >= 2 && new RegExp(`\\b${firstName}\\b`, "i").test(parsed.raw)) {
+        payer = m;
+        break;
+      }
+    }
+  }
 
   return {
     lineNumber: parsed.lineNumber,

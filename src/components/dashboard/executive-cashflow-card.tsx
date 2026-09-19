@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, PiggyBank, Briefcase } from "lucide-react";
+import Link from "next/link";
+import { TrendingUp, TrendingDown, PiggyBank, Briefcase, ChevronRight } from "lucide-react";
 import { getExecutiveCashflow, type ExecutiveCashflow } from "@/lib/actions/insights";
 import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
 import { getMonthRange } from "@/lib/date-utils";
@@ -38,9 +39,14 @@ export function ExecutiveCashflowCard() {
 
   return (
     <div className="rounded-2xl border border-border/50 bg-card/90 shadow-xs backdrop-blur-md p-4 space-y-4">
-      <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-        <PiggyBank className="h-3.5 w-3.5" /> This Month&apos;s Cashflow
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+          <PiggyBank className="h-3.5 w-3.5" /> This Month&apos;s Cashflow
+        </p>
+        <Link href="/analytics" className="text-[11px] font-medium text-primary hover:underline flex items-center gap-0.5">
+          Analytics <ChevronRight className="h-3 w-3" />
+        </Link>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -68,7 +74,7 @@ export function ExecutiveCashflowCard() {
       <div className="rounded-xl bg-muted/60 p-3">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-foreground">Net Savings</p>
-          {data.savingsRatePct !== null && (
+          {data.savingsRatePct !== null && data.totalInflow > 0 && (
             <span
               className={cn(
                 "rounded-full px-2 py-0.5 text-[10px] font-bold",
@@ -83,6 +89,11 @@ export function ExecutiveCashflowCard() {
           {savingsPositive ? "+" : ""}
           {formatINR(data.netSavings)}
         </p>
+        {data.totalInflow === 0 && data.totalOutflow > 0 && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            No income logged yet this month
+          </p>
+        )}
       </div>
 
       {(data.businessIncome > 0 || data.businessExpense > 0) && (

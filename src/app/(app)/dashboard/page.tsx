@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { getDashboardData } from "@/lib/actions/analytics";
 import { getDailyWeeklySnapshot, getSpendingChanges, getHouseholdForecast } from "@/lib/actions/insights";
 import { getRecurringSummary } from "@/lib/actions/recurring";
-import { getQuickAddChips } from "@/lib/actions/quick-add";
 import { getMonthRange } from "@/lib/date-utils";
 import { DashboardPageClient } from "@/components/dashboard/dashboard-page-client";
 
@@ -15,12 +14,11 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const range = getMonthRange(0);
-  const [result, snapshotRes, changesRes, recurringRes, chipsRes, forecastRes] = await Promise.all([
+  const [result, snapshotRes, changesRes, recurringRes, forecastRes] = await Promise.all([
     getDashboardData({ range, person: "household" }),
     getDailyWeeklySnapshot(),
     getSpendingChanges(),
     getRecurringSummary(),
-    getQuickAddChips(4),
     getHouseholdForecast(),
   ]);
 
@@ -37,7 +35,6 @@ export default async function DashboardPage() {
       <DashboardPageClient
         initialData={result.data}
         initialBrief={initialBrief}
-        initialChips={chipsRes.data ?? []}
         initialForecast={forecastRes.data ?? null}
       />
     </Suspense>

@@ -27,7 +27,6 @@ import {
   ArrowRight,
   ShieldCheck,
   Bot,
-  User,
   RotateCcw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -163,6 +162,14 @@ function TypewriterText({
   );
 }
 
+function createTurnId(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "turn-" + Date.now();
+}
+
+function getCurrentTimeStr(): string {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function AskGharKharchPage() {
   const { displayName, avatarUrl } = useHousehold();
   const [question, setQuestion] = useState("");
@@ -240,8 +247,8 @@ export default function AskGharKharchPage() {
       soundFx.playSend();
     }
 
-    const turnId = Date.now().toString();
-    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const turnId = createTurnId();
+    const timeStr = getCurrentTimeStr();
 
     setAsking(true);
     setQuestion("");

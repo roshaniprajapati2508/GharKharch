@@ -43,14 +43,16 @@ export async function logActivityEvent(
   });
 }
 
-/** Chronological activity for the inbox drawer, newest first, with each event's read state for the calling user and the actor's display name resolved. */
-export async function getActivityEvents(options?: { limit?: number; filter?: "all" | "alerts" | "partner" }) {
+/** Chronological activity for the inbox drawer and dedicated activity page, newest first, with each event's read state for the calling user and the actor's display name resolved. */
+export async function getActivityEvents(options?: { limit?: number; filter?: "all" | "alerts" | "partner" | "expenses" | "rules" }) {
   return runAction(async (): Promise<ActivityEventView[]> => {
     const { supabase, householdId, userId } = await requireHouseholdContext();
-    const limit = options?.limit ?? 50;
+    const limit = options?.limit ?? 100;
 
     let query = supabase.from("activity_events").select("*").eq("household_id", householdId).order("created_at", { ascending: false }).limit(limit);
     if (options?.filter === "alerts") query = query.eq("is_alert", true);
+    if (options?.filter === "expenses") query = query.eq("entity_type", "expense");
+    if (options?.filter === "rules") query = query.eq("entity_type", "rule");
     const { data, error } = await query;
     if (error) throw new ActionError(error.message);
 

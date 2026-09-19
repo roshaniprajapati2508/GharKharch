@@ -21,6 +21,7 @@ import {
   Pencil,
   DatabaseBackup,
   UploadCloud,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -215,6 +216,7 @@ export default function MorePage() {
             <MenuLink href="/more/recurring" icon={Repeat} label="Recurring expenses" />
             <MenuLink href="/more/rules" icon={Zap} label="Smart Rules (auto-fill)" />
             <MenuLink href="/more/scratchpad" icon={NotebookPen} label="Fast Scratchpad" />
+            <MenuLink href="/more/activity" icon={History} label="Recent Activity & Audit Log" />
           </CardContent>
         </Card>
       </div>

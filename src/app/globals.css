@@ -281,10 +281,10 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
   max-width: 100%;
   grid-template-areas:
     "header"
-    "cashflow-exec"
     "brief"
     "forecast"
     "summary"
+    "pace"
     "trend"
     "category"
     "insights"
@@ -293,11 +293,11 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
     "person"
     "frequent"
     "largest"
-    "calendar"
-    "recurring"
+    "cashflow-exec"
     "pnl"
     "cashflow"
-    "pace"
+    "calendar"
+    "recurring"
     "activity";
 }
 
@@ -306,20 +306,20 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "header header"
-      "cashflow-exec cashflow-exec"
       "brief brief"
       "forecast forecast"
       "summary summary"
+      "pace pace"
       "trend trend"
       "category category"
       "insights insights"
       "merchants person"
       "frequent largest"
+      "cashflow-exec cashflow-exec"
+      "pnl cashflow"
       "recent recent"
       "calendar calendar"
       "recurring recurring"
-      "pnl cashflow"
-      "pace pace"
       "activity activity";
   }
 }
@@ -328,7 +328,6 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
   .dashboard-grid {
     grid-template-areas:
       "header header"
-      "cashflow-exec cashflow-exec"
       "brief brief"
       "forecast forecast"
       "summary summary"
@@ -336,11 +335,27 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
       "merchants person"
       "frequent largest"
       "insights insights"
+      "cashflow-exec cashflow-exec"
       "recurring pnl"
-      "cashflow cashflow"
-      "pace pace"
+      "cashflow pace"
       "activity activity"
       "calendar recent";
+  }
+}
+
+@media (min-width: 1280px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "header header header"
+      "brief forecast pace"
+      "summary summary summary"
+      "trend trend category"
+      "merchants person frequent"
+      "cashflow-exec pnl cashflow"
+      "insights insights largest"
+      "recurring calendar recent"
+      "activity activity activity";
   }
 }
 

@@ -67,10 +67,34 @@ export default function ScratchpadPage() {
     };
   }, [text, loaded]);
 
-  // Live "Parse & Review" table - re-parses at 0ms on every text change.
+  // Live "Parse & Review" table - re-parses at 0ms on every text change,
+  // preserving any manual dropdown/amount overrides on rows whose text hasn't changed.
   useEffect(() => {
     const parsed = parseScratchpadText(text);
-    setRows(parsed.map((p) => resolveScratchpadLine(p, categoryTree, merchants, members, userId)));
+    setRows((prev) => {
+      const prevMap = new Map(prev.map((r) => [r.raw, r]));
+      return parsed.map((p) => {
+        const fresh = resolveScratchpadLine(p, categoryTree, merchants, members, userId);
+        const existing = prevMap.get(p.raw);
+        if (existing) {
+          return {
+            ...fresh,
+            itemName: existing.itemName,
+            amount: existing.amount,
+            categoryId: existing.categoryId,
+            categoryName: existing.categoryName,
+            subcategoryId: existing.subcategoryId,
+            subcategoryName: existing.subcategoryName,
+            merchantId: existing.merchantId,
+            merchantName: existing.merchantName,
+            paidBy: existing.paidBy,
+            paymentMethod: existing.paymentMethod,
+            entryType: existing.entryType,
+          };
+        }
+        return fresh;
+      });
+    });
   }, [text, categoryTree, merchants, members, userId]);
 
   function updateRow(lineNumber: number, patch: Partial<ResolvedScratchpadRow>) {

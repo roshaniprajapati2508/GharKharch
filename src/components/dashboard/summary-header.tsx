@@ -1,6 +1,5 @@
-import { ArrowDown, ArrowUp, TrendingUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Calendar, CreditCard, Receipt, Tag, TrendingUp, Sparkles } from "lucide-react";
 import { formatINR, percentChange, cn } from "@/lib/utils";
-import { getIcon } from "@/lib/icon-map";
 import type { Database } from "@/types/database";
 
 type ExpenseSummaryRow = Database["public"]["Functions"]["get_expense_summary"]["Returns"][number];
@@ -21,7 +20,7 @@ function mostFrequentMerchant(merchants: MerchantBreakdownRow[]): MerchantBreakd
   return merchants.reduce((max, m) => (m.txn_count > max.txn_count ? m : max), merchants[0]);
 }
 
-/** Top-of-dashboard summary (spec section 7): headline total + comparison, then a stat grid. */
+/** Enterprise Bento KPI Header: headline total with delta pill, 4 modern metric cards, and smart key takeaways. */
 export function SummaryHeader({
   periodLabel,
   summary,
@@ -45,80 +44,123 @@ export function SummaryHeader({
   const avgPerTxn = summary.txn_count > 0 ? total / summary.txn_count : 0;
 
   const topCategory = categoryBreakdown[0] ?? null;
-  const TopCategoryIcon = topCategory ? getIcon(topCategory.icon) : null;
+  const topCatTotal = topCategory ? parseFloat(topCategory.total) : 0;
+  const topCatShare = total > 0 && topCatTotal > 0 ? Math.round((topCatTotal / total) * 100) : 0;
+
   const frequentMerchant = mostFrequentMerchant(topMerchants);
   const highestDay = highestSpendingDayLabel(dailySpending);
 
-  const isSingleDay = summary.days <= 1;
-
-  const stats: { label: string; value: string }[] = isSingleDay
-    ? [
-        { label: "Transactions", value: String(summary.txn_count) },
-        { label: "Avg / transaction", value: summary.txn_count > 0 ? formatINR(avgPerTxn) : "-" },
-        { label: "Largest expense", value: summary.largest_amount ? formatINR(summary.largest_amount) : "-" },
-        { label: "Top category", value: topCategory?.category_name ?? "-" },
-      ]
-    : [
-        { label: "Daily average", value: formatINR(dailyAvg) },
-        { label: "Avg / transaction", value: summary.txn_count > 0 ? formatINR(avgPerTxn) : "-" },
-        { label: "Transactions", value: String(summary.txn_count) },
-        { label: "Largest expense", value: summary.largest_amount ? formatINR(summary.largest_amount) : "-" },
-      ];
-
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-sm text-muted-foreground">{periodLabel}</p>
-        <p className="mt-1 text-[2.75rem] font-bold leading-none tracking-tight text-foreground">{formatINR(total)}</p>
-        {change !== null && prevTotal > 0 && (
-          <p className={cn("mt-1.5 flex items-center gap-1 text-sm font-medium", change <= 0 ? "text-brand-green" : "text-brand-orange")}>
-            {change <= 0 ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}
-            {Math.abs(change).toFixed(1)}% vs previous period
-          </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-surface p-3">
-            <p className="text-xs text-muted-foreground">{s.label}</p>
-            <p className="mt-0.5 text-lg font-semibold text-foreground">{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {(topCategory || frequentMerchant || highestDay) && (
-        <div className="flex flex-col divide-y divide-border rounded-xl border border-border bg-surface">
-          {topCategory && TopCategoryIcon && (
-            <div className="flex items-center gap-3 p-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-mint text-brand-primary">
-                {/* eslint-disable-next-line react-hooks/static-components -- TopCategoryIcon is a stable reference picked from ICON_MAP, not created here */}
-                <TopCategoryIcon className="h-4 w-4" />
+      {/* Hero Spend Header Card */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/90 p-5 shadow-xs backdrop-blur-md">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <Receipt className="h-3.5 w-3.5 text-brand-primary" /> Total Outflow &middot; {periodLabel}
+            </span>
+            <div className="mt-1 flex items-baseline gap-3">
+              <span className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl tabular-nums">
+                {formatINR(total)}
               </span>
-              <p className="text-sm text-foreground">
-                <span className="font-medium">{topCategory.category_name}</span> is your most-used category
-              </p>
+              {change !== null && prevTotal > 0 && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold shadow-xs",
+                    change <= 0
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                  )}
+                >
+                  {change <= 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
+                  {Math.abs(change).toFixed(1)}% vs prev period
+                </span>
+              )}
+            </div>
+          </div>
+          {prevTotal > 0 && (
+            <div className="text-left sm:text-right">
+              <p className="text-xs text-muted-foreground">Previous Period</p>
+              <p className="text-sm font-semibold tabular-nums text-foreground">{formatINR(prevTotal)}</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* 4 Bento Metric Cards Grid */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {/* Card 1: Daily Average */}
+        <div className="rounded-2xl border border-border/60 bg-card/90 p-3.5 shadow-xs backdrop-blur-md transition-all hover:border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Daily Run Rate</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-mint text-brand-primary">
+              <Calendar className="h-3.5 w-3.5" />
+            </span>
+          </div>
+          <p className="mt-2 text-lg font-bold tabular-nums text-foreground">{formatINR(dailyAvg)}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">{days} active days in period</p>
+        </div>
+
+        {/* Card 2: Avg Transaction */}
+        <div className="rounded-2xl border border-border/60 bg-card/90 p-3.5 shadow-xs backdrop-blur-md transition-all hover:border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Avg / Ticket</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+              <CreditCard className="h-3.5 w-3.5" />
+            </span>
+          </div>
+          <p className="mt-2 text-lg font-bold tabular-nums text-foreground">
+            {summary.txn_count > 0 ? formatINR(avgPerTxn) : "₹0"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">{summary.txn_count} transaction{summary.txn_count === 1 ? "" : "s"} logged</p>
+        </div>
+
+        {/* Card 3: Largest Expense */}
+        <div className="rounded-2xl border border-border/60 bg-card/90 p-3.5 shadow-xs backdrop-blur-md transition-all hover:border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Largest Expense</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <TrendingUp className="h-3.5 w-3.5" />
+            </span>
+          </div>
+          <p className="mt-2 text-lg font-bold tabular-nums text-foreground">
+            {summary.largest_amount ? formatINR(summary.largest_amount) : "—"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">Single peak transaction</p>
+        </div>
+
+        {/* Card 4: Top Category */}
+        <div className="rounded-2xl border border-border/60 bg-card/90 p-3.5 shadow-xs backdrop-blur-md transition-all hover:border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Top Category</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
+              <Tag className="h-3.5 w-3.5" />
+            </span>
+          </div>
+          <p className="mt-2 truncate text-lg font-bold text-foreground">
+            {topCategory?.category_name ?? "—"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {topCatTotal > 0 ? `${formatINR(topCatTotal)} (${topCatShare}% of total)` : "No categories yet"}
+          </p>
+        </div>
+      </div>
+
+      {/* Highlights / Intelligence Ribbon */}
+      {(frequentMerchant || highestDay) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-card/60 px-3.5 py-2 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1 font-semibold text-foreground">
+            <Sparkles className="h-3.5 w-3.5 text-brand-primary" /> Key highlights:
+          </span>
           {frequentMerchant && (
-            <div className="flex items-center gap-3 p-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-mint text-brand-primary text-xs font-semibold">
-                {frequentMerchant.txn_count}×
-              </span>
-              <p className="text-sm text-foreground">
-                <span className="font-medium">{frequentMerchant.merchant_name}</span> is your most frequent merchant
-              </p>
-            </div>
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted/80 px-2 py-0.5 text-[11px] font-medium text-foreground">
+              Most frequent merchant: <strong className="text-brand-primary">{frequentMerchant.merchant_name}</strong> ({frequentMerchant.txn_count}×)
+            </span>
           )}
           {highestDay && (
-            <div className="flex items-center gap-3 p-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-mint text-brand-primary">
-                <TrendingUp className="h-4 w-4" />
-              </span>
-              <p className="text-sm text-foreground">
-                <span className="font-medium">{highestDay}</span> is your highest-spending day
-              </p>
-            </div>
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted/80 px-2 py-0.5 text-[11px] font-medium text-foreground">
+              Peak day: <strong className="text-brand-primary">{highestDay}</strong>
+            </span>
           )}
         </div>
       )}
