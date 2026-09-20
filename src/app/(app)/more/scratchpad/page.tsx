@@ -13,7 +13,7 @@ import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/act
 import { listMerchantsForHousehold } from "@/lib/actions/merchants";
 import { useHousehold } from "@/lib/context/household-context";
 import { getTodayISO } from "@/lib/date-utils";
-import { cn } from "@/lib/utils";
+import { cn, formatINR } from "@/lib/utils";
 import type { Tables } from "@/types/database";
 
 const EXAMPLE = `Rickshaw 40
@@ -112,7 +112,9 @@ export default function ScratchpadPage() {
   }
 
   const readyRows = rows.filter((r) => r.amount && r.amount > 0 && r.itemName.trim());
-  const invalidCount = rows.length - readyRows.filter((r) => r.categoryId && r.paidBy).length;
+  const validRows = readyRows.filter((r) => r.categoryId && r.paidBy);
+  const invalidCount = rows.length - validRows.length;
+  const totalAmount = readyRows.reduce((sum, r) => sum + (r.amount || 0), 0);
 
   async function handleSaveAll() {
     const payload: ScratchpadExpenseInput[] = readyRows.map((r) => ({
@@ -149,140 +151,298 @@ export default function ScratchpadPage() {
     }
   }
 
+  function handleBulkPayer(memberId: string) {
+    setRows((list) => list.map((r) => ({ ...r, paidBy: memberId })));
+    toast.success("Updated payer for all rows");
+  }
+
+  function handleBulkPaymentMethod(method: string) {
+    setRows((list) => list.map((r) => ({ ...r, paymentMethod: method })));
+    toast.success(`Updated payment method to ${method} for all rows`);
+  }
+
+  function appendExample(sample: string) {
+    setText((prev) => (prev.trim() ? `${prev.trim()}\n${sample}` : sample));
+  }
+
+  const EXAMPLE_CHIPS = [
+    { label: "🛒 Grocery", text: "Dmart 1200 upi" },
+    { label: "☕ Chai & Snacks", text: "Chai 40 cash" },
+    { label: "📦 Amazon Shopping", text: "Amazon shopping 450 card" },
+    { label: "🛺 Auto Commute", text: "Auto rickshaw 50 upi" },
+    { label: "💰 Seller Payout", text: "Meesho seller payout 3200 income" },
+  ];
+
   return (
-    <div className="flex flex-col gap-5 pb-10">
-      <div className="flex items-center gap-2">
-        <Link href="/more" prefetch={true} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
-          <ChevronLeft className="h-5 w-5" />
-        </Link>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-          <NotebookPen className="h-4.5 w-4.5" />
-        </span>
-        <h1 className="text-xl font-bold tracking-tight text-foreground">Scratchpad</h1>
+    <div className="flex flex-col gap-5 pb-16">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <Link href="/more" prefetch={true} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted transition-colors">
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <NotebookPen className="h-4.5 w-4.5" />
+          </span>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Scratchpad</h1>
+            <p className="text-xs text-muted-foreground">Multi-line instant entry with 0ms smart parser</p>
+          </div>
+        </div>
+
+        {text.trim() && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setText("");
+              clearScratchpadDraft();
+              toast.success("Scratchpad cleared");
+            }}
+            className="text-xs text-muted-foreground hover:text-destructive"
+          >
+            Clear
+          </Button>
+        )}
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Type one transaction per line, in any shorthand - amount, payment method, who paid, item. We&apos;ll parse it into a real expense below.
-      </p>
+      {/* Quick Example Chips */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-medium text-muted-foreground">Tap to add quick sample lines:</span>
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {EXAMPLE_CHIPS.map((chip) => (
+            <button
+              key={chip.label}
+              type="button"
+              onClick={() => appendExample(chip.text)}
+              className="shrink-0 rounded-lg border border-border/80 bg-surface px-2.5 py-1 text-xs font-medium text-foreground hover:border-primary/50 hover:bg-muted transition-colors"
+            >
+              + {chip.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      <Textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={EXAMPLE}
-        rows={6}
-        className="max-h-[40dvh] min-h-32 resize-y overflow-y-auto font-mono text-sm"
-      />
+      {/* Main Textarea */}
+      <div className="relative">
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={`Type one item per line, e.g.:\nRickshaw 40\nChai 20 cash\nAmazon 450 card Harsh\nDoodh 60 amul\nMeesho payout 1500 income`}
+          rows={6}
+          className="max-h-[35dvh] min-h-32 resize-y overflow-y-auto rounded-xl border-border/80 bg-surface/80 p-3.5 font-mono text-sm leading-relaxed shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary"
+        />
+        {text.trim() && (
+          <span className="absolute bottom-2.5 right-3 text-[11px] font-medium text-muted-foreground">
+            {rows.length} {rows.length === 1 ? "line" : "lines"}
+          </span>
+        )}
+      </div>
 
+      {/* Review Section */}
       {rows.length > 0 && (
-        <div>
-          <div className="mb-2 flex items-center justify-between px-1">
-            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-              <Sparkles className="h-3.5 w-3.5" /> Parse &amp; Review ({rows.length})
-            </h2>
-            {invalidCount > 0 && <span className="text-[11px] text-amber-600 dark:text-amber-400">{invalidCount} row(s) need a category</span>}
+        <div className="space-y-3">
+          {/* Summary & Stats Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-surface p-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Parsed Total ({rows.length} items)</p>
+                <p className="text-lg font-bold text-foreground">{formatINR(totalAmount)}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {invalidCount > 0 ? (
+                <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                  {invalidCount} need category/payer
+                </span>
+              ) : (
+                <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  ✓ All {readyRows.length} ready
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* Mobile: stacked cards. sm+: a real table. Both read from the same `rows` state. */}
-          <div className="space-y-2 sm:hidden">
+          {/* Quick Bulk Toolbar */}
+          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/40 p-2 text-xs">
+            <span className="font-semibold text-muted-foreground">Quick Bulk:</span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {members.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => handleBulkPayer(m.id)}
+                  className="rounded-md border border-border bg-surface px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-muted"
+                >
+                  All {m.displayName.split(" ")[0]}
+                </button>
+              ))}
+              <span className="text-border">|</span>
+              {["UPI", "Cash", "Credit Card"].map((method) => (
+                <button
+                  key={method}
+                  type="button"
+                  onClick={() => handleBulkPaymentMethod(method)}
+                  className="rounded-md border border-border bg-surface px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-muted"
+                >
+                  All {method}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="space-y-2.5 sm:hidden">
             {rows.map((row) => (
-              <ScratchpadRowCard key={row.lineNumber} row={row} categoryTree={categoryTree} members={members} onChange={(patch) => updateRow(row.lineNumber, patch)} onRemove={() => removeRow(row.lineNumber)} />
+              <ScratchpadRowCard
+                key={row.lineNumber}
+                row={row}
+                categoryTree={categoryTree}
+                members={members}
+                onChange={(patch) => updateRow(row.lineNumber, patch)}
+                onRemove={() => removeRow(row.lineNumber)}
+              />
             ))}
           </div>
 
-          <div className="hidden overflow-x-auto rounded-xl border border-border/60 sm:block">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead>
-                <tr className="border-b border-border/60 bg-muted/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Item</th>
-                  <th className="px-3 py-2 font-medium">Category</th>
-                  <th className="px-3 py-2 font-medium">Merchant</th>
-                  <th className="px-3 py-2 font-medium">Amount</th>
-                  <th className="px-3 py-2 font-medium">Paid By</th>
-                  <th className="px-3 py-2 font-medium">Payment</th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.lineNumber} className={cn("border-b border-border/40 last:border-0", (!row.categoryId || !row.paidBy) && "bg-amber-500/5")}>
-                    <td className="px-3 py-1.5">
-                      <input
-                        value={row.itemName}
-                        onChange={(e) => updateRow(row.lineNumber, { itemName: e.target.value })}
-                        className="h-9 w-full min-w-[140px] rounded border border-transparent bg-transparent px-1.5 text-sm focus:border-input focus:bg-background focus:outline-none"
-                      />
-                    </td>
-                    <td className="px-3 py-1.5">
-                      <select
-                        value={row.categoryId ?? ""}
-                        onChange={(e) => {
-                          const cat = categoryTree.find((c) => c.id === e.target.value);
-                          updateRow(row.lineNumber, { categoryId: e.target.value || null, categoryName: cat?.name ?? null, subcategoryId: null, subcategoryName: null });
-                        }}
-                        className={cn("h-9 min-w-[130px] rounded border bg-surface px-1.5 text-sm", row.categoryId ? "border-input" : "border-amber-500/50")}
-                      >
-                        <option value="">Choose...</option>
-                        {categoryTree.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-1.5 text-xs text-muted-foreground">{row.merchantName ?? "—"}</td>
-                    <td className="px-3 py-1.5">
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        value={row.amount ?? ""}
-                        onChange={(e) => updateRow(row.lineNumber, { amount: e.target.value ? parseFloat(e.target.value) : null })}
-                        className="h-9 w-24 rounded border border-transparent bg-transparent px-1.5 text-sm focus:border-input focus:bg-background focus:outline-none"
-                      />
-                    </td>
-                    <td className="px-3 py-1.5">
-                      <select
-                        value={row.paidBy}
-                        onChange={(e) => updateRow(row.lineNumber, { paidBy: e.target.value })}
-                        className="h-9 min-w-[100px] rounded border border-input bg-surface px-1.5 text-sm"
-                      >
-                        {members.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.displayName}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-1.5">
-                      <select
-                        value={row.paymentMethod}
-                        onChange={(e) => updateRow(row.lineNumber, { paymentMethod: e.target.value })}
-                        className="h-9 min-w-[110px] rounded border border-input bg-surface px-1.5 text-sm"
-                      >
-                        {["UPI", "Cash", "Credit Card", "Bank Transfer"].map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-1.5">
-                      <button type="button" onClick={() => removeRow(row.lineNumber)} className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Remove row">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
+          {/* Tablet/Desktop Table */}
+          <div className="hidden overflow-hidden rounded-xl border border-border/80 bg-surface shadow-sm sm:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead>
+                  <tr className="border-b border-border/70 bg-muted/30 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5">Item Name</th>
+                    <th className="px-3 py-2.5">Category</th>
+                    <th className="px-3 py-2.5">Merchant</th>
+                    <th className="px-3 py-2.5">Amount (₹)</th>
+                    <th className="px-3 py-2.5">Paid By</th>
+                    <th className="px-3 py-2.5">Method</th>
+                    <th className="px-3 py-2.5 text-right">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {rows.map((row) => (
+                    <tr
+                      key={row.lineNumber}
+                      className={cn(
+                        "transition-colors hover:bg-muted/30",
+                        (!row.categoryId || !row.paidBy) && "bg-amber-500/5"
+                      )}
+                    >
+                      <td className="px-3 py-2">
+                        <input
+                          value={row.itemName}
+                          onChange={(e) => updateRow(row.lineNumber, { itemName: e.target.value })}
+                          placeholder="Item name"
+                          className="h-9 w-full min-w-[140px] rounded-md border border-transparent bg-transparent px-2 text-sm font-medium focus:border-input focus:bg-background focus:outline-none"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <select
+                          value={row.categoryId ?? ""}
+                          onChange={(e) => {
+                            const cat = categoryTree.find((c) => c.id === e.target.value);
+                            updateRow(row.lineNumber, {
+                              categoryId: e.target.value || null,
+                              categoryName: cat?.name ?? null,
+                              subcategoryId: null,
+                              subcategoryName: null,
+                            });
+                          }}
+                          className={cn(
+                            "h-9 min-w-[130px] rounded-md border bg-background px-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-primary",
+                            row.categoryId ? "border-input" : "border-amber-500/80 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                          )}
+                        >
+                          <option value="">Choose Category...</option>
+                          {categoryTree.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="inline-flex rounded bg-muted/60 px-2 py-0.5 text-xs text-foreground">
+                          {row.merchantName ?? "—"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="relative flex items-center">
+                          <span className="absolute left-2 text-xs text-muted-foreground font-semibold">₹</span>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={row.amount ?? ""}
+                            onChange={(e) =>
+                              updateRow(row.lineNumber, {
+                                amount: e.target.value ? parseFloat(e.target.value) : null,
+                              })
+                            }
+                            placeholder="0"
+                            className="h-9 w-28 rounded-md border border-input bg-background pl-5 pr-2 text-sm font-semibold focus:border-primary focus:outline-none"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <select
+                          value={row.paidBy}
+                          onChange={(e) => updateRow(row.lineNumber, { paidBy: e.target.value })}
+                          className="h-9 min-w-[110px] rounded-md border border-input bg-background px-2 text-xs font-medium focus:outline-none"
+                        >
+                          {members.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.displayName}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2">
+                        <select
+                          value={row.paymentMethod}
+                          onChange={(e) => updateRow(row.lineNumber, { paymentMethod: e.target.value })}
+                          className="h-9 min-w-[100px] rounded-md border border-input bg-background px-2 text-xs font-medium focus:outline-none"
+                        >
+                          {["UPI", "Cash", "Credit Card", "Bank Transfer"].map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => removeRow(row.lineNumber)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                          aria-label="Remove row"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Sticky save bar, safe-area aware for iOS home indicator (spec: responsive hardening). */}
+      {/* Save Button */}
       {rows.length > 0 && (
-        <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 sm:static sm:bottom-auto">
-          <Button onClick={handleSaveAll} disabled={saving || readyRows.length === 0} className="min-h-11 w-full shadow-lg sm:shadow-none">
-            {saving ? "Saving..." : `Save All to GharKharch (${readyRows.length})`}
+        <div className="sticky bottom-4 z-10 sm:static">
+          <Button
+            onClick={handleSaveAll}
+            disabled={saving || readyRows.length === 0}
+            size="lg"
+            className="w-full gap-2 text-base font-semibold shadow-xl sm:shadow-none"
+          >
+            {saving ? "Saving..." : `Save ${readyRows.length} Expense${readyRows.length === 1 ? "" : "s"} (${formatINR(totalAmount)})`}
           </Button>
         </div>
       )}
@@ -303,42 +463,75 @@ function ScratchpadRowCard({
   onChange: (patch: Partial<ResolvedScratchpadRow>) => void;
   onRemove: () => void;
 }) {
+  const isComplete = Boolean(row.categoryId && row.paidBy && row.amount && row.amount > 0);
+
   return (
-    <div className={cn("space-y-2 rounded-xl border p-3", row.categoryId && row.paidBy ? "border-border/60" : "border-amber-500/50 bg-amber-500/5")}>
+    <div
+      className={cn(
+        "space-y-2.5 rounded-xl border bg-surface p-3.5 shadow-sm transition-all",
+        isComplete ? "border-border/80" : "border-amber-500/60 bg-amber-500/[0.03]"
+      )}
+    >
       <div className="flex items-center gap-2">
         <input
           value={row.itemName}
           onChange={(e) => onChange({ itemName: e.target.value })}
-          className="min-h-11 min-w-0 flex-1 rounded border border-input bg-surface px-2 text-sm"
+          placeholder="Item name"
+          className="min-h-10 min-w-0 flex-1 rounded-lg border border-input bg-background px-2.5 text-sm font-semibold focus:border-primary focus:outline-none"
         />
-        <input
-          type="number"
-          inputMode="decimal"
-          value={row.amount ?? ""}
-          onChange={(e) => onChange({ amount: e.target.value ? parseFloat(e.target.value) : null })}
-          className="min-h-11 w-20 rounded border border-input bg-surface px-2 text-right text-sm font-semibold"
-        />
-        <button type="button" onClick={onRemove} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Remove row">
+        <div className="relative flex items-center">
+          <span className="absolute left-2 text-xs font-semibold text-muted-foreground">₹</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={row.amount ?? ""}
+            onChange={(e) => onChange({ amount: e.target.value ? parseFloat(e.target.value) : null })}
+            placeholder="0"
+            className="min-h-10 w-24 rounded-lg border border-input bg-background pl-5 pr-2 text-right text-sm font-bold focus:border-primary focus:outline-none"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+          aria-label="Remove row"
+        >
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
-      <div className="grid grid-cols-3 gap-1.5">
-        <select value={row.categoryId ?? ""} onChange={(e) => onChange({ categoryId: e.target.value || null })} className="min-h-11 rounded border border-input bg-surface px-1 text-xs">
-          <option value="">Category</option>
+
+      <div className="grid grid-cols-3 gap-2">
+        <select
+          value={row.categoryId ?? ""}
+          onChange={(e) => onChange({ categoryId: e.target.value || null })}
+          className={cn(
+            "min-h-10 rounded-lg border bg-background px-2 text-xs font-medium focus:outline-none",
+            row.categoryId ? "border-input text-foreground" : "border-amber-500/80 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+          )}
+        >
+          <option value="">Category *</option>
           {categoryTree.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
           ))}
         </select>
-        <select value={row.paidBy} onChange={(e) => onChange({ paidBy: e.target.value })} className="min-h-11 rounded border border-input bg-surface px-1 text-xs">
+        <select
+          value={row.paidBy}
+          onChange={(e) => onChange({ paidBy: e.target.value })}
+          className="min-h-10 rounded-lg border border-input bg-background px-2 text-xs font-medium focus:outline-none"
+        >
           {members.map((m) => (
             <option key={m.id} value={m.id}>
               {m.displayName}
             </option>
           ))}
         </select>
-        <select value={row.paymentMethod} onChange={(e) => onChange({ paymentMethod: e.target.value })} className="min-h-11 rounded border border-input bg-surface px-1 text-xs">
+        <select
+          value={row.paymentMethod}
+          onChange={(e) => onChange({ paymentMethod: e.target.value })}
+          className="min-h-10 rounded-lg border border-input bg-background px-2 text-xs font-medium focus:outline-none"
+        >
           {["UPI", "Cash", "Credit Card", "Bank Transfer"].map((m) => (
             <option key={m} value={m}>
               {m}
@@ -346,6 +539,13 @@ function ScratchpadRowCard({
           ))}
         </select>
       </div>
+
+      {row.merchantName && (
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span>Merchant:</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 font-medium text-foreground">{row.merchantName}</span>
+        </div>
+      )}
     </div>
   );
 }

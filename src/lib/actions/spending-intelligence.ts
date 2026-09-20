@@ -54,18 +54,39 @@ export interface RankedChange {
   changePct: number | null;
 }
 
+export interface WeekdayRow {
+  weekdayNum: number;
+  weekdayName: string;
+  shortName: string;
+  total: number;
+  txnCount: number;
+  sharePct: number;
+}
+
+export interface SummaryMetrics {
+  total: number;
+  txnCount: number;
+  avgTransaction: number;
+  previousTotal: number;
+  changePct: number | null;
+}
+
 export interface SpendingIntelligenceData {
   range: DateRange;
   previousRange: DateRange;
+  summary: SummaryMetrics;
   weekdayPeak: WeekdayPeak | null;
   datePeak: DatePeak | null;
   avgDailySpend: number;
   avgWeeklySpend: number;
+  projectedMonthEnd: number | null;
+  weekdayBreakdown: WeekdayRow[];
   personSplit: PersonSplit;
-  recurringVsOneoff: RecurringVsOneoff;
+  recurringVsOneoff: RecurringVsOneoff & { recurringSharePct: number };
   categoryChanges: SpendingChangesResult | null;
   topMerchantChanges: RankedChange[];
   topItemChanges: RankedChange[];
+  smartTakeaways: string[];
 }
 
 /** Diffs two breakdown-shaped result sets (merchant or item analytics, current vs the previous comparable period) and returns the top movers by absolute change — same merge/sort approach getSpendingChanges already uses for categories. */
@@ -170,27 +191,74 @@ export async function getSpendingIntelligence(range: DateRange) {
     if (error) throw new ActionError(error.message);
     if (!bundle) throw new ActionError("No data returned from database");
 
-    const summary = bundle.summary;
-    const txnCount = summary.txn_count ?? 0;
-    const days = daysBetweenISO(range.start, range.end);
-    const weeks = days / 7;
-    const total = Number(summary.total ?? 0);
+    const rawSummary = bundle.summary;
+    const txnCount = rawSummary?.txn_count ?? 0;
+    const days = Math.max(1, daysBetweenISO(range.start, range.end));
+    const weeks = Math.max(1, days / 7);
+    const total = Number(rawSummary?.total ?? 0);
+    const avgTransaction = Number(rawSummary?.avg_transaction ?? (txnCount > 0 ? total / txnCount : 0));
+
+    // Previous total from previous month or previous breakdown
+    const categoryPrevMonthRows = bundle.category_prev_month_rows ?? [];
+    const prevMonthTotal = categoryPrevMonthRows.reduce((sum, r) => sum + Number(r.total), 0);
+    const previousMerchantRows = bundle.merchant_prev_rows ?? [];
+    const prevMerchantTotal = previousMerchantRows.reduce((sum, r) => sum + Number(r.total), 0);
+    const previousTotal = prevMonthTotal > 0 ? prevMonthTotal : prevMerchantTotal;
+    const changePct = previousTotal > 0 ? percentChange(total, previousTotal) : null;
+
+    const summary: SummaryMetrics = {
+      total,
+      txnCount,
+      avgTransaction,
+      previousTotal,
+      changePct,
+    };
+
+    // Weekday breakdown (Mon-Sun)
+    const rawWeekdayRows = (bundle.weekday_rows ?? []) as { weekday_num: number; total: number; txn_count: number }[];
+    const weekdayMap = new Map<number, { total: number; txn_count: number }>();
+    for (const row of rawWeekdayRows) {
+      weekdayMap.set(row.weekday_num, { total: Number(row.total), txn_count: row.txn_count });
+    }
+
+    const SHORT_WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    // Display in order Monday (1) to Sunday (0)
+    const displayOrder = [1, 2, 3, 4, 5, 6, 0];
+    const weekdayBreakdown: WeekdayRow[] = displayOrder.map((num) => {
+      const data = weekdayMap.get(num) ?? { total: 0, txn_count: 0 };
+      const sharePct = total > 0 ? (data.total / total) * 100 : 0;
+      return {
+        weekdayNum: num,
+        weekdayName: WEEKDAY_NAMES[num],
+        shortName: SHORT_WEEKDAY_NAMES[num],
+        total: data.total,
+        txnCount: data.txn_count,
+        sharePct,
+      };
+    });
 
     // Weekday peak
-    const weekdayRows = bundle.weekday_rows ?? [];
+    const sortedWeekdays = [...rawWeekdayRows].sort((a, b) => Number(b.total) - Number(a.total));
     const weekdayPeak: WeekdayPeak | null =
-      txnCount >= MIN_TXN_FOR_PEAK_GUARDS && weekdayRows.length > 0
-        ? { weekdayName: WEEKDAY_NAMES[weekdayRows[0].weekday_num] ?? "Unknown", total: Number(weekdayRows[0].total) }
+      sortedWeekdays.length > 0 && Number(sortedWeekdays[0].total) > 0
+        ? { weekdayName: WEEKDAY_NAMES[sortedWeekdays[0].weekday_num] ?? "Unknown", total: Number(sortedWeekdays[0].total) }
         : null;
 
     // Highest single date
     const dailyRows = bundle.daily_rows ?? [];
     const highestDay = dailyRows.length > 0 ? dailyRows.reduce((a, b) => (Number(b.total) > Number(a.total) ? b : a)) : null;
     const datePeak: DatePeak | null =
-      txnCount >= MIN_TXN_FOR_PEAK_GUARDS && highestDay ? { date: highestDay.expense_date, total: Number(highestDay.total) } : null;
+      highestDay && Number(highestDay.total) > 0 ? { date: highestDay.expense_date, total: Number(highestDay.total) } : null;
 
-    const avgDailySpend = days > 0 ? total / days : 0;
-    const avgWeeklySpend = weeks > 0 ? total / weeks : 0;
+    const avgDailySpend = total / days;
+    const avgWeeklySpend = total / weeks;
+
+    // Month-end projection
+    const today = new Date();
+    const isCurrentMonth = range.start === month.start && range.end === month.end;
+    const currentDay = today.getDate();
+    const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const projectedMonthEnd = isCurrentMonth && currentDay > 0 ? (total / currentDay) * daysInCurrentMonth : null;
 
     const personSplit: PersonSplit = {
       byExpenseType: (bundle.expense_type_rows ?? []).map((row) => ({
@@ -209,11 +277,15 @@ export async function getSpendingIntelligence(range: DateRange) {
     };
 
     const recurringRow = bundle.recurring_row;
-    const recurringVsOneoff: RecurringVsOneoff = {
-      recurringTotal: Number(recurringRow?.recurring_total ?? 0),
+    const recTotal = Number(recurringRow?.recurring_total ?? 0);
+    const oneTotal = Number(recurringRow?.oneoff_total ?? 0);
+    const recurringSharePct = total > 0 ? (recTotal / total) * 100 : 0;
+    const recurringVsOneoff = {
+      recurringTotal: recTotal,
       recurringCount: recurringRow?.recurring_count ?? 0,
-      oneoffTotal: Number(recurringRow?.oneoff_total ?? 0),
+      oneoffTotal: oneTotal,
       oneoffCount: recurringRow?.oneoff_count ?? 0,
+      recurringSharePct,
     };
 
     const merchantPrevRows = bundle.merchant_prev_rows ?? [];
@@ -240,21 +312,59 @@ export async function getSpendingIntelligence(range: DateRange) {
 
     const categoryChanges = computeCategoryChanges(
       (bundle.category_month_rows ?? []).map((r) => ({ category_id: r.category_id, category_name: r.category_name, total: Number(r.total) })),
-      (bundle.category_prev_month_rows ?? []).map((r) => ({ category_id: r.category_id, category_name: r.category_name, total: Number(r.total) }))
+      categoryPrevMonthRows.map((r) => ({ category_id: r.category_id, category_name: r.category_name, total: Number(r.total) }))
     );
+
+    // Smart factual takeaways
+    const smartTakeaways: string[] = [];
+    if (avgDailySpend > 0) {
+      smartTakeaways.push(
+        projectedMonthEnd
+          ? `Spending pace is ₹${Math.round(avgDailySpend).toLocaleString("en-IN")}/day (on track for ₹${Math.round(projectedMonthEnd).toLocaleString("en-IN")} this month).`
+          : `Average spend velocity is ₹${Math.round(avgDailySpend).toLocaleString("en-IN")}/day (₹${Math.round(avgWeeklySpend).toLocaleString("en-IN")}/week).`
+      );
+    }
+    if (weekdayPeak && total > 0) {
+      const peakShare = Math.round((weekdayPeak.total / total) * 100);
+      smartTakeaways.push(`${weekdayPeak.weekdayName}s account for highest volume at ₹${Math.round(weekdayPeak.total).toLocaleString("en-IN")} (${peakShare}% of total).`);
+    }
+    if (personSplit.byPayer.length >= 2) {
+      const p1 = personSplit.byPayer[0];
+      const p2 = personSplit.byPayer[1];
+      const p1Pct = total > 0 ? Math.round((p1.total / total) * 100) : 50;
+      const p2Pct = 100 - p1Pct;
+      smartTakeaways.push(`Payer split: ${p1.name} paid ${p1Pct}%, ${p2.name} paid ${p2Pct}%.`);
+    }
+    if (recurringSharePct > 0) {
+      smartTakeaways.push(`Fixed & recurring bills make up ${Math.round(recurringSharePct)}% of spending (₹${Math.round(recTotal).toLocaleString("en-IN")}).`);
+    }
+    if (categoryChanges && categoryChanges.changes.length > 0) {
+      const topCat = categoryChanges.changes[0];
+      if (topCat.changePct !== null && Math.abs(topCat.changePct) > 10) {
+        smartTakeaways.push(
+          topCat.current > topCat.previous
+            ? `${topCat.category_name} spending increased by ${Math.abs(Math.round(topCat.changePct))}% vs previous period.`
+            : `${topCat.category_name} spending reduced by ${Math.abs(Math.round(topCat.changePct))}% vs previous period.`
+        );
+      }
+    }
 
     return {
       range,
       previousRange,
+      summary,
       weekdayPeak,
       datePeak,
       avgDailySpend,
       avgWeeklySpend,
+      projectedMonthEnd,
+      weekdayBreakdown,
       personSplit,
       recurringVsOneoff,
       categoryChanges,
       topMerchantChanges,
       topItemChanges,
+      smartTakeaways,
     };
   });
 }

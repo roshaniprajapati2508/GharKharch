@@ -102,8 +102,8 @@ export const KEYWORD_RULES: KeywordRule[] = [
   { keywords: ["stationery", "office stationery", "business document", "shopify", "godaddy", "domain renewal", "hosting", "canva pro"], categoryName: "Homemade Business", subcategoryName: "Stationery & Office" },
 
   // Shopping
-  { keywords: ["online shopping", "e-commerce", "shopping mall", "general shopping"], categoryName: "Shopping", subcategoryName: "Online Shopping" },
-  { keywords: ["novel", "magazine", "reading book"], categoryName: "Shopping", subcategoryName: "General Shopping" },
+  { keywords: ["shopping", "amazon", "flipkart", "myntra", "meesho", "ajio", "nykaa", "tata cliq", "online shopping", "e-commerce", "shopping mall", "general shopping", "bazaar", "bazar", "market", "mall", "purchase", "order"], categoryName: "Shopping", subcategoryName: "Online Shopping" },
+  { keywords: ["novel", "magazine", "reading book", "book buy"], categoryName: "Shopping", subcategoryName: "General Shopping" },
 
   // Personal
   { keywords: ["tuition", "coaching", "school fee", "college fee", "class fee", "exam fee", "tuition fee", "course fee", "study material"], categoryName: "Personal", subcategoryName: "Education & Tuition" },
@@ -111,21 +111,24 @@ export const KEYWORD_RULES: KeywordRule[] = [
   { keywords: ["hobby", "hobbies"], categoryName: "Personal", subcategoryName: "Hobbies" },
 ];
 
-/** Finds the first keyword rule whose keyword appears in the (already-lowercased) text. */
+/** Finds the first keyword rule whose keyword appears in the text (case-insensitive). */
 export function matchKeywordRule(text: string): KeywordRule | null {
   if (typeof text !== "string") return null;
+  const lower = text.toLowerCase().trim();
+  if (!lower) return null;
+
   // Exact/substring pass first - cheap, and correctly-spelled text should
   // never need the fuzzy fallback below.
   for (const rule of KEYWORD_RULES) {
-    if (rule.keywords.some((k) => text.includes(k))) return rule;
+    if (rule.keywords.some((k) => lower.includes(k.toLowerCase()))) return rule;
   }
 
   // Typo-tolerant fallback pass (fuzzy typo tolerance, e.g. "docter" for
   // "doctor", "xrox" for "xerox") - only reached when nothing matched
   // exactly, and only for text that's substantial enough to be worth it.
-  if (text.trim().length < 3) return null;
+  if (lower.length < 3) return null;
   for (const rule of KEYWORD_RULES) {
-    if (rule.keywords.some((k) => fuzzyMatches(text, k))) return rule;
+    if (rule.keywords.some((k) => fuzzyMatches(lower, k.toLowerCase()))) return rule;
   }
 
   return null;

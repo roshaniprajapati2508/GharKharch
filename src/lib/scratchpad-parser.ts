@@ -12,18 +12,25 @@ import { suggestMerchant } from "@/lib/expense-intelligence/merchant-suggester";
 import type { CategoryWithChildren } from "@/lib/actions/categories";
 import type { Tables } from "@/types/database";
 
-const PAYMENT_KEYWORDS: { keyword: string; label: string }[] = [
-  { keyword: "gpay", label: "UPI" },
-  { keyword: "googlepay", label: "UPI" },
-  { keyword: "phonepe", label: "UPI" },
-  { keyword: "paytm", label: "UPI" },
-  { keyword: "upi", label: "UPI" },
-  { keyword: "cash", label: "Cash" },
-  { keyword: "card", label: "Credit Card" },
-  { keyword: "bank", label: "Bank Transfer" },
+const PAYMENT_KEYWORDS: { pattern: RegExp; label: string; rawWords: string[] }[] = [
+  { pattern: /\b(google\s*pay|gpay)\b/i, label: "UPI", rawWords: ["google pay", "googlepay", "gpay"] },
+  { pattern: /\b(phone\s*pe|phonepe)\b/i, label: "UPI", rawWords: ["phone pe", "phonepe"] },
+  { pattern: /\b(paytm)\b/i, label: "UPI", rawWords: ["paytm"] },
+  { pattern: /\b(upi)\b/i, label: "UPI", rawWords: ["upi"] },
+  { pattern: /\b(cash|rokda)\b/i, label: "Cash", rawWords: ["cash", "rokda"] },
+  { pattern: /\b(credit\s*card|debit\s*card|card)\b/i, label: "Credit Card", rawWords: ["credit card", "debit card", "card"] },
+  { pattern: /\b(bank\s*transfer|netbanking|neft|rtgs|imps|bank)\b/i, label: "Bank Transfer", rawWords: ["bank transfer", "netbanking", "neft", "rtgs", "imps", "bank"] },
 ];
 
-const INCOME_KEYWORDS = ["income", "payout", "sale", "salary"];
+const INCOME_KEYWORDS = [
+  /\b(income)\b/i,
+  /\b(payout|payouts)\b/i,
+  /\b(salary|payroll)\b/i,
+  /\b(sale|sales)\b/i,
+  /\b(refund|refunds)\b/i,
+  /\b(cashback)\b/i,
+  /\b(interest)\b/i,
+];
 
 export interface ParsedScratchpadLine {
   lineNumber: number;
@@ -38,22 +45,24 @@ export interface ParsedScratchpadLine {
   subcategoryName: string | null;
 }
 
-/** Extracts the first numeric token (e.g. "40", "150.50") as the amount, and returns the line with that token removed. */
+/** Extracts numeric amount (handles prefix ₹/Rs/INR and suffix /-, rs, etc.) and returns remaining text. */
 function extractAmount(text: string): { amount: number | null; rest: string } {
-  const match = text.match(/(?:^|\s)(\d+(?:\.\d+)?)(?:\s|$)/);
+  // Matches "₹150", "Rs 150", "Rs. 150", "150/-", "150rs", "150.50", "150"
+  const match = text.match(/(?:^|\s)(?:₹|rs\.?|inr)?\s*(\d+(?:\.\d+)?)(?:\s*(?:\/\-|rs|inr|rupees))?(?:\s|$)/i);
   if (!match) return { amount: null, rest: text };
-  const amount = parseFloat(match[1]);
-  const rest = (text.slice(0, match.index) + " " + text.slice((match.index ?? 0) + match[0].length)).trim();
-  return { amount: Number.isFinite(amount) ? amount : null, rest };
+
+  const parsed = parseFloat(match[1]);
+  const amount = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  const rest = (text.slice(0, match.index) + " " + text.slice((match.index ?? 0) + match[0].length)).replace(/\s+/g, " ").trim();
+  return { amount, rest };
 }
 
-/** Removes every whole-word occurrence of `word` from `text` (case-insensitive), collapsing extra whitespace. */
-function stripWord(text: string, word: string): string {
-  const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
-  return text.replace(re, " ").replace(/\s+/g, " ").trim();
+/** Removes matching words/phrases from text (case-insensitive) and collapses whitespace. */
+function stripPattern(text: string, pattern: RegExp): string {
+  return text.replace(pattern, " ").replace(/\s+/g, " ").trim();
 }
 
-/** Parses one freeform shorthand line into its raw semantic tokens (spec steps 1-5). Does not touch the network or resolve real ids - see resolveScratchpadLine for that. */
+/** Parses one freeform shorthand line into its raw semantic tokens. */
 export function parseScratchpadLine(raw: string, lineNumber: number): ParsedScratchpadLine {
   let text = raw.trim();
 
@@ -61,45 +70,41 @@ export function parseScratchpadLine(raw: string, lineNumber: number): ParsedScra
   const { amount, rest: afterAmount } = extractAmount(text);
   text = afterAmount;
 
-  // 2. Payment method
-  let paymentMethod: string | null = null;
-  for (const { keyword, label } of PAYMENT_KEYWORDS) {
-    if (new RegExp(`\\b${keyword}\\b`, "i").test(text)) {
-      paymentMethod = label;
-      text = stripWord(text, keyword);
-      break;
-    }
-  }
-
-  // 3. Payer/receiver
-  let paidByName: "Harsh" | "Roshni" | null = null;
-  if (/\bharsh\b/i.test(text)) {
-    paidByName = "Harsh";
-    text = stripWord(text, "harsh");
-  } else if (/\broshni\b/i.test(text)) {
-    paidByName = "Roshni";
-    text = stripWord(text, "roshni");
-  }
-
-  // 4. Entry type
+  // 2. Entry type (income vs expense)
   let entryType: "expense" | "income" = "expense";
-  for (const kw of INCOME_KEYWORDS) {
-    if (new RegExp(`\\b${kw}\\b`, "i").test(text)) {
+  for (const pattern of INCOME_KEYWORDS) {
+    if (pattern.test(text)) {
       entryType = "income";
-      text = stripWord(text, kw);
+      text = stripPattern(text, pattern);
       break;
     }
   }
 
-  // 5. Whatever tokens remain form the item name.
-  const itemName = text.trim() || raw.trim();
+  // 3. Payment method
+  let paymentMethod: string | null = null;
+  for (const { pattern, label } of PAYMENT_KEYWORDS) {
+    if (pattern.test(text)) {
+      paymentMethod = label;
+      text = stripPattern(text, pattern);
+      break;
+    }
+  }
 
-  // 6. Intelligence mapping - static keyword fallback (category-suggester's
-  // tier 4). A per-household usage-history match (tiers 1-3) needs a
-  // server round trip per line, which would defeat the point of a fast,
-  // 0ms multi-line parser - the review table lets the user correct any
-  // miss before saving anyway.
-  const keywordMatch = matchKeywordRule(itemName);
+  // 4. Payer/receiver keywords
+  let paidByName: "Harsh" | "Roshni" | null = null;
+  if (/\b(harsh)\b/i.test(text)) {
+    paidByName = "Harsh";
+    text = stripPattern(text, /\b(harsh)\b/i);
+  } else if (/\b(roshni|rosh)\b/i.test(text)) {
+    paidByName = "Roshni";
+    text = stripPattern(text, /\b(roshni|rosh)\b/i);
+  }
+
+  // 5. Remaining text forms the clean item name
+  let itemName = text.trim() || raw.trim();
+
+  // 6. Intelligent keyword category match
+  const keywordMatch = matchKeywordRule(itemName) || matchKeywordRule(raw);
 
   return {
     lineNumber,
@@ -114,7 +119,7 @@ export function parseScratchpadLine(raw: string, lineNumber: number): ParsedScra
   };
 }
 
-/** Splits raw scratchpad text into non-empty lines and parses each (spec section 3). */
+/** Splits raw scratchpad text into non-empty lines and parses each. */
 export function parseScratchpadText(text: string): ParsedScratchpadLine[] {
   return text
     .split("\n")
@@ -139,7 +144,7 @@ export interface ResolvedScratchpadRow {
   entryType: "expense" | "income";
 }
 
-/** Resolves one parsed line's names into real ids for this household - same "resolve by name against already-loaded data" pattern as the Smart Rules engine. Falls back to the current user as payer and "UPI" as payment method when the line didn't specify one, so every row is save-ready without forcing the user to fill in defaults by hand. */
+/** Resolves one parsed line's names into real ids for this household against already-loaded data. */
 export function resolveScratchpadLine(
   parsed: ParsedScratchpadLine,
   categoryTree: CategoryWithChildren[],
@@ -152,25 +157,62 @@ export function resolveScratchpadLine(
   let resolvedCategoryName = parsed.categoryName;
   let resolvedSubcategoryName = parsed.subcategoryName;
 
-  if (parsed.categoryName) {
-    const parent = categoryTree.find((c) => c.name.toLowerCase() === parsed.categoryName!.toLowerCase());
+  // 1. Merchant suggestion
+  const merchantMatch = suggestMerchant(parsed.itemName, merchants) || suggestMerchant(parsed.raw, merchants);
+  const merchant = merchantMatch && merchantMatch.confidence >= 0.6 ? merchantMatch.merchant : null;
+
+  // 2. If no category found yet, try matching merchant name or item name directly in categoryTree
+  if (!resolvedCategoryName) {
+    if (merchant) {
+      const merchantRule = matchKeywordRule(merchant.name);
+      if (merchantRule) {
+        resolvedCategoryName = merchantRule.categoryName;
+        resolvedSubcategoryName = merchantRule.subcategoryName ?? null;
+      }
+    }
+  }
+
+  // 3. Match against loaded categoryTree
+  if (resolvedCategoryName) {
+    const parent = categoryTree.find(
+      (c) => c.name.toLowerCase() === resolvedCategoryName!.toLowerCase() ||
+             c.name.toLowerCase().includes(resolvedCategoryName!.toLowerCase())
+    );
     if (parent) {
       categoryId = parent.id;
       resolvedCategoryName = parent.name;
-      if (parsed.subcategoryName) {
-        const sub = parent.children.find((c) => c.name.toLowerCase() === parsed.subcategoryName!.toLowerCase());
+      if (resolvedSubcategoryName) {
+        const sub = parent.children.find(
+          (c) => c.name.toLowerCase() === resolvedSubcategoryName!.toLowerCase() ||
+                 c.name.toLowerCase().includes(resolvedSubcategoryName!.toLowerCase())
+        );
         if (sub) {
           subcategoryId = sub.id;
           resolvedSubcategoryName = sub.name;
         }
       }
     }
+  } else {
+    // Check if item name directly names a category (e.g. "shopping", "groceries", "transport", "food")
+    const lowerItem = parsed.itemName.toLowerCase();
+    const directCat = categoryTree.find(
+      (c) => c.name.toLowerCase() === lowerItem ||
+             lowerItem.includes(c.name.toLowerCase()) ||
+             c.name.toLowerCase().split("&").some((part) => lowerItem.includes(part.trim().toLowerCase()))
+    );
+    if (directCat) {
+      categoryId = directCat.id;
+      resolvedCategoryName = directCat.name;
+    }
   }
 
-  const merchantMatch = suggestMerchant(parsed.itemName, merchants);
-  const merchant = merchantMatch && merchantMatch.confidence >= 0.7 ? merchantMatch.merchant : null;
+  // 4. Resolve Payer
   let payer = parsed.paidByName
-    ? members.find((m) => m.displayName.toLowerCase().includes(parsed.paidByName!.toLowerCase()) || parsed.paidByName!.toLowerCase().includes(m.displayName.toLowerCase()))
+    ? members.find(
+        (m) =>
+          m.displayName.toLowerCase().includes(parsed.paidByName!.toLowerCase()) ||
+          parsed.paidByName!.toLowerCase().includes(m.displayName.toLowerCase())
+      )
     : null;
 
   if (!payer && parsed.raw) {
