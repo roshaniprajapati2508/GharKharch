@@ -13,14 +13,14 @@ import type { CategoryScope } from "@/lib/actions/analytics";
  * doesn't switch between separate views.
  */
 export function CategoryScopeToggle({ value, onChange }: { value: CategoryScope; onChange: (scope: CategoryScope) => void }) {
-  const options: { value: CategoryScope; label: string; icon: typeof Globe2 }[] = [
-    { value: "all", label: "All Expenses", icon: Globe2 },
-    { value: "household", label: "Household Only", icon: Home },
-    { value: "business", label: "Business Only", icon: Briefcase },
+  const options: { value: CategoryScope; label: string; mobileLabel: string; icon: typeof Globe2 }[] = [
+    { value: "all", label: "All Expenses", mobileLabel: "All", icon: Globe2 },
+    { value: "household", label: "Household Only", mobileLabel: "Household", icon: Home },
+    { value: "business", label: "Business Only", mobileLabel: "Business", icon: Briefcase },
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-border bg-surface p-1.5">
+    <div className="grid grid-cols-3 gap-1 rounded-xl border border-border bg-surface p-1 sm:gap-1.5 sm:p-1.5">
       {options.map((opt) => {
         const Icon = opt.icon;
         const active = value === opt.value;
@@ -30,12 +30,13 @@ export function CategoryScopeToggle({ value, onChange }: { value: CategoryScope;
             type="button"
             onClick={() => onChange(opt.value)}
             className={cn(
-              "flex min-h-11 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors",
+              "flex min-h-11 items-center justify-center gap-1 sm:gap-1.5 rounded-lg px-1.5 sm:px-2 py-2 text-xs font-semibold transition-colors",
               active ? "bg-brand-primary text-white shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
             <Icon className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{opt.label}</span>
+            <span className="sm:hidden">{opt.mobileLabel}</span>
+            <span className="hidden sm:inline">{opt.label}</span>
           </button>
         );
       })}

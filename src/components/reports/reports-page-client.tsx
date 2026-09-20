@@ -155,21 +155,21 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
 
   return (
     <div className="flex flex-col gap-5 pb-10">
-      <div className="no-print flex items-center justify-between">
+      <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Reports</h1>
         {hasActivity && (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={exporting}>
-              <Download className="h-4 w-4" /> CSV
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={exporting} className="h-8 px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm">
+              <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> CSV
             </Button>
-            <Button variant="outline" size="sm" onClick={handleExportJson} disabled={exportingJson}>
-              <FileJson className="h-4 w-4" /> JSON
+            <Button variant="outline" size="sm" onClick={handleExportJson} disabled={exportingJson} className="h-8 px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm">
+              <FileJson className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> JSON
             </Button>
-            <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
-              <FileDown className="h-4 w-4" /> PDF
+            <Button variant="outline" size="sm" onClick={handleDownloadPdf} className="h-8 px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm">
+              <FileDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={() => window.print()}>
-              <Printer className="h-4 w-4" /> Print
+            <Button variant="outline" size="sm" onClick={() => window.print()} className="hidden h-8 px-2.5 text-xs sm:inline-flex sm:h-9 sm:px-3 sm:text-sm">
+              <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Print
             </Button>
           </div>
         )}
@@ -204,7 +204,7 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
       <CategoryScopeToggle value={categoryScope} onChange={handleScopeChange} />
 
       {customOpen && (
-        <div className="no-print flex items-end gap-2 rounded-xl border border-border bg-surface p-3">
+        <div className="no-print flex flex-col sm:flex-row items-stretch sm:items-end gap-2.5 rounded-xl border border-border bg-surface p-3">
           <div className="flex-1">
             <label className="text-xs text-muted-foreground">From</label>
             <input
@@ -223,7 +223,7 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
               className="mt-1 h-9 w-full rounded-md border border-input bg-card px-2 text-sm"
             />
           </div>
-          <Button size="sm" onClick={applyCustomRange} disabled={!customStart || !customEnd}>
+          <Button size="sm" onClick={applyCustomRange} disabled={!customStart || !customEnd} className="h-9">
             Apply
           </Button>
         </div>

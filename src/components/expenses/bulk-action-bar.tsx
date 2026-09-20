@@ -73,27 +73,29 @@ export function BulkActionBar({
 
   return (
     <>
-      <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:pb-4">
-        <div className="flex w-full max-w-xl items-center gap-2 rounded-2xl border border-border bg-card/95 px-3 py-2.5 shadow-lg backdrop-blur-md">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
-            aria-label="Clear selection"
-          >
-            <X className="h-4 w-4" />
-          </button>
+      <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] sm:px-3 sm:pb-4 sm:bottom-0">
+        <div className="flex w-full max-w-xl items-center justify-between gap-1.5 rounded-2xl border border-border bg-card/98 px-2.5 py-2 shadow-2xl backdrop-blur-md ring-1 ring-black/5 dark:ring-white/10 sm:gap-2 sm:px-3 sm:py-2.5">
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Clear selection"
+            >
+              <X className="h-4 w-4" />
+            </button>
 
-          <div className="min-w-0 shrink-0 pr-1">
-            <p className="text-xs font-semibold text-foreground">{selectedExpenses.length} selected</p>
-            <p className="text-[10px] text-muted-foreground">{formatINR(total)}</p>
+            <div className="min-w-0 shrink-0 pr-0.5">
+              <p className="text-xs font-bold leading-tight text-foreground">{selectedExpenses.length} selected</p>
+              <p className="text-[10px] font-semibold leading-tight text-muted-foreground">{formatINR(total)}</p>
+            </div>
           </div>
 
-          <div className="flex flex-1 items-center justify-end gap-1.5 overflow-x-auto">
+          <div className="flex flex-1 items-center justify-end gap-1 sm:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex h-11 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none">
+              <DropdownMenuTrigger className="flex h-10 items-center gap-1 rounded-lg border border-border bg-surface px-2.5 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none shrink-0 sm:gap-1.5 sm:px-3">
                 <Tag className="h-3.5 w-3.5" />
-                Category
+                <span className="hidden xs:inline">Category</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
                 {categories.map((c) => (
@@ -105,9 +107,9 @@ export function BulkActionBar({
             </DropdownMenu>
 
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex h-11 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none">
+              <DropdownMenuTrigger className="flex h-10 items-center gap-1 rounded-lg border border-border bg-surface px-2.5 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none shrink-0 sm:gap-1.5 sm:px-3">
                 <CreditCard className="h-3.5 w-3.5" />
-                Payment
+                <span className="hidden xs:inline">Payment</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
                 {paymentMethods.length === 0 ? (
@@ -125,7 +127,7 @@ export function BulkActionBar({
             <button
               type="button"
               onClick={exportSelected}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-foreground hover:bg-muted"
               aria-label="Export selected as CSV"
               title="Export selected as CSV"
             >
@@ -135,7 +137,7 @@ export function BulkActionBar({
             <button
               type="button"
               onClick={() => setConfirmDeleteOpen(true)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-surface text-destructive hover:bg-destructive/10"
               aria-label="Delete selected"
               title="Delete selected"
             >

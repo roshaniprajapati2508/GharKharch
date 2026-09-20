@@ -164,17 +164,17 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
               previousMerchants={data.previousMerchantBreakdown}
             />
 
-            <div className="flex items-center justify-between pt-2">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="flex flex-col gap-2.5 pt-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground sm:text-sm">
                 Transaction Cashflow
               </h2>
-              <div className="flex gap-1 rounded-lg bg-muted p-0.5 text-xs font-semibold">
+              <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-0.5 text-xs font-semibold sm:flex sm:gap-1">
                 <button
                   type="button"
                   onClick={() => setFlowFilter("all")}
                   className={cn(
-                    "rounded-md px-2.5 py-1 transition-colors",
-                    flowFilter === "all" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                    "whitespace-nowrap rounded-md px-2 py-1.5 sm:px-2.5 sm:py-1 text-center transition-colors",
+                    flowFilter === "all" ? "bg-card text-foreground shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   All Flow
@@ -183,8 +183,8 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
                   type="button"
                   onClick={() => setFlowFilter("expenses")}
                   className={cn(
-                    "rounded-md px-2.5 py-1 transition-colors",
-                    flowFilter === "expenses" ? "bg-card text-rose-600 dark:text-rose-400 shadow-xs" : "text-muted-foreground hover:text-foreground"
+                    "whitespace-nowrap rounded-md px-2 py-1.5 sm:px-2.5 sm:py-1 text-center transition-colors",
+                    flowFilter === "expenses" ? "bg-card text-rose-600 dark:text-rose-400 shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Debits (-)
@@ -193,8 +193,8 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
                   type="button"
                   onClick={() => setFlowFilter("inflows")}
                   className={cn(
-                    "rounded-md px-2.5 py-1 transition-colors",
-                    flowFilter === "inflows" ? "bg-card text-emerald-600 dark:text-emerald-400 shadow-xs" : "text-muted-foreground hover:text-foreground"
+                    "whitespace-nowrap rounded-md px-2 py-1.5 sm:px-2.5 sm:py-1 text-center transition-colors",
+                    flowFilter === "inflows" ? "bg-card text-emerald-600 dark:text-emerald-400 shadow-xs font-bold" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Credits (+)

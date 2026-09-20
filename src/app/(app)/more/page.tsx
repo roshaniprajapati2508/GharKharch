@@ -22,6 +22,7 @@ import {
   DatabaseBackup,
   UploadCloud,
   History,
+  FileBarChart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -203,11 +204,12 @@ export default function MorePage() {
         </Card>
       </div>
 
-      {/* Money section: categories, merchants, dedup tooling, payment instruments */}
+      {/* Money section: reports, categories, merchants, dedup tooling, payment instruments */}
       <div className="flex flex-col gap-2">
         <SectionLabel icon={Wallet}>Money</SectionLabel>
         <Card>
           <CardContent className="flex flex-col divide-y divide-border p-0">
+            <MenuLink href="/reports" icon={FileBarChart} label="Reports & Statements" />
             <MenuLink href="/more/categories" icon={Tag} label="Categories" />
             <MenuLink href="/more/merchants" icon={Store} label="Merchants" />
             <MenuLink href="/more/duplicates" icon={Merge} label="Find duplicates" />
