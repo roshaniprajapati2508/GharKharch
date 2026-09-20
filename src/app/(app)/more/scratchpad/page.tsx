@@ -7,7 +7,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { parseScratchpadText, resolveScratchpadLine, type ResolvedScratchpadRow } from "@/lib/scratchpad-parser";
-import { getScratchpadDraft, saveScratchpadDraft, clearScratchpadDraft } from "@/lib/actions/scratchpad";
+import {
+  getScratchpadDraft,
+  saveScratchpadDraft,
+  clearScratchpadDraft,
+  getScratchpadQuickSuggestions,
+  type ScratchpadSuggestion,
+} from "@/lib/actions/scratchpad";
 import { bulkCreateExpenses, type ScratchpadExpenseInput } from "@/lib/actions/expenses";
 import { listCategoriesForHousehold, type CategoryWithChildren } from "@/lib/actions/categories";
 import { listMerchantsForHousehold } from "@/lib/actions/merchants";
@@ -38,6 +44,18 @@ export default function ScratchpadPage() {
   const [merchants, setMerchants] = useState<Tables<"merchants">[]>([]);
   const [rows, setRows] = useState<ResolvedScratchpadRow[]>([]);
   const [saving, setSaving] = useState(false);
+  const [suggestionTab, setSuggestionTab] = useState<"frequent" | "business" | "household" | "income">("frequent");
+  const [suggestions, setSuggestions] = useState<{
+    historySuggestions: ScratchpadSuggestion[];
+    businessSuggestions: ScratchpadSuggestion[];
+    householdSuggestions: ScratchpadSuggestion[];
+    incomeSuggestions: ScratchpadSuggestion[];
+  }>({
+    historySuggestions: [],
+    businessSuggestions: [],
+    householdSuggestions: [],
+    incomeSuggestions: [],
+  });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const members = useMemo(
@@ -46,10 +64,16 @@ export default function ScratchpadPage() {
   );
 
   useEffect(() => {
-    Promise.all([getScratchpadDraft(), listCategoriesForHousehold(), listMerchantsForHousehold()]).then(([draft, cats, merch]) => {
+    Promise.all([
+      getScratchpadDraft(),
+      listCategoriesForHousehold(),
+      listMerchantsForHousehold(),
+      getScratchpadQuickSuggestions(),
+    ]).then(([draft, cats, merch, sugg]) => {
       if (draft.data) setText(draft.data);
       if (cats.data) setCategoryTree(cats.data.tree);
       if (merch.data) setMerchants(merch.data);
+      if (sugg.data) setSuggestions(sugg.data);
       setLoaded(true);
     });
   }, []);
@@ -165,13 +189,28 @@ export default function ScratchpadPage() {
     setText((prev) => (prev.trim() ? `${prev.trim()}\n${sample}` : sample));
   }
 
-  const EXAMPLE_CHIPS = [
-    { label: "🛒 Grocery", text: "Dmart 1200 upi" },
-    { label: "☕ Chai & Snacks", text: "Chai 40 cash" },
-    { label: "📦 Amazon Shopping", text: "Amazon shopping 450 card" },
-    { label: "🛺 Auto Commute", text: "Auto rickshaw 50 upi" },
-    { label: "💰 Seller Payout", text: "Meesho seller payout 3200 income" },
-  ];
+  const currentChips = useMemo(() => {
+    switch (suggestionTab) {
+      case "frequent":
+        return suggestions.historySuggestions.length > 0
+          ? suggestions.historySuggestions
+          : [
+              { id: "def-dmart", label: "🛒 Dmart Grocery", template: "Dmart grocery 1200 upi", source: "household" as const },
+              { id: "def-milk", label: "🥛 Amul Milk", template: "Doodh 60 amul upi", source: "household" as const },
+              { id: "def-chai", label: "☕ Chai & Snacks", template: "Chai 40 cash", source: "household" as const },
+              { id: "def-auto", label: "🛺 Auto Rickshaw", template: "Auto rickshaw 50 upi", source: "household" as const },
+              { id: "def-amazon", label: "📦 Amazon Order", template: "Amazon shopping 450 card", source: "household" as const },
+            ];
+      case "business":
+        return suggestions.businessSuggestions;
+      case "household":
+        return suggestions.householdSuggestions;
+      case "income":
+        return suggestions.incomeSuggestions;
+      default:
+        return [];
+    }
+  }, [suggestionTab, suggestions]);
 
   return (
     <div className="flex flex-col gap-5 pb-16">
@@ -206,16 +245,46 @@ export default function ScratchpadPage() {
         )}
       </div>
 
-      {/* Quick Example Chips */}
-      <div className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-medium text-muted-foreground">Tap to add quick sample lines:</span>
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {EXAMPLE_CHIPS.map((chip) => (
+      {/* Quick Add Section with Category Tabs */}
+      <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-surface p-3 shadow-sm">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            ⚡ Quick Add Templates:
+          </span>
+          {/* Category Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {[
+              { key: "frequent", label: "⚡ Most Used" },
+              { key: "business", label: "💼 Homemade Business" },
+              { key: "household", label: "🏠 Household" },
+              { key: "income", label: "💰 Payouts" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setSuggestionTab(tab.key as typeof suggestionTab)}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all shrink-0",
+                  suggestionTab === tab.key
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Chips List */}
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {currentChips.map((chip) => (
             <button
-              key={chip.label}
+              key={chip.id}
               type="button"
-              onClick={() => appendExample(chip.text)}
-              className="shrink-0 rounded-lg border border-border/80 bg-surface px-2.5 py-1 text-xs font-medium text-foreground hover:border-primary/50 hover:bg-muted transition-colors"
+              onClick={() => appendExample(chip.template)}
+              className="shrink-0 rounded-xl border border-border/80 bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:border-primary hover:bg-primary/5 hover:text-primary transition-all shadow-xs"
+              title={`Add line: ${chip.template}`}
             >
               + {chip.label}
             </button>
