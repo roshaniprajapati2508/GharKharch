@@ -44,42 +44,42 @@ export function MonthlyReportView({ data }: { data: ReportData }) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-gradient-to-b from-brand-mint/40 via-surface to-surface p-6 print:border-none print:bg-white print:p-0 sm:p-8 space-y-6">
+    <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-gradient-to-b from-brand-mint/40 via-surface to-surface p-4 print:border-none print:bg-white print:p-0 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
       <div>
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-brand-primary">GharKharch Financial Report</p>
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-brand-primary truncate">GharKharch Financial Report</p>
+          <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-muted-foreground">
             {data.range.label}
           </span>
         </div>
 
         {/* Hero Cashflow Box */}
-        <div className="mt-4 rounded-2xl border border-border/70 bg-card p-5 shadow-xs">
+        <div className="mt-3 sm:mt-4 rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs">
           <p className="text-xs font-medium text-muted-foreground">Net Period Cashflow</p>
-          <div className="mt-1 flex items-baseline gap-2">
-            <p className={cn("text-4xl font-black tabular-nums tracking-tight", isPositiveNet ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+          <div className="mt-1 flex flex-wrap items-baseline gap-2">
+            <p className={cn("text-3xl sm:text-4xl font-black tabular-nums tracking-tight", isPositiveNet ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
               {isPositiveNet ? "+" : "-"}{formatINR(Math.abs(netSavings))}
             </p>
             <span className={cn("flex items-center gap-0.5 text-xs font-bold rounded-md px-1.5 py-0.5", isPositiveNet ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/10 text-rose-600 dark:text-rose-400")}>
               {isPositiveNet ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-              {isPositiveNet ? "Net Surplus / Profit" : "Net Outflow"}
+              {isPositiveNet ? "Net Surplus" : "Net Outflow"}
             </span>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border/50 pt-3">
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                Total Inflows / Credits ({data.incomeCount ?? 0})
+          <div className="mt-3 sm:mt-4 grid grid-cols-2 gap-2 sm:gap-3 border-t border-border/50 pt-3">
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-2 sm:p-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 truncate">
+                Inflows ({data.incomeCount ?? 0})
               </p>
-              <p className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+              <p className="mt-0.5 text-base sm:text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                 +{formatINR(incomeTotal)}
               </p>
             </div>
-            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
-                Total Debits / Expenses ({data.summary.txn_count})
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-2 sm:p-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400 truncate">
+                Debits ({data.summary.txn_count})
               </p>
-              <p className="text-lg font-bold tabular-nums text-rose-600 dark:text-rose-400">
+              <p className="mt-0.5 text-base sm:text-lg font-bold tabular-nums text-rose-600 dark:text-rose-400">
                 -{formatINR(total)}
               </p>
             </div>
@@ -87,43 +87,43 @@ export function MonthlyReportView({ data }: { data: ReportData }) {
         </div>
 
         {change !== null && prevTotal > 0 && (
-          <p className={cn("mt-3 flex items-center gap-1 text-xs font-semibold", change <= 0 ? "text-brand-green" : "text-brand-orange")}>
-            {change <= 0 ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}
-            Spend changed by {Math.abs(change).toFixed(1)}% vs previous period ({formatINR(prevTotal)})
+          <p className={cn("mt-2.5 sm:mt-3 flex items-center gap-1 text-xs font-semibold", change <= 0 ? "text-brand-green" : "text-brand-orange")}>
+            {change <= 0 ? <ArrowDown className="h-3.5 w-3.5 shrink-0" /> : <ArrowUp className="h-3.5 w-3.5 shrink-0" />}
+            <span>Spend changed by {Math.abs(change).toFixed(1)}% vs previous period ({formatINR(prevTotal)})</span>
           </p>
         )}
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-3 gap-3 rounded-xl bg-card border border-border/60 p-3.5 print:bg-transparent">
+      <div className="grid grid-cols-3 gap-2 rounded-xl bg-card border border-border/60 p-2.5 sm:gap-3 sm:p-3.5 print:bg-transparent">
         <div className="text-center">
-          <p className="text-[11px] font-medium text-muted-foreground">Transactions</p>
-          <p className="mt-0.5 text-base font-bold text-foreground">{data.summary.txn_count + (data.incomeCount ?? 0)}</p>
+          <p className="text-[10px] sm:text-[11px] font-medium text-muted-foreground">Transactions</p>
+          <p className="mt-0.5 text-sm sm:text-base font-bold text-foreground">{data.summary.txn_count + (data.incomeCount ?? 0)}</p>
         </div>
         <div className="text-center">
-          <p className="text-[11px] font-medium text-muted-foreground">Daily Spend Avg</p>
-          <p className="mt-0.5 text-base font-bold text-foreground">{formatINR(total / Math.max(data.summary.days, 1))}</p>
+          <p className="text-[10px] sm:text-[11px] font-medium text-muted-foreground">Daily Spend</p>
+          <p className="mt-0.5 text-sm sm:text-base font-bold text-foreground">{formatINR(total / Math.max(data.summary.days, 1))}</p>
         </div>
-        <div className="text-center">
-          <p className="text-[11px] font-medium text-muted-foreground">Top Category</p>
-          <p className="mt-0.5 truncate text-base font-bold text-foreground">{data.categoryBreakdown[0]?.category_name ?? "-"}</p>
+        <div className="text-center min-w-0">
+          <p className="text-[10px] sm:text-[11px] font-medium text-muted-foreground">Top Category</p>
+          <p className="mt-0.5 truncate text-sm sm:text-base font-bold text-foreground">{data.categoryBreakdown[0]?.category_name ?? "-"}</p>
         </div>
       </div>
 
       {/* Category Breakdown */}
       {data.categoryBreakdown.length > 0 && (
-        <section className="rounded-xl border border-border/60 bg-card p-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Spending Breakdown by Category</h2>
+        <section className="rounded-xl border border-border/60 bg-card p-3.5 sm:p-4">
+          <h2 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">Spending Breakdown by Category</h2>
           <div className="mt-3 flex flex-col gap-3">
             {data.categoryBreakdown.slice(0, 6).map((cat) => {
               const pct = total > 0 ? (parseFloat(cat.total) / total) * 100 : 0;
               return (
-                <div key={cat.category_id} className="flex items-center gap-3">
-                  <CategoryIcon icon={cat.icon} color={cat.color} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" />
+                <div key={cat.category_id} className="flex items-center gap-2.5 sm:gap-3">
+                  <CategoryIcon icon={cat.icon} color={cat.color} className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg" />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between">
-                      <p className="text-sm font-semibold text-foreground">{cat.category_name}</p>
-                      <p className="text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="truncate text-xs sm:text-sm font-semibold text-foreground">{cat.category_name}</p>
+                      <p className="shrink-0 text-xs sm:text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400 whitespace-nowrap">
                         {pct.toFixed(0)}% · -{formatINR(cat.total)}
                       </p>
                     </div>
@@ -140,32 +140,32 @@ export function MonthlyReportView({ data }: { data: ReportData }) {
 
       {/* Top Outflows / Expenses */}
       {data.topExpenses.length > 0 && (
-        <section className="rounded-xl border border-border/60 bg-card p-4">
+        <section className="rounded-xl border border-border/60 bg-card p-3.5 sm:p-4">
           <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-              <ArrowUpRight className="h-3.5 w-3.5" /> Top Debits &amp; Expenses
+            <h2 className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+              <ArrowUpRight className="h-3.5 w-3.5 shrink-0" /> Top Debits &amp; Expenses
             </h2>
             <span className="text-[10px] font-semibold text-muted-foreground">By Amount</span>
           </div>
-          <div className="mt-3 flex flex-col gap-2.5">
+          <div className="mt-2.5 sm:mt-3 flex flex-col gap-2">
             {data.topExpenses.slice(0, 5).map((e, i) => {
               const timeLabel = formatExpenseTime(e.expense_time, e.created_at);
               const payer = memberNameMap.get(e.paid_by) ?? "Member";
               return (
-                <div key={e.id} className="flex items-center justify-between text-sm py-1 border-b border-border/40 last:border-0">
+                <div key={e.id} className="flex items-center justify-between text-sm py-1.5 border-b border-border/40 last:border-0">
                   <div className="min-w-0 flex-1 pr-2">
-                    <p className="truncate text-foreground font-medium">
+                    <p className="truncate text-xs sm:text-sm text-foreground font-medium">
                       <span className="text-muted-foreground font-bold mr-1">{i + 1}.</span>
                       <span className="capitalize">{e.item_name}</span>
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="truncate text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                       {dayGroupLabel(e.expense_date)}
                       {timeLabel ? ` · ${timeLabel}` : ""}
                       {e.category_name ? ` · ${e.category_name}` : ""}
                       {` · By ${payer}`}
                     </p>
                   </div>
-                  <p className="shrink-0 font-bold tabular-nums text-rose-600 dark:text-rose-400">
+                  <p className="shrink-0 text-xs sm:text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400 whitespace-nowrap">
                     -{formatINR(e.amount)}
                   </p>
                 </div>
@@ -177,32 +177,32 @@ export function MonthlyReportView({ data }: { data: ReportData }) {
 
       {/* Top Inflows / Credits */}
       {data.topInflows && data.topInflows.length > 0 && (
-        <section className="rounded-xl border border-border/60 bg-card p-4">
+        <section className="rounded-xl border border-border/60 bg-card p-3.5 sm:p-4">
           <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              <ArrowDownLeft className="h-3.5 w-3.5" /> Top Inflows &amp; Credits
+            <h2 className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              <ArrowDownLeft className="h-3.5 w-3.5 shrink-0" /> Top Inflows &amp; Credits
             </h2>
             <span className="text-[10px] font-semibold text-muted-foreground">By Amount</span>
           </div>
-          <div className="mt-3 flex flex-col gap-2.5">
+          <div className="mt-2.5 sm:mt-3 flex flex-col gap-2">
             {data.topInflows.slice(0, 5).map((e, i) => {
               const timeLabel = formatExpenseTime(e.expense_time, e.created_at);
               const receiver = memberNameMap.get(e.paid_by) ?? "Member";
               return (
-                <div key={e.id} className="flex items-center justify-between text-sm py-1 border-b border-border/40 last:border-0">
+                <div key={e.id} className="flex items-center justify-between text-sm py-1.5 border-b border-border/40 last:border-0">
                   <div className="min-w-0 flex-1 pr-2">
-                    <p className="truncate text-foreground font-medium">
+                    <p className="truncate text-xs sm:text-sm text-foreground font-medium">
                       <span className="text-muted-foreground font-bold mr-1">{i + 1}.</span>
                       <span className="capitalize">{e.item_name}</span>
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="truncate text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                       {dayGroupLabel(e.expense_date)}
                       {timeLabel ? ` · ${timeLabel}` : ""}
                       {e.category_name ? ` · ${e.category_name}` : ""}
                       {` · For ${receiver}`}
                     </p>
                   </div>
-                  <p className="shrink-0 font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  <p className="shrink-0 text-xs sm:text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                     +{formatINR(e.amount)}
                   </p>
                 </div>
@@ -214,14 +214,14 @@ export function MonthlyReportView({ data }: { data: ReportData }) {
 
       {/* Household Member Comparison */}
       {personRows.length > 0 && total > 0 && (
-        <section className="rounded-xl border border-border/60 bg-card p-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Member Spend Contribution</h2>
-          <div className="mt-3 flex flex-col gap-2">
+        <section className="rounded-xl border border-border/60 bg-card p-3.5 sm:p-4">
+          <h2 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">Member Spend Contribution</h2>
+          <div className="mt-2.5 sm:mt-3 flex flex-col gap-2">
             {personRows.map((p) => (
-              <div key={p.id} className="flex items-center justify-between text-sm">
+              <div key={p.id} className="flex items-center justify-between text-xs sm:text-sm">
                 <p className="font-medium text-foreground">{p.label}</p>
-                <p className="font-bold tabular-nums text-rose-600 dark:text-rose-400">
-                  -{formatINR(p.total)} <span className="font-normal text-muted-foreground text-xs">({p.txnCount} txns)</span>
+                <p className="font-bold tabular-nums text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                  -{formatINR(p.total)} <span className="font-normal text-muted-foreground text-[10px] sm:text-xs">({p.txnCount} txns)</span>
                 </p>
               </div>
             ))}
@@ -231,11 +231,11 @@ export function MonthlyReportView({ data }: { data: ReportData }) {
 
       {/* Insights */}
       {insights.length > 0 && (
-        <section className="rounded-xl border border-border/60 bg-card p-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Key Financial Insights</h2>
-          <ul className="mt-3 flex flex-col gap-2">
+        <section className="rounded-xl border border-border/60 bg-card p-3.5 sm:p-4">
+          <h2 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">Key Financial Insights</h2>
+          <ul className="mt-2.5 sm:mt-3 flex flex-col gap-2">
             {insights.slice(0, 5).map((insight) => (
-              <li key={insight.id} className="text-sm text-foreground flex items-start gap-2">
+              <li key={insight.id} className="text-xs sm:text-sm text-foreground flex items-start gap-2">
                 <span className="text-brand-primary font-bold">•</span>
                 <span>{insight.text}</span>
               </li>
