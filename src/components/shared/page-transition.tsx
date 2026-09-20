@@ -17,7 +17,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
       variants={fadeIn}
       initial="hidden"
       animate="visible"
-      className="w-full"
+      className="w-full min-w-0 max-w-full"
     >
       {children}
     </motion.div>

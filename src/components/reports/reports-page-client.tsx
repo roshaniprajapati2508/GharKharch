@@ -154,7 +154,7 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
   const hasActivity = data ? data.summary.txn_count > 0 : false;
 
   return (
-    <div className="flex flex-col gap-5 pb-10">
+    <div className="flex flex-col gap-4 sm:gap-5 pb-10 w-full min-w-0 max-w-full">
       <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Reports</h1>
         {hasActivity && (
@@ -175,7 +175,7 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
         )}
       </div>
 
-      <div className="no-print -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="no-print -mx-4 sm:mx-0 flex gap-2 overflow-x-auto px-4 sm:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-[calc(100%+2rem)] sm:w-auto max-w-[calc(100%+2rem)] sm:max-w-none">
         {PERIODS.map((p) => (
           <button
             key={p.key}
