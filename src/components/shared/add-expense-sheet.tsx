@@ -530,9 +530,9 @@ export function AddExpenseSheet({
   const [nlEntryOpen, setNlEntryOpen] = useState(!editExpense && !duplicateFrom);
   const [nlText, setNlText] = useState("");
 
-  function applyNaturalLanguageEntry() {
-    if (!nlText || typeof nlText !== "string" || !nlText.trim()) return;
-    const parsed = parseQuickEntry(nlText);
+  const resolveNaturalLanguage = (text: string) => {
+    if (!text || typeof text !== "string" || !text.trim()) return null;
+    const parsed = parseQuickEntry(text);
 
     // 1. Merchant Resolution
     let matchedMerchant: Tables<"merchants"> | null = null;
@@ -547,7 +547,7 @@ export function AddExpenseSheet({
     // 2. Category Resolution
     let matchedCategory: CategorySelection | null = null;
     const activeTree = parsed.entryType === "income" ? incomeCategoryTree : expenseCategoryTree;
-    
+
     // (a) Keyword rule match
     const keywordMatch = matchKeywordRule(parsed.itemName.toLowerCase());
     if (keywordMatch) {
@@ -658,26 +658,85 @@ export function AddExpenseSheet({
       entryType: parsed.entryType ?? form.entryType,
     });
 
+    return {
+      parsed,
+      matchedMerchant,
+      matchedCategory,
+      resolvedPaymentMethod,
+      resolvedCardId,
+      resolvedUpiId,
+      resolvedBankId,
+      resolvedPaidBy,
+      rule,
+      members,
+    };
+  };
+
+  // Automatic real-time parsing as the user types or speaks (debounced 120ms)
+  useEffect(() => {
+    if (!nlEntryOpen || isEditing || !open) return;
+    const raw = (typeof nlText === "string" ? nlText : "").trim();
+    if (!raw) return;
+
+    const timer = setTimeout(() => {
+      const res = resolveNaturalLanguage(raw);
+      if (!res) return;
+      const { parsed, matchedMerchant, matchedCategory, resolvedPaymentMethod, resolvedCardId, resolvedUpiId, resolvedBankId, resolvedPaidBy, rule, members } = res;
+
+      if (rule) {
+        const resolvedRule = resolveRuleActions(rule, categoryTree, merchants, members);
+        applyMatchedRule(rule, resolvedRule);
+      }
+
+      setForm((f) => ({
+        ...f,
+        itemName: parsed.itemName || f.itemName,
+        amount: parsed.amount !== null ? String(parsed.amount) : f.amount,
+        paymentMethod: resolvedPaymentMethod || f.paymentMethod,
+        cardId: resolvedCardId ?? f.cardId,
+        upiProfileId: resolvedUpiId ?? f.upiProfileId,
+        bankAccountId: resolvedBankId ?? f.bankAccountId,
+        date: parsed.expenseDate || f.date,
+        merchant: matchedMerchant ?? f.merchant,
+        category: matchedCategory ?? f.category,
+        entryType: parsed.entryType ?? f.entryType,
+        expenseType: parsed.expenseTypeHint ?? f.expenseType,
+        paidBy: resolvedPaidBy || f.paidBy,
+      }));
+
+      if (matchedCategory) setCategoryTouched(true);
+      if (parsed.amount !== null) setAmountTouched(true);
+    }, 120);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nlText, nlEntryOpen, isEditing, open, merchants, incomeCategoryTree, expenseCategoryTree, cards, upiProfiles, bankAccounts, displayName, partner, userId, automationRules, categoryTree]);
+
+  function applyNaturalLanguageEntry() {
+    if (!nlText || typeof nlText !== "string" || !nlText.trim()) return;
+    const res = resolveNaturalLanguage(nlText);
+    if (!res) return;
+    const { parsed, matchedMerchant, matchedCategory, resolvedPaymentMethod, resolvedCardId, resolvedUpiId, resolvedBankId, resolvedPaidBy, rule, members } = res;
+
     if (rule) {
       const resolved = resolveRuleActions(rule, categoryTree, merchants, members);
       applyMatchedRule(rule, resolved);
     }
 
-    // Update form state
     setForm((f) => ({
       ...f,
       itemName: parsed.itemName || f.itemName,
       amount: parsed.amount !== null ? String(parsed.amount) : f.amount,
-      paymentMethod: resolvedPaymentMethod,
+      paymentMethod: resolvedPaymentMethod || f.paymentMethod,
       cardId: resolvedCardId ?? f.cardId,
       upiProfileId: resolvedUpiId ?? f.upiProfileId,
       bankAccountId: resolvedBankId ?? f.bankAccountId,
-      date: parsed.expenseDate,
+      date: parsed.expenseDate || f.date,
       merchant: matchedMerchant ?? f.merchant,
       category: matchedCategory ?? f.category,
       entryType: parsed.entryType ?? f.entryType,
       expenseType: parsed.expenseTypeHint ?? f.expenseType,
-      paidBy: resolvedPaidBy,
+      paidBy: resolvedPaidBy || f.paidBy,
     }));
 
     if (matchedCategory) setCategoryTouched(true);
@@ -809,7 +868,9 @@ export function AddExpenseSheet({
   }, [form.itemName]);
 
   const predictiveMatches = useMemo(() => {
-    const q = (typeof form.itemName === "string" ? form.itemName : "").trim().toLowerCase();
+    const rawParsed = nlEntryOpen && nlText.trim() ? parseQuickEntry(nlText) : null;
+    const effectiveName = (rawParsed?.itemName || (nlEntryOpen && nlText.trim() ? nlText.trim() : form.itemName)) || "";
+    const q = (typeof effectiveName === "string" ? effectiveName : "").trim().toLowerCase();
     if (isEditing || predictionDismissed) return [];
 
     interface PredictiveCandidate {
@@ -839,8 +900,9 @@ export function AddExpenseSheet({
     // exact-amount matches first, then how often that item/amount pair has
     // come up before, then by closeness.
     if (!q) {
-      const amt = parseFloat(form.amount);
-      if (!amountTouched || !amt || amt <= 0) return [];
+      const parsedAmt = rawParsed?.amount;
+      const amt = typeof parsedAmt === "number" && parsedAmt > 0 ? parsedAmt : parseFloat(form.amount);
+      if (!amt || amt <= 0) return [];
 
       const scored = pastPredictions
         .map((pred) => {
@@ -1081,7 +1143,7 @@ export function AddExpenseSheet({
     }
 
     return results.slice(0, 4);
-  }, [form.itemName, form.amount, amountTouched, isEditing, predictionDismissed, pastPredictions, merchants, categoryFlat, userId, partner]);
+  }, [form.itemName, form.amount, amountTouched, isEditing, predictionDismissed, pastPredictions, merchants, categoryFlat, userId, partner, nlEntryOpen, nlText]);
 
   interface PredictiveMatchItem {
     itemName: string;
@@ -1121,6 +1183,9 @@ export function AddExpenseSheet({
       paidBy: pred.paidBy || f.paidBy,
       expenseType: (pred.expenseType as ExpenseType) || f.expenseType,
     }));
+    if (nlEntryOpen) {
+      setNlText(pred.amount ? `${pred.itemName} ${pred.amount}` : pred.itemName);
+    }
     if (pred.amount) setAmountTouched(true);
     setCategoryTouched(true);
     setPredictionDismissed(true);
@@ -1256,24 +1321,47 @@ export function AddExpenseSheet({
 
   // Handle Single Expense Submit
   async function handleSubmitSingle() {
-    if (!form.category) {
+    let currentForm = form;
+    if (nlEntryOpen && nlText && nlText.trim()) {
+      const res = resolveNaturalLanguage(nlText.trim());
+      if (res) {
+        const { parsed, matchedMerchant, matchedCategory, resolvedPaymentMethod, resolvedCardId, resolvedUpiId, resolvedBankId, resolvedPaidBy } = res;
+        currentForm = {
+          ...currentForm,
+          itemName: currentForm.itemName || parsed.itemName || nlText.trim(),
+          amount: currentForm.amount && parseFloat(currentForm.amount) > 0 ? currentForm.amount : (parsed.amount !== null ? String(parsed.amount) : currentForm.amount),
+          paymentMethod: currentForm.paymentMethod || resolvedPaymentMethod || "UPI",
+          cardId: currentForm.cardId ?? resolvedCardId,
+          upiProfileId: currentForm.upiProfileId ?? resolvedUpiId,
+          bankAccountId: currentForm.bankAccountId ?? resolvedBankId,
+          date: currentForm.date || parsed.expenseDate,
+          merchant: currentForm.merchant ?? matchedMerchant,
+          category: currentForm.category ?? matchedCategory,
+          entryType: currentForm.entryType || parsed.entryType || "expense",
+          expenseType: currentForm.expenseType || parsed.expenseTypeHint || "household",
+          paidBy: currentForm.paidBy || resolvedPaidBy,
+        };
+      }
+    }
+
+    if (!currentForm.category) {
       toast.error("Choose a category");
       return;
     }
-    const amount = parseFloat(form.amount);
+    const amount = parseFloat(currentForm.amount);
     if (!amount || amount <= 0) {
       toast.error("Enter an amount");
       return;
     }
-    const cleanItemName = (typeof form.itemName === "string" ? form.itemName : "").trim();
+    const cleanItemName = (typeof currentForm.itemName === "string" ? currentForm.itemName : "").trim();
     if (!cleanItemName) {
       toast.error("Enter an item or merchant name");
       return;
     }
 
-    let finalCatId = form.category.categoryId;
+    let finalCatId = currentForm.category.categoryId;
     if (finalCatId.startsWith("seed-")) {
-      const match = categoryFlat.find((c) => c.name.toLowerCase() === form.category!.categoryName.toLowerCase() && !c.parent_id);
+      const match = categoryFlat.find((c) => c.name.toLowerCase() === currentForm.category!.categoryName.toLowerCase() && !c.parent_id);
       if (match) finalCatId = match.id;
     }
 
@@ -1282,18 +1370,18 @@ export function AddExpenseSheet({
       amount,
       item_name: cleanItemName,
       category_id: finalCatId,
-      subcategory_id: form.category.subcategoryId,
-      merchant_id: form.merchant?.id ?? null,
-      paid_by: form.paidBy,
-      expense_type: form.expenseType,
-      entry_type: form.entryType,
-      payment_method: form.paymentMethod || "UPI",
-      card_id: form.cardId,
-      upi_profile_id: form.upiProfileId,
-      bank_account_id: form.bankAccountId,
-      expense_date: form.date,
-      expense_time: form.time ? `${form.time}:00` : null,
-      notes: (typeof form.notes === "string" ? form.notes : "").trim() || null,
+      subcategory_id: currentForm.category.subcategoryId,
+      merchant_id: currentForm.merchant?.id ?? null,
+      paid_by: currentForm.paidBy,
+      expense_type: currentForm.expenseType,
+      entry_type: currentForm.entryType,
+      payment_method: currentForm.paymentMethod || "UPI",
+      card_id: currentForm.cardId,
+      upi_profile_id: currentForm.upiProfileId,
+      bank_account_id: currentForm.bankAccountId,
+      expense_date: currentForm.date,
+      expense_time: currentForm.time ? `${currentForm.time}:00` : null,
+      notes: (typeof currentForm.notes === "string" ? currentForm.notes : "").trim() || null,
     };
 
     if (!isEditing && isOffline()) {
@@ -1442,9 +1530,9 @@ export function AddExpenseSheet({
   return (
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent showClose={false} className="max-w-lg sm:max-w-xl mx-auto max-h-[92dvh] flex flex-col focus:outline-none rounded-t-2xl sm:rounded-t-3xl border-t border-border shadow-2xl bg-card">
+        <DrawerContent showClose={false} className="max-w-lg sm:max-w-xl mx-auto h-[94dvh] sm:h-auto max-h-[96dvh] flex flex-col focus:outline-none rounded-t-2xl sm:rounded-t-3xl border-t border-border shadow-2xl bg-card">
           {/* Header */}
-          <DrawerHeader className="px-5 pt-4 pb-2.5 border-b border-border/40">
+          <DrawerHeader className="px-4 sm:px-5 pt-3.5 pb-2 border-b border-border/40">
             <div className="flex items-center justify-between">
               <DrawerTitle className="text-lg font-bold tracking-tight text-foreground">
                 {isEditing
@@ -1483,12 +1571,12 @@ export function AddExpenseSheet({
 
             {/* Mode Switcher Tabs */}
             {isNewExpense && (
-              <div className="mt-3 grid grid-cols-2 p-1 bg-muted/80 rounded-xl border border-border/40">
+              <div className="mt-2.5 grid grid-cols-2 p-1 bg-muted/80 rounded-xl border border-border/40">
                 <button
                   type="button"
                   onClick={() => setEntryMode("single")}
                   className={cn(
-                    "flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all",
+                    "flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-semibold transition-all",
                     entryMode === "single"
                       ? "bg-card text-foreground shadow-sm font-bold scale-[1.01]"
                       : "text-muted-foreground hover:text-foreground"
@@ -1501,7 +1589,7 @@ export function AddExpenseSheet({
                   type="button"
                   onClick={() => setEntryMode("shopping")}
                   className={cn(
-                    "flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all",
+                    "flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-semibold transition-all",
                     entryMode === "shopping"
                       ? "bg-card text-foreground shadow-sm font-bold scale-[1.01]"
                       : "text-muted-foreground hover:text-foreground"
@@ -1518,21 +1606,14 @@ export function AddExpenseSheet({
 
           {/* SINGLE EXPENSE MODE BODY */}
           {entryMode === "single" ? (
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              {/* Expense / Income toggle (spec: Module A - general household
-                  income, not just the Homemade Business). Always visible, at
-                  the very top - not gated by category, since income can now
-                  be Salary or Freelancing too, not only a business sale.
-                  Switching clears the picked category, since expense and
-                  income categories are disjoint (categories.type) and a
-                  category picked under one type is never valid under the
-                  other. */}
+            <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-3.5 space-y-3.5 overscroll-contain">
+              {/* Expense / Income toggle */}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setForm((f) => (f.entryType === "expense" ? f : { ...f, entryType: "expense", category: null }))}
                   className={cn(
-                    "min-h-11 rounded-xl border py-2.5 text-sm font-semibold transition-colors",
+                    "min-h-10 rounded-xl border py-2 text-xs font-bold transition-colors",
                     form.entryType === "expense"
                       ? "border-destructive bg-destructive/10 text-destructive"
                       : "border-border text-muted-foreground hover:bg-muted"
@@ -1544,7 +1625,7 @@ export function AddExpenseSheet({
                   type="button"
                   onClick={() => setForm((f) => (f.entryType === "income" ? f : { ...f, entryType: "income", category: null }))}
                   className={cn(
-                    "min-h-11 rounded-xl border py-2.5 text-sm font-semibold transition-colors",
+                    "min-h-10 rounded-xl border py-2 text-xs font-bold transition-colors",
                     form.entryType === "income"
                       ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                       : "border-border text-muted-foreground hover:bg-muted"
@@ -1554,138 +1635,15 @@ export function AddExpenseSheet({
                 </button>
               </div>
 
-              {/* Hero Amount Input with snug Rs position */}
-              <div>
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">
-                  {form.entryType === "income" ? "Amount Received" : "Amount"}
-                </Label>
-                <AmountInput
-                  value={form.amount}
-                  onChange={(v) => {
-                    setForm((f) => ({ ...f, amount: v }));
-                    setAmountTouched(true);
-                  }}
-                />
-
-                {priceMemory && (
-                  <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-brand-mint/60 border border-brand-primary/15 px-3 py-2 text-xs text-brand-primary">
-                    <span>
-                      Last: {formatINR(priceMemory.last)} · Typical: {formatINR(priceMemory.typicalLow)}–{formatINR(priceMemory.typicalHigh)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={applyPriceMemory}
-                      className="font-bold underline hover:opacity-80 shrink-0"
-                    >
-                      Use {formatINR(priceMemory.last)}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {appliedRule && (
-                <div className="flex items-center gap-1.5 rounded-full bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400 w-fit">
-                  ✨ Auto-filled by rule: {appliedRule.name}
-                </div>
-              )}
-
-              {/* 1-Tap Category Quick Chips with Rich Pastel Colors (Always rendered immediately 0ms) */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    Category
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() => setCategoryPickerOpen(true)}
-                    className="text-xs font-semibold text-brand-primary flex items-center gap-0.5 hover:underline"
-                  >
-                    {form.category ? "Browse full list" : "All categories"} <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                {/* Quick Select Chips */}
-                <div className="flex flex-wrap gap-2">
-                  {topCategories.map((cat) => {
-                    const isSelected =
-                      (form.category?.categoryId === cat.id ||
-                        form.category?.categoryName.toLowerCase() === cat.name.toLowerCase()) &&
-                      !form.category.subcategoryId;
-                    const swatch = colorSwatch(cat.color);
-                    const Icon = getIcon(cat.icon);
-
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => selectQuickCategory(cat)}
-                        style={
-                          isSelected
-                            ? { backgroundColor: swatch.fg, color: "#ffffff", borderColor: swatch.fg }
-                            : { backgroundColor: swatch.bg, color: swatch.fg, borderColor: swatch.bg }
-                        }
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 shadow-sm",
-                          isSelected
-                            ? "ring-2 ring-brand-primary/30 ring-offset-1 scale-[1.04] shadow"
-                            : "hover:opacity-90 hover:scale-[1.02]"
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "flex h-4 w-4 items-center justify-center rounded-full",
-                            isSelected ? "bg-white/20 text-white" : ""
-                          )}
-                        >
-                          <Icon className="h-3.5 w-3.5 shrink-0" />
-                        </span>
-                        <span>{cat.name}</span>
-                        {isSelected && <Check className="h-3 w-3 ml-0.5" />}
-                      </button>
-                    );
-                  })}
-
-                  <button
-                    type="button"
-                    onClick={() => setCategoryPickerOpen(true)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-dashed transition-all",
-                      form.category &&
-                        !topCategories.some(
-                          (c) =>
-                            c.name.toLowerCase() === form.category?.categoryName.toLowerCase() &&
-                            !form.category?.subcategoryId
-                        )
-                        ? "bg-brand-primary text-white border-brand-primary shadow-sm font-bold"
-                        : "border-muted-foreground/40 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <Layers className="h-3.5 w-3.5" />
-                    <span>
-                      {form.category &&
-                      !topCategories.some(
-                        (c) =>
-                          c.name.toLowerCase() === form.category?.categoryName.toLowerCase() &&
-                          !form.category?.subcategoryId
-                      )
-                        ? form.category.subcategoryName
-                          ? `${form.category.categoryName} → ${form.category.subcategoryName}`
-                          : form.category.categoryName
-                        : "More…"}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Item / Description Input */}
+              {/* Item / Smart Parse Input Section (Front & Center for quick entry) */}
               <div className="relative">
                 <div className="flex items-center justify-between mb-1.5">
                   <Label htmlFor="item-name" className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                     {nlEntryOpen && <Sparkles className="h-3.5 w-3.5 text-brand-primary animate-pulse" />}
-                    {nlEntryOpen ? "Smart Parse Text" : "Item / Description"}
+                    {nlEntryOpen ? "Smart Parse (Auto-Detect)" : "Item / Description"}
                   </Label>
                   {!isEditing && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       {voiceSupported && (
                         <button
                           type="button"
@@ -1693,11 +1651,7 @@ export function AddExpenseSheet({
                           title={listening ? "Stop listening" : "Speak your expense (Gujarati / English)"}
                           aria-label={listening ? "Stop listening" : "Speak your expense"}
                           className={cn(
-                            // min-h/min-w-11 (44px) keeps the actual tap target at the
-                            // Apple HIG / Material minimum even though the visible
-                            // text+icon is small - the padding is invisible hit area,
-                            // not a layout change.
-                            "flex min-h-11 min-w-11 items-center justify-center gap-1 px-2 text-xs font-semibold hover:underline",
+                            "flex min-h-8 items-center justify-center gap-1 px-1.5 text-xs font-semibold hover:underline",
                             listening ? "text-destructive" : "text-brand-primary"
                           )}
                         >
@@ -1726,7 +1680,7 @@ export function AddExpenseSheet({
                         className="text-xs text-brand-primary flex items-center gap-1 hover:underline font-semibold"
                       >
                         <Sparkles className="h-3 w-3" />
-                        {nlEntryOpen ? "Normal text" : "Smart parse text"}
+                        {nlEntryOpen ? "Manual mode" : "Smart parse"}
                       </button>
                     </div>
                   )}
@@ -1734,22 +1688,42 @@ export function AddExpenseSheet({
 
                 {nlEntryOpen ? (
                   <div className="flex gap-2">
-                    <Input
-                      autoFocus
-                      value={nlText}
-                      onChange={(e) => setNlText(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && applyNaturalLanguageEntry()}
-                      placeholder='e.g. "Milk 60", "Zudio 1.5k card", "Petrol 500 yesterday"'
-                      className="flex-1 text-sm h-11 bg-background ring-1 ring-brand-primary/20 focus:ring-brand-primary"
-                    />
+                    <div className="relative flex-1">
+                      <Input
+                        autoFocus
+                        value={nlText}
+                        onChange={(e) => setNlText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            applyNaturalLanguageEntry();
+                          }
+                        }}
+                        placeholder='e.g. "Milk 60", "Zudio 1.5k card", "Petrol 500 yesterday"'
+                        className="w-full text-base sm:text-sm h-11 bg-background ring-1 ring-brand-primary/20 focus:ring-brand-primary pr-8"
+                      />
+                      {nlText && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNlText("");
+                            setForm((f) => ({ ...f, itemName: "", amount: "" }));
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
+                          title="Clear text"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
                     <Button
                       type="button"
                       size="sm"
                       onClick={applyNaturalLanguageEntry}
                       disabled={!nlText || typeof nlText !== "string" || !nlText.trim()}
-                      className="h-11 px-4 font-semibold"
+                      className="h-11 px-3.5 font-semibold text-xs shrink-0"
                     >
-                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                      <Sparkles className="mr-1 h-3.5 w-3.5" />
                       Parse
                     </Button>
                   </div>
@@ -1760,7 +1734,7 @@ export function AddExpenseSheet({
                       value={form.itemName}
                       onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value, merchant: null }))}
                       placeholder="e.g. Milk, Groceries, Petrol, Dinner"
-                      className="flex-1 text-sm h-11 bg-background"
+                      className="flex-1 text-base sm:text-sm h-11 bg-background"
                     />
                     <Button
                       type="button"
@@ -1775,7 +1749,41 @@ export function AddExpenseSheet({
                   </div>
                 )}
 
-                {/* Real-time Predictive Autocomplete Suggestions */}
+                {/* Live Auto-Detected Feedback Pills */}
+                {nlEntryOpen && nlText.trim() && (form.itemName || form.amount || form.category) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-brand-mint/40 border border-brand-primary/15 text-xs animate-in fade-in duration-150">
+                    <span className="text-[11px] font-bold text-brand-primary flex items-center gap-1 shrink-0">
+                      <Sparkles className="h-3 w-3" /> Auto-detected:
+                    </span>
+                    {form.itemName && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-background border border-border/60 font-semibold text-foreground">
+                        {form.itemName}
+                      </span>
+                    )}
+                    {form.amount && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-brand-primary/10 text-brand-primary font-bold">
+                        ₹{form.amount}
+                      </span>
+                    )}
+                    {form.category && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-background border border-border/60 text-foreground font-medium">
+                        {form.category.subcategoryName ? `${form.category.categoryName} → ${form.category.subcategoryName}` : form.category.categoryName}
+                      </span>
+                    )}
+                    {form.paymentMethod && form.paymentMethod !== "UPI" && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-background border border-border/60 text-muted-foreground">
+                        {form.paymentMethod}
+                      </span>
+                    )}
+                    {isCustomDate && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-background border border-border/60 text-muted-foreground">
+                        {displayDateText}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Real-time Predictive Autocomplete Suggestions (Live as you type) */}
                 {predictiveMatches.length > 0 && !isEditing && (
                   <div className="mt-2.5 rounded-2xl border border-brand-primary/20 bg-card p-2 shadow-lg space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150 ring-1 ring-black/5">
                     <div className="flex items-center justify-between px-2 pt-0.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40">
@@ -1872,6 +1880,129 @@ export function AddExpenseSheet({
                     <span className="font-bold underline shrink-0">Apply</span>
                   </button>
                 )}
+              </div>
+
+              {/* Amount Input Section */}
+              <div>
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                  {form.entryType === "income" ? "Amount Received" : "Amount"}
+                </Label>
+                <AmountInput
+                  value={form.amount}
+                  onChange={(v) => {
+                    setForm((f) => ({ ...f, amount: v }));
+                    setAmountTouched(true);
+                  }}
+                />
+
+                {priceMemory && (
+                  <div className="mt-1.5 flex items-center justify-between gap-2 rounded-xl bg-brand-mint/60 border border-brand-primary/15 px-3 py-1.5 text-xs text-brand-primary">
+                    <span>
+                      Last: {formatINR(priceMemory.last)} · Typical: {formatINR(priceMemory.typicalLow)}–{formatINR(priceMemory.typicalHigh)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={applyPriceMemory}
+                      className="font-bold underline hover:opacity-80 shrink-0"
+                    >
+                      Use {formatINR(priceMemory.last)}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {appliedRule && (
+                <div className="flex items-center gap-1.5 rounded-full bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400 w-fit">
+                  ✨ Auto-filled by rule: {appliedRule.name}
+                </div>
+              )}
+
+              {/* 1-Tap Category Quick Chips */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Category
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryPickerOpen(true)}
+                    className="text-xs font-semibold text-brand-primary flex items-center gap-0.5 hover:underline"
+                  >
+                    {form.category ? "Browse full list" : "All categories"} <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Quick Select Chips */}
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                  {topCategories.map((cat) => {
+                    const isSelected =
+                      (form.category?.categoryId === cat.id ||
+                        form.category?.categoryName.toLowerCase() === cat.name.toLowerCase()) &&
+                      !form.category.subcategoryId;
+                    const swatch = colorSwatch(cat.color);
+                    const Icon = getIcon(cat.icon);
+
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => selectQuickCategory(cat)}
+                        style={
+                          isSelected
+                            ? { backgroundColor: swatch.fg, color: "#ffffff", borderColor: swatch.fg }
+                            : { backgroundColor: swatch.bg, color: swatch.fg, borderColor: swatch.bg }
+                        }
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 shadow-sm",
+                          isSelected
+                            ? "ring-2 ring-brand-primary/30 ring-offset-1 scale-[1.04] shadow font-bold"
+                            : "hover:opacity-90 hover:scale-[1.02]"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "flex h-4 w-4 items-center justify-center rounded-full",
+                            isSelected ? "bg-white/20 text-white" : ""
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0" />
+                        </span>
+                        <span>{cat.name}</span>
+                        {isSelected && <Check className="h-3 w-3 ml-0.5" />}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={() => setCategoryPickerOpen(true)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-dashed transition-all",
+                      form.category &&
+                        !topCategories.some(
+                          (c) =>
+                            c.name.toLowerCase() === form.category?.categoryName.toLowerCase() &&
+                            !form.category?.subcategoryId
+                        )
+                        ? "bg-brand-primary text-white border-brand-primary shadow-sm font-bold"
+                        : "border-muted-foreground/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    <span>
+                      {form.category &&
+                      !topCategories.some(
+                        (c) =>
+                          c.name.toLowerCase() === form.category?.categoryName.toLowerCase() &&
+                          !form.category?.subcategoryId
+                      )
+                        ? form.category.subcategoryName
+                          ? `${form.category.categoryName} → ${form.category.subcategoryName}`
+                          : form.category.categoryName
+                        : "More…"}
+                    </span>
+                  </button>
+                </div>
               </div>
 
 
