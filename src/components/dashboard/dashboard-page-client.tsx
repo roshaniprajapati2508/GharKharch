@@ -2,31 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Plus, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useHousehold } from "@/lib/context/household-context";
 import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-context";
 import { DashboardFilters, type QuickPeriod } from "@/components/dashboard/dashboard-filters";
 import { SummaryHeader } from "@/components/dashboard/summary-header";
-import { DailyBriefCard, type BriefData } from "@/components/dashboard/daily-brief-card";
-import { ForecastCard } from "@/components/dashboard/forecast-card";
-import { SpendingTrendChart } from "@/components/dashboard/spending-trend-chart";
+import { FinancialHubCard } from "@/components/dashboard/financial-hub-card";
 import { CategoryBreakdownList } from "@/components/dashboard/category-breakdown-list";
-import { TopMerchantsCard } from "@/components/dashboard/top-merchants-card";
-import { PersonComparisonCard } from "@/components/dashboard/person-comparison-card";
-import { MostFrequentCard } from "@/components/dashboard/most-frequent-card";
-import { TopExpensesList } from "@/components/analytics/top-expenses-list";
-import { TopInflowsList } from "@/components/dashboard/top-inflows-list";
-import { SpendingCalendar } from "@/components/analytics/spending-calendar";
+import { MerchantMemberCard } from "@/components/dashboard/merchant-member-card";
+import { TopTransactionsCard } from "@/components/dashboard/top-transactions-card";
 import { DashboardBackgroundDecoration } from "@/components/dashboard/background-decoration";
 import { InsightsList } from "@/components/dashboard/insights-list";
 import { RecurringSuggestionsCard } from "@/components/dashboard/recurring-suggestions-card";
 import { ActivityFeedCard } from "@/components/dashboard/activity-feed-card";
-import { MiniPnlCard } from "@/components/analytics/mini-pnl-card";
-import { CashflowWidget } from "@/components/dashboard/cashflow-widget";
-import { SpendingPaceCard } from "@/components/dashboard/spending-pace-card";
-import { ExecutiveCashflowCard } from "@/components/dashboard/executive-cashflow-card";
 import { motion, staggerContainer, fadeInUp } from "@/lib/motion";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { AddExpenseSheet } from "@/components/shared/add-expense-sheet";
@@ -36,7 +26,8 @@ import { toastUndo } from "@/lib/toast-helpers";
 import { getMonthRange, type DateRange } from "@/lib/date-utils";
 import { formatINR } from "@/lib/utils";
 import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
-import type { CashflowSnapshot, ExecutiveCashflow, HouseholdForecast, SpendingPaceBenchmark } from "@/lib/actions/insights";
+import type { BriefData } from "@/components/dashboard/daily-brief-card";
+import type { HouseholdForecast, CashflowSnapshot, ExecutiveCashflow, SpendingPaceBenchmark } from "@/lib/actions/insights";
 import type { ActivityEvent } from "@/lib/actions/activity";
 import type { BusinessPnl } from "@/lib/actions/analytics";
 
@@ -107,7 +98,6 @@ export function DashboardPageClient({
 
   useEffect(() => {
     if (!initialData && !data) {
-       
       load(range, person);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,37 +151,51 @@ export function DashboardPageClient({
   const hasAnyActivity = data ? data.summary.txn_count > 0 : false;
 
   return (
-    <div className="relative flex min-w-0 max-w-full flex-col gap-6 overflow-x-clip pb-10">
+    <div className="relative flex min-w-0 max-w-full flex-col gap-6 overflow-x-clip pb-12">
       <DashboardBackgroundDecoration />
 
-      <div style={{ gridArea: "header" }}>
-        <p className="text-sm text-muted-foreground">Good to see you, {displayName.split(" ")[0]} 👋</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">{data?.range.label ?? range.label}</h1>
+      {/* Modern Enterprise Header */}
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+            Good to see you, <span className="font-semibold text-foreground">{displayName.split(" ")[0]}</span> 👋
+          </p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-heading">
+            {data?.range.label ?? range.label}
+          </h1>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => openAdd()}
+            className="flex items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition-all hover:bg-brand-primary/90 cursor-pointer active:scale-98"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Expense</span>
+          </button>
+        </div>
       </div>
 
-      <DashboardFilters period={period} person={person} onPeriodChange={handlePeriodChange} onPersonChange={handlePersonChange} />
+      {/* Filter Bar */}
+      <DashboardFilters
+        period={period}
+        person={person}
+        onPeriodChange={handlePeriodChange}
+        onPersonChange={handlePersonChange}
+      />
 
       {loading && !data ? (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
+            <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted/60" />
           ))}
         </div>
       ) : data && hasAnyActivity ? (
-        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="dashboard-grid">
-          <motion.div variants={fadeInUp} style={{ gridArea: "cashflow-exec" }}>
-            <ExecutiveCashflowCard initialData={initialExecutiveCashflow} />
-          </motion.div>
-
-          <motion.div variants={fadeInUp} style={{ gridArea: "brief" }} className="h-full flex flex-col">
-            <DailyBriefCard initialData={initialBrief} />
-          </motion.div>
-
-          <motion.div variants={fadeInUp} style={{ gridArea: "forecast" }} className="h-full flex flex-col">
-            <ForecastCard initialForecast={initialForecast} />
-          </motion.div>
-
-          <motion.div variants={fadeInUp} style={{ gridArea: "summary" }}>
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-6">
+          {/* Executive KPI Bento Row (Top) */}
+          <motion.div variants={fadeInUp}>
             <SummaryHeader
               periodLabel={data.range.label}
               summary={data.summary}
@@ -199,99 +203,115 @@ export function DashboardPageClient({
               categoryBreakdown={data.categoryBreakdown}
               topMerchants={data.topMerchants}
               dailySpending={data.dailySpending}
+              initialCashflow={initialExecutiveCashflow}
+              initialPace={initialSpendingPace}
+              initialBrief={initialBrief?.snapshot}
+              initialNextRecurring={initialBrief?.nextRecurring}
             />
           </motion.div>
 
-          <motion.div variants={fadeInUp} style={{ gridArea: "trend" }}>
-            <SpendingTrendChart dailySpending={data.dailySpending} />
-          </motion.div>
+          {/* Balanced 2-Column Responsive Workspace (8:4 Desktop Grid) */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+            {/* Left Primary Column (Analytics & Breakdown Hub - 8 Cols) */}
+            <motion.div variants={fadeInUp} className="flex min-w-0 flex-col gap-6 lg:col-span-7 xl:col-span-8">
+              {/* Main Financial Visualizer Hub (Spending Trend / P&L / Heatmap Calendar) */}
+              <FinancialHubCard
+                dailySpending={data.dailySpending}
+                initialCashflow={initialCashflow}
+                initialExecutiveCashflow={initialExecutiveCashflow}
+                initialBusinessPnl={initialBusinessPnl}
+              />
 
-          <motion.div variants={fadeInUp} style={{ gridArea: "category" }}>
-            <CategoryBreakdownList categories={data.categoryBreakdown} grandTotal={parseFloat(data.summary.total)} />
-          </motion.div>
+              {/* Spending Breakdown 2-Card Bento */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <CategoryBreakdownList
+                  categories={data.categoryBreakdown}
+                  grandTotal={parseFloat(data.summary.total)}
+                />
+                <MerchantMemberCard
+                  merchants={data.topMerchants}
+                  personBreakdown={data.personBreakdown}
+                  itemAnalytics={data.itemAnalytics}
+                />
+              </div>
 
-          <motion.div variants={fadeInUp} style={{ gridArea: "merchants" }}>
-            <TopMerchantsCard merchants={data.topMerchants} />
-          </motion.div>
+              {/* AI Spending Insights & Recurring Bills Strip */}
+              <div className="flex flex-col gap-4">
+                <InsightsList
+                  data={{
+                    range: data.range,
+                    previousRange: data.previousRange,
+                    summary: data.summary,
+                    previousSummary: data.previousSummary,
+                    categoryBreakdown: data.categoryBreakdown,
+                    previousCategoryBreakdown: data.previousCategoryBreakdown,
+                    merchantBreakdown: data.topMerchants,
+                    itemAnalytics: data.itemAnalytics,
+                    dailySpending: data.dailySpending,
+                    topExpenses: data.topExpenses,
+                  }}
+                />
+                <RecurringSuggestionsCard />
+              </div>
+            </motion.div>
 
-          <motion.div variants={fadeInUp} style={{ gridArea: "person" }}>
-            <PersonComparisonCard personBreakdown={data.personBreakdown} />
-          </motion.div>
+            {/* Right Sidebar Column (Ledger & Activity Stream - 4 Cols) */}
+            <motion.div variants={fadeInUp} className="flex min-w-0 flex-col gap-6 lg:col-span-5 xl:col-span-4">
+              {/* Top Debits & Credits Card */}
+              <TopTransactionsCard
+                topExpenses={data.topExpenses}
+                topInflows={data.topInflows}
+                categories={data.categoryBreakdown}
+              />
 
-          <motion.div variants={fadeInUp} style={{ gridArea: "frequent" }}>
-            <MostFrequentCard items={data.itemAnalytics} />
-          </motion.div>
+              {/* Recent Transactions Card */}
+              <div className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border">
+                <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                  <div className="flex items-center gap-1.5">
+                    <Receipt className="h-4 w-4 text-brand-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Recent expenses</h3>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      {data.recentExpenses.length}
+                    </span>
+                  </div>
+                  <Link
+                    href="/expenses"
+                    className="flex items-center text-xs font-medium text-primary hover:underline"
+                  >
+                    See all <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+                <div className="pt-2">
+                  <ExpenseList
+                    expenses={data.recentExpenses}
+                    onEdit={setEditTarget}
+                    onDuplicate={handleDuplicate}
+                    onDelete={handleDelete}
+                  />
+                </div>
+              </div>
 
-          <motion.div variants={fadeInUp} style={{ gridArea: "largest" }} className="flex flex-col gap-4">
-            <TopExpensesList expenses={data.topExpenses.slice(0, 5)} categories={data.categoryBreakdown} />
-            {data.topInflows && data.topInflows.length > 0 && (
-              <TopInflowsList inflows={data.topInflows.slice(0, 5)} />
-            )}
-          </motion.div>
-
-          <motion.div variants={fadeInUp} style={{ gridArea: "insights" }}>
-            <InsightsList
-              data={{
-                range: data.range,
-                previousRange: data.previousRange,
-                summary: data.summary,
-                previousSummary: data.previousSummary,
-                categoryBreakdown: data.categoryBreakdown,
-                previousCategoryBreakdown: data.previousCategoryBreakdown,
-                merchantBreakdown: data.topMerchants,
-                itemAnalytics: data.itemAnalytics,
-                dailySpending: data.dailySpending,
-                topExpenses: data.topExpenses,
-              }}
-            />
-          </motion.div>
-
-          <motion.div variants={fadeInUp} style={{ gridArea: "recurring" }}>
-            <RecurringSuggestionsCard />
-          </motion.div>
-
-          <motion.div variants={fadeInUp} style={{ gridArea: "pnl" }}>
-            <MiniPnlCard initialData={initialBusinessPnl} />
-          </motion.div>
-
-          <motion.div variants={fadeInUp} style={{ gridArea: "cashflow" }}>
-            <CashflowWidget initialData={initialCashflow} />
-          </motion.div>
-
-          <motion.div variants={fadeInUp} style={{ gridArea: "pace" }}>
-            <SpendingPaceCard initialData={initialSpendingPace} />
-          </motion.div>
-
-          <motion.div variants={fadeInUp} style={{ gridArea: "activity" }}>
-            <ActivityFeedCard initialEvents={initialActivityEvents} />
-          </motion.div>
-
-          <motion.div variants={fadeInUp} style={{ gridArea: "calendar" }}>
-            <h3 className="mb-2 px-1 text-sm font-semibold text-foreground">Spending calendar</h3>
-            <SpendingCalendar />
-          </motion.div>
-
-          <motion.div variants={fadeInUp} style={{ gridArea: "recent" }}>
-            <div className="mb-2 flex items-center justify-between px-1">
-              <h3 className="text-sm font-semibold text-foreground">Recent expenses</h3>
-              <Link href="/expenses" className="flex items-center text-xs font-medium text-primary">
-                See all <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-            <ExpenseList expenses={data.recentExpenses} onEdit={setEditTarget} onDuplicate={handleDuplicate} onDelete={handleDelete} />
-          </motion.div>
+              {/* Live Activity Audit Feed */}
+              <ActivityFeedCard initialEvents={initialActivityEvents} />
+            </motion.div>
+          </div>
         </motion.div>
       ) : (
         <EmptyState
           title="Your household spending story starts here."
           description="Once you add an expense, GharKharch starts building your spending picture - automatically."
           ctaLabel="Add your first expense"
-          onCta={openAdd}
+          onCta={() => openAdd()}
           chips={["Milk", "Groceries", "Petrol", "Shopping"]}
         />
       )}
 
-      <AddExpenseSheet open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)} editExpense={editTarget} onSaved={() => load(range, person, true)} />
+      <AddExpenseSheet
+        open={!!editTarget}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+        editExpense={editTarget}
+        onSaved={() => load(range, person, true)}
+      />
     </div>
   );
 }

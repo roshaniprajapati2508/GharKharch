@@ -273,92 +273,13 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
   }
 }
 
-/* Dashboard information architecture (spec items 33-34, 93-94) */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1.25rem;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  grid-template-areas:
-    "header"
-    "brief"
-    "forecast"
-    "pace"
-    "summary"
-    "trend"
-    "category"
-    "insights"
-    "recent"
-    "merchants"
-    "person"
-    "frequent"
-    "largest"
-    "cashflow-exec"
-    "pnl"
-    "cashflow"
-    "calendar"
-    "recurring"
-    "activity";
+/* Dashboard layout utilities */
+.dashboard-card {
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  background: var(--card);
 }
 
-@media (min-width: 640px) {
-  .dashboard-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "header header"
-      "brief brief"
-      "forecast pace"
-      "summary summary"
-      "trend trend"
-      "category category"
-      "insights insights"
-      "merchants person"
-      "frequent largest"
-      "cashflow-exec cashflow-exec"
-      "pnl cashflow"
-      "recent recent"
-      "calendar calendar"
-      "recurring recurring"
-      "activity activity";
-  }
-}
-
-@media (min-width: 1024px) {
-  .dashboard-grid {
-    grid-template-areas:
-      "header header"
-      "brief brief"
-      "forecast pace"
-      "summary summary"
-      "trend category"
-      "merchants person"
-      "frequent largest"
-      "insights insights"
-      "cashflow-exec cashflow-exec"
-      "recurring pnl"
-      "cashflow cashflow"
-      "activity activity"
-      "calendar recent";
-  }
-}
-
-@media (min-width: 1280px) {
-  .dashboard-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "header header header"
-      "brief forecast pace"
-      "summary summary summary"
-      "trend trend category"
-      "merchants person frequent"
-      "cashflow-exec pnl cashflow"
-      "insights insights largest"
-      "recurring calendar recent"
-      "activity activity activity";
-  }
-}
 
 /* Printable reports (spec section 31/32, "PDF export" via the browser's
    print-to-PDF): hide app chrome and let the report page use the full sheet. */

@@ -6,6 +6,7 @@ import { SlidersHorizontal, X, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ExpenseList } from "@/components/expenses/expense-list";
+import { ExpenseTopFilterBar } from "@/components/expenses/expense-top-filter-bar";
 import { BulkActionBar } from "@/components/expenses/bulk-action-bar";
 import { ExpenseFiltersSheet, type AppliedFilters } from "@/components/expenses/expense-filters-sheet";
 import { ExpenseSearch } from "@/components/expenses/expense-search";
@@ -333,39 +334,27 @@ export function ExpensesPageClient({
               Cancel
             </Button>
           ) : (
-            <>
-              <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
-                <ListChecks className="h-4 w-4" />
-                Select
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setFiltersOpen(true)}>
-                <SlidersHorizontal className="h-4 w-4" />
-                Filter
-              </Button>
-            </>
+            <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
+              <ListChecks className="h-4 w-4" />
+              Select
+            </Button>
           )}
         </div>
       </div>
 
-      {activeChips.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {activeChips.map((chip) => (
-            <button
-              key={chip.key}
-              onClick={() => removeFilter(chip.key)}
-              className="flex items-center gap-1 rounded-full border border-primary/30 bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground"
-            >
-              {chip.label}
-              <X className="h-3 w-3" />
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Modern Top Filter Bar */}
+      <ExpenseTopFilterBar
+        filters={filters}
+        onApply={applyFilters}
+        categories={categories}
+        paymentMethods={paymentMethods}
+        onOpenMoreFilters={() => setFiltersOpen(true)}
+      />
 
       <div className="relative">
         {loading && (
-          <div className="absolute -top-2 left-0 right-0 z-10 h-0.5 overflow-hidden bg-muted">
-            <div className="h-full w-full bg-primary animate-pulse" />
+          <div className="absolute -top-1 left-0 right-0 z-10 h-0.5 overflow-hidden bg-muted/60">
+            <div className="h-full w-full bg-brand-primary animate-pulse" />
           </div>
         )}
 
@@ -376,7 +365,7 @@ export function ExpensesPageClient({
             ))}
           </div>
         ) : (
-          <div className={`transition-opacity duration-150 ${loading ? "opacity-60" : "opacity-100"}`}>
+          <div className="transition-opacity duration-150 opacity-100">
             <ExpenseList
               expenses={expenses}
               onEdit={setEditTarget}
