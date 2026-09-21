@@ -612,24 +612,47 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
 
     const { data: expenses, error } = await query;
     if (error) throw new ActionError(error.message);
+    if (!expenses || expenses.length === 0) return [];
 
-    const recurringRuleIds = Array.from(new Set((expenses ?? []).map((e) => e.recurring_rule_id).filter((id): id is string => !!id)));
+    const categoryIds = Array.from(
+      new Set(
+        expenses
+          .flatMap((e) => [e.category_id, e.subcategory_id])
+          .filter((id): id is string => !!id)
+      )
+    );
+    const merchantIds = Array.from(
+      new Set(expenses.map((e) => e.merchant_id).filter((id): id is string => !!id))
+    );
+    const paidByIds = Array.from(
+      new Set(expenses.map((e) => e.paid_by).filter((id): id is string => !!id))
+    );
+    const recurringRuleIds = Array.from(
+      new Set(expenses.map((e) => e.recurring_rule_id).filter((id): id is string => !!id))
+    );
 
-    const [{ data: categories }, { data: merchants }, { data: members }, { data: profiles }, { data: recurringRules }] = await Promise.all([
-      supabase.from("categories").select("id, name, icon, color"),
-      supabase.from("merchants").select("id, name"),
-      supabase.from("household_members").select("user_id").eq("household_id", householdId),
-      supabase.from("profiles").select("id, display_name"),
-      recurringRuleIds.length ? supabase.from("recurring_expenses").select("id, name").in("id", recurringRuleIds) : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-    ]);
+    const [{ data: categories }, { data: merchants }, { data: profiles }, { data: recurringRules }] =
+      await Promise.all([
+        categoryIds.length
+          ? supabase.from("categories").select("id, name, icon, color").in("id", categoryIds)
+          : Promise.resolve({ data: [] as { id: string; name: string; icon: string | null; color: string | null }[] }),
+        merchantIds.length
+          ? supabase.from("merchants").select("id, name").in("id", merchantIds)
+          : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+        paidByIds.length
+          ? supabase.from("profiles").select("id, display_name").in("id", paidByIds)
+          : Promise.resolve({ data: [] as { id: string; display_name: string | null }[] }),
+        recurringRuleIds.length
+          ? supabase.from("recurring_expenses").select("id, name").in("id", recurringRuleIds)
+          : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      ]);
 
     const categoryMap = new Map((categories ?? []).map((c) => [c.id, c]));
     const merchantMap = new Map((merchants ?? []).map((m) => [m.id, m.name]));
     const profileMap = new Map((profiles ?? []).map((p) => [p.id, p.display_name]));
     const recurringRuleMap = new Map((recurringRules ?? []).map((r) => [r.id, r.name]));
-    void members;
 
-    const enriched: EnrichedExpense[] = (expenses ?? []).map((e) => {
+    const enriched: EnrichedExpense[] = expenses.map((e) => {
       const cat = categoryMap.get(e.category_id);
       const subcat = e.subcategory_id ? categoryMap.get(e.subcategory_id) : null;
       return {

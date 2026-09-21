@@ -64,6 +64,24 @@ export function ExpensesPageClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const poolRef = useState(() => new Map<string, EnrichedExpense>(initialExpenses.map((e) => [e.id, e])))[0];
+
+  function filterInMemory(next: AppliedFilters) {
+    const all = Array.from(poolRef.values());
+    return all.filter((e) => {
+      if (next.entryType && next.entryType !== "all" && e.entry_type !== next.entryType) return false;
+      if (next.categoryIds?.length && (!e.category_id || !next.categoryIds.includes(e.category_id))) return false;
+      if (next.paidBy && next.paidBy !== "all" && e.paid_by !== next.paidBy) return false;
+      if (next.merchantIds?.length && (!e.merchant_id || !next.merchantIds.includes(e.merchant_id))) return false;
+      if (next.paymentMethod && e.payment_method !== next.paymentMethod) return false;
+      if (typeof next.minAmount === "number" && parseFloat(String(e.amount)) < next.minAmount) return false;
+      if (typeof next.maxAmount === "number" && parseFloat(String(e.amount)) > next.maxAmount) return false;
+      if (next.start && e.expense_date < next.start) return false;
+      if (next.end && e.expense_date > next.end) return false;
+      return true;
+    });
+  }
+
   const refetch = useCallback(async (nextFilters: AppliedFilters) => {
     setLoading(true);
     const result = await getExpenses(nextFilters);
@@ -72,13 +90,20 @@ export function ExpensesPageClient({
       toast.error(result.error);
       return;
     }
+    for (const exp of result.data) {
+      poolRef.set(exp.id, exp);
+    }
     setExpenses(result.data);
-  }, []);
+  }, [poolRef]);
 
   useOnExpenseSaved(useCallback(() => refetch(filters), [refetch, filters]));
 
   function applyFilters(next: AppliedFilters) {
     setFilters(next);
+    const optimistic = filterInMemory(next);
+    if (optimistic.length > 0 || Object.keys(next).length > 0) {
+      setExpenses(optimistic);
+    }
     refetch(next);
   }
 
@@ -275,27 +300,37 @@ export function ExpensesPageClient({
         </div>
       )}
 
-      {loading ? (
-        <div className="flex flex-col gap-2">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />
-          ))}
-        </div>
-      ) : (
-        <ExpenseList
-          expenses={expenses}
-          onEdit={setEditTarget}
-          onDuplicate={handleDuplicate}
-          onDelete={handleDelete}
-          selectionMode={selectionMode}
-          selectedIds={selectedIds}
-          onToggleSelect={toggleSelectExpense}
-          onInlineUpdate={handleInlineUpdate}
-          categories={categories}
-          paymentMethods={paymentMethods}
-          onPaidByChange={handlePaidByChange}
-        />
-      )}
+      <div className="relative">
+        {loading && (
+          <div className="absolute -top-2 left-0 right-0 z-10 h-0.5 overflow-hidden bg-muted">
+            <div className="h-full w-full bg-primary animate-pulse" />
+          </div>
+        )}
+
+        {loading && expenses.length === 0 ? (
+          <div className="flex flex-col gap-2">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />
+            ))}
+          </div>
+        ) : (
+          <div className={`transition-opacity duration-150 ${loading ? "opacity-60" : "opacity-100"}`}>
+            <ExpenseList
+              expenses={expenses}
+              onEdit={setEditTarget}
+              onDuplicate={handleDuplicate}
+              onDelete={handleDelete}
+              selectionMode={selectionMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelectExpense}
+              onInlineUpdate={handleInlineUpdate}
+              categories={categories}
+              paymentMethods={paymentMethods}
+              onPaidByChange={handlePaidByChange}
+            />
+          </div>
+        )}
+      </div>
 
       <BulkActionBar
         selectedExpenses={expenses.filter((e) => selectedIds.has(e.id))}

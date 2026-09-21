@@ -7,6 +7,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } f
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getActivityEvents, markActivityEventRead, markAllActivityRead, type ActivityEventView } from "@/lib/actions/activity-events";
+import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";
 
 type FilterKey = "all" | "partner" | "alerts";
 
@@ -53,15 +54,26 @@ function entityHref(event: ActivityEventView): string | null {
  * with per-user read state and a "Mark all as read" action.
  */
 export function ActivityInboxSheet({ open, onOpenChange, onReadStateChange }: { open: boolean; onOpenChange: (open: boolean) => void; onReadStateChange?: () => void }) {
-  const [events, setEvents] = useState<ActivityEventView[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [events, setEvents] = useState<ActivityEventView[]>(() => {
+    return getClientCachedData<ActivityEventView[]>("activity_events_all") ?? [];
+  });
+  const [loading, setLoading] = useState(() => !getClientCachedData<ActivityEventView[]>("activity_events_all"));
   const [markingAll, setMarkingAll] = useState(false);
 
   async function load(f: FilterKey) {
-    setLoading(true);
+    const cached = getClientCachedData<ActivityEventView[]>(`activity_events_${f}`);
+    if (cached && cached.length > 0) {
+      setEvents(cached);
+      setLoading(false);
+    } else if (events.length === 0) {
+      setLoading(true);
+    }
     const result = await getActivityEvents({ filter: f === "all" ? "all" : f });
-    if (result.data) setEvents(result.data);
+    if (result.data) {
+      setEvents(result.data);
+      setClientCachedData(`activity_events_${f}`, result.data);
+    }
     setLoading(false);
   }
 

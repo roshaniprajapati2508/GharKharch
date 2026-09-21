@@ -247,11 +247,10 @@ export function AddExpenseSheet({
   const [pastPredictions, setPastPredictions] = useState<PastExpensePrediction[]>(
     () => getClientCachedData<PastExpensePrediction[]>("past_expense_predictions") ?? []
   );
-  // True while the background refresh below is still in flight - lets the
-  // merchant picker show "Loading your merchants..." instead of a false
-  // "No merchants match" if it's opened before this first fetch resolves
-  // (e.g. tapping "+ Add" then immediately tapping the merchant field).
-  const [refsLoading, setRefsLoading] = useState(true);
+  // Track merchant-specific loading state (instant fallback if cached)
+  const [merchantsLoading, setMerchantsLoading] = useState(
+    () => !getClientCachedData<Tables<"merchants">[]>("merchants_list")
+  );
 
   // Smart Rules (spec: Module 1) - keyword-triggered auto-fill.
   const [automationRules, setAutomationRules] = useState<AutomationRule[]>(
@@ -265,30 +264,19 @@ export function AddExpenseSheet({
 
     setEntryMode(initialMode);
     setShoppingRows([emptyShoppingRow(null)]);
-    setRefsLoading(true);
+    const hasCachedMerchants = !!getClientCachedData<Tables<"merchants">[]>("merchants_list");
+    setMerchantsLoading(!hasCachedMerchants);
     setAppliedRule(null);
     lastRuleCheckedText.current = null;
 
-    // Refresh refs in background
-    Promise.all([
-      listCategoriesForHousehold(),
-      listMerchantsForHousehold(),
-      listPaymentMethodsForHousehold(),
-      listUserCards(),
-      listUpiProfiles(),
-      listBankAccounts(),
-      getQuickAddChips(),
-      getPastExpensePredictions(),
-      listAutomationRules(),
-    ]).then(([cats, merch, methods, userCards, upi, banks, chips, preds, rules]) => {
-      setRefsLoading(false);
+    // Refresh each reference dataset independently for instant UI hydration
+    listCategoriesForHousehold().then((cats) => {
       if (cats.data && cats.data.tree.length > 0) {
         setCategoryTree(cats.data.tree);
         setCategoryFlat(cats.data.flat);
         setClientCachedData("categories_tree_active", cats.data.tree);
         setClientCachedData("categories_flat_budget", cats.data.flat);
 
-        // If form had selected a seed category, sync the real DB category id
         setForm((f) => {
           if (f.category && f.category.categoryId.startsWith("seed-")) {
             const match = cats.data!.flat.find(
@@ -307,43 +295,65 @@ export function AddExpenseSheet({
           return f;
         });
       }
+    });
+
+    listMerchantsForHousehold().then((merch) => {
+      setMerchantsLoading(false);
       if (merch.data) {
         setMerchants(merch.data);
         setClientCachedData("merchants_list", merch.data);
       }
+    }).catch(() => {
+      setMerchantsLoading(false);
+    });
+
+    listPaymentMethodsForHousehold().then((methods) => {
       if (methods.data) {
         setPaymentMethods(methods.data);
         setClientCachedData("payment_methods_active", methods.data);
       }
+    });
+
+    listUserCards().then((userCards) => {
       if (userCards.data) {
         setCards(userCards.data);
         setClientCachedData("user_cards_list", userCards.data);
       }
+    });
+
+    listUpiProfiles().then((upi) => {
       if (upi.data) {
         setUpiProfiles(upi.data);
         setClientCachedData("upi_profiles_list", upi.data);
       }
+    });
+
+    listBankAccounts().then((banks) => {
       if (banks.data) {
         setBankAccounts(banks.data);
         setClientCachedData("bank_accounts_list", banks.data);
       }
+    });
+
+    getQuickAddChips().then((chips) => {
       if (chips.data) {
         setQuickAddChips(chips.data);
         setClientCachedData("quick_add_chips", chips.data);
       }
+    });
+
+    getPastExpensePredictions().then((preds) => {
       if (preds.data) {
         setPastPredictions(preds.data);
         setClientCachedData("past_expense_predictions", preds.data);
       }
+    });
+
+    listAutomationRules().then((rules) => {
       if (rules.data) {
         setAutomationRules(rules.data);
         setClientCachedData("automation_rules_list", rules.data);
       }
-    }).catch(() => {
-      // Network hiccup - stop showing "Loading..." so the merchant picker
-      // falls back to whatever's cached (or a real "no merchants" state)
-      // instead of spinning forever.
-      setRefsLoading(false);
     });
 
     const source = editExpense ?? duplicateFrom;
@@ -2326,7 +2336,7 @@ export function AddExpenseSheet({
         open={merchantPickerOpen}
         onOpenChange={setMerchantPickerOpen}
         merchants={merchants}
-        loading={refsLoading}
+        loading={merchantsLoading}
         onSelect={applyMerchant}
         onMerchantCreated={(m) => {
           setMerchants((list) => [...list, m]);

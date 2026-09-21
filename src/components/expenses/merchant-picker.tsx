@@ -59,11 +59,16 @@ export function MerchantPickerView({
       <Command className="flex flex-1 flex-col overflow-hidden" shouldFilter={false}>
         <CommandInput placeholder="Search merchants…" value={query} onValueChange={setQuery} autoFocus />
         <CommandList className="flex-1 overflow-y-auto">
-          {filtered.length === 0 && loading && merchants.length === 0 && (
-            <CommandEmpty>Loading your merchants…</CommandEmpty>
+          {filtered.length === 0 && loading && merchants.length === 0 && !query.trim() && (
+            <div className="py-8 text-center text-sm text-muted-foreground flex flex-col items-center justify-center gap-2">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <span>Loading merchants…</span>
+            </div>
           )}
-          {filtered.length === 0 && !(loading && merchants.length === 0) && (
-            <CommandEmpty>No merchants match &quot;{query}&quot;.</CommandEmpty>
+          {filtered.length === 0 && (!loading || query.trim() || merchants.length > 0) && (
+            <CommandEmpty>
+              {query.trim() ? `No merchants match "${query}".` : "No merchants added yet."}
+            </CommandEmpty>
           )}
           <CommandGroup>
             {filtered.map((m) => (
