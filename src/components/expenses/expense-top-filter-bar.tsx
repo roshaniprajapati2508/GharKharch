@@ -7,8 +7,6 @@ import {
   Tag,
   User,
   CreditCard,
-  Search,
-  X,
   RotateCcw,
   SlidersHorizontal,
   ArrowUpDown,
@@ -148,28 +146,28 @@ export function ExpenseTopFilterBar({
   // Label for payer button
   const payerLabel = (() => {
     if (!filters.paidBy || filters.paidBy === "all") return "Paid by";
-    if (filters.paidBy === userId) return "Paid by: You";
-    if (partner && filters.paidBy === partner.id) return `Paid by: ${partner.displayName}`;
+    if (filters.paidBy === userId) return "You";
+    if (partner && filters.paidBy === partner.id) return partner.displayName.split(" ")[0];
     return "Paid by";
   })();
 
   // Label for payment method
-  const paymentMethodLabel = filters.paymentMethod ? filters.paymentMethod : "Payment method";
+  const paymentMethodLabel = filters.paymentMethod ? filters.paymentMethod : "Payment";
 
   // Label for sorting
   const sortLabel = SORT_OPTIONS.find((s) => s.value === (filters.sort ?? "newest"))?.label ?? "Sort";
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-2xl border border-border/70 bg-card/60 p-3 backdrop-blur-xs shadow-xs">
+    <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-card/70 p-2 sm:p-2.5 backdrop-blur-xs shadow-xs">
       {/* Top row: Type Segmented Toggle & Quick Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-1.5">
         {/* Entry Type Toggle (Spend vs Income vs All) */}
-        <div className="inline-flex rounded-xl bg-muted/80 p-1 text-xs font-semibold">
+        <div className="inline-flex rounded-xl bg-muted/80 p-0.5 sm:p-1 text-[11px] sm:text-xs font-semibold shrink-0">
           <button
             type="button"
             onClick={() => updateFilter("entryType", "all")}
             className={cn(
-              "rounded-lg px-3 py-1.5 transition-all",
+              "rounded-lg px-2 sm:px-3 py-1 transition-all cursor-pointer",
               !filters.entryType || filters.entryType === "all"
                 ? "bg-background text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
@@ -181,36 +179,36 @@ export function ExpenseTopFilterBar({
             type="button"
             onClick={() => updateFilter("entryType", "expense")}
             className={cn(
-              "rounded-lg px-3 py-1.5 transition-all",
+              "rounded-lg px-2 sm:px-3 py-1 transition-all cursor-pointer",
               filters.entryType === "expense"
                 ? "bg-background text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Spend only
+            Spend
           </button>
           <button
             type="button"
             onClick={() => updateFilter("entryType", "income")}
             className={cn(
-              "rounded-lg px-3 py-1.5 transition-all",
+              "rounded-lg px-2 sm:px-3 py-1 transition-all cursor-pointer",
               filters.entryType === "income"
                 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            + Incoming only
+            + Income
           </button>
         </div>
 
-        {/* Right side: Sort + More Filters + Clear all */}
-        <div className="flex items-center gap-1.5 ml-auto">
+        {/* Right side: Sort + More Filters + Clear */}
+        <div className="flex items-center gap-1 shrink-0">
           {/* Sort Dropdown */}
           <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex h-8.5 items-center gap-1.5 rounded-xl border border-border/80 bg-background/80 px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground focus-visible:outline-none">
-              <ArrowUpDown className="h-3.5 w-3.5" />
-              <span>{sortLabel}</span>
-              <ChevronDown className="h-3 w-3 opacity-60" />
+            <DropdownMenuTrigger className="inline-flex h-7.5 sm:h-8 items-center gap-1 rounded-xl border border-border/80 bg-background/80 px-2 text-[11px] sm:text-xs font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground focus-visible:outline-none">
+              <ArrowUpDown className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              <span className="hidden xs:inline">{sortLabel}</span>
+              <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-60" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Sort expenses</DropdownMenuLabel>
@@ -234,10 +232,10 @@ export function ExpenseTopFilterBar({
               variant="outline"
               size="sm"
               onClick={onOpenMoreFilters}
-              className="h-8.5 gap-1.5 rounded-xl text-xs"
+              className="h-7.5 sm:h-8 gap-1 rounded-xl px-2 text-[11px] sm:text-xs"
             >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">All Filters</span>
+              <SlidersHorizontal className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              <span className="hidden sm:inline">Filters</span>
             </Button>
           )}
 
@@ -246,31 +244,31 @@ export function ExpenseTopFilterBar({
               variant="ghost"
               size="sm"
               onClick={clearAllFilters}
-              className="h-8.5 gap-1 rounded-xl text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="h-7.5 sm:h-8 gap-0.5 rounded-xl px-1.5 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive"
               title="Reset all filters"
             >
               <RotateCcw className="h-3 w-3" />
-              <span>Clear ({activeCount})</span>
+              <span className="text-[11px]">Clear ({activeCount})</span>
             </Button>
           )}
         </div>
       </div>
 
-      {/* Bottom row: Direct Dropdown Filter Pills */}
-      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/40">
+      {/* Bottom row: Smooth horizontal scrollable chip track on mobile, wrapped on desktop */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pt-1.5 border-t border-border/40 pb-0.5 sm:flex-wrap">
         {/* Date Range Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none",
+              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap",
               filters.rangeKey || filters.start || filters.end
                 ? "border-brand-primary/50 bg-brand-primary/10 text-brand-primary font-semibold"
                 : "border-border/80 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
             )}
           >
-            <CalendarIcon className="h-3.5 w-3.5" />
+            <CalendarIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             <span>{dateRangeLabel}</span>
-            <ChevronDown className="h-3 w-3 opacity-60" />
+            <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-60" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48">
             <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Select date range</DropdownMenuLabel>
@@ -335,15 +333,15 @@ export function ExpenseTopFilterBar({
         <DropdownMenu>
           <DropdownMenuTrigger
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none",
+              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap",
               filters.categoryIds && filters.categoryIds.length > 0
                 ? "border-brand-primary/50 bg-brand-primary/10 text-brand-primary font-semibold"
                 : "border-border/80 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
             )}
           >
-            <Tag className="h-3.5 w-3.5" />
+            <Tag className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             <span>{categoryLabel}</span>
-            <ChevronDown className="h-3 w-3 opacity-60" />
+            <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-60" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
             <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Filter by category</DropdownMenuLabel>
@@ -382,15 +380,15 @@ export function ExpenseTopFilterBar({
         <DropdownMenu>
           <DropdownMenuTrigger
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none",
+              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap",
               filters.paidBy && filters.paidBy !== "all"
                 ? "border-brand-primary/50 bg-brand-primary/10 text-brand-primary font-semibold"
                 : "border-border/80 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
             )}
           >
-            <User className="h-3.5 w-3.5" />
+            <User className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             <span>{payerLabel}</span>
-            <ChevronDown className="h-3 w-3 opacity-60" />
+            <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-60" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Paid or received by</DropdownMenuLabel>
@@ -404,7 +402,7 @@ export function ExpenseTopFilterBar({
               onClick={() => updateFilter("paidBy", userId)}
               className={cn("text-xs", filters.paidBy === userId && "font-semibold text-brand-primary")}
             >
-              You ({displayName})
+              You ({displayName.split(" ")[0]})
             </DropdownMenuItem>
             {partner && (
               <DropdownMenuItem
@@ -421,15 +419,15 @@ export function ExpenseTopFilterBar({
         <DropdownMenu>
           <DropdownMenuTrigger
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none",
+              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap",
               filters.paymentMethod
                 ? "border-brand-primary/50 bg-brand-primary/10 text-brand-primary font-semibold"
                 : "border-border/80 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
             )}
           >
-            <CreditCard className="h-3.5 w-3.5" />
+            <CreditCard className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             <span>{paymentMethodLabel}</span>
-            <ChevronDown className="h-3 w-3 opacity-60" />
+            <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-60" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Payment method</DropdownMenuLabel>
