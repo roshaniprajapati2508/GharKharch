@@ -10,8 +10,7 @@ import { useAddExpense, useOnExpenseSaved } from "@/lib/context/add-expense-cont
 import { DashboardFilters, type QuickPeriod } from "@/components/dashboard/dashboard-filters";
 import { SummaryHeader } from "@/components/dashboard/summary-header";
 import { FinancialHubCard } from "@/components/dashboard/financial-hub-card";
-import { CategoryBreakdownList } from "@/components/dashboard/category-breakdown-list";
-import { MerchantMemberCard } from "@/components/dashboard/merchant-member-card";
+import { BreakdownHubCard } from "@/components/dashboard/breakdown-hub-card";
 import { TopTransactionsCard } from "@/components/dashboard/top-transactions-card";
 import { DashboardBackgroundDecoration } from "@/components/dashboard/background-decoration";
 import { InsightsList } from "@/components/dashboard/insights-list";
@@ -48,13 +47,7 @@ interface DashboardPageClientProps {
 
 export function DashboardPageClient({
   initialData,
-  initialBrief,
-  initialForecast,
-  initialCashflow,
-  initialExecutiveCashflow,
-  initialSpendingPace,
   initialActivityEvents,
-  initialBusinessPnl,
 }: DashboardPageClientProps) {
   const { displayName } = useHousehold();
   const { openAdd } = useAddExpense();
@@ -194,7 +187,7 @@ export function DashboardPageClient({
         </div>
       ) : data && hasAnyActivity ? (
         <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-6">
-          {/* Executive KPI Bento Row (Top) */}
+          {/* 1. Executive KPI Bento Row (Top) */}
           <motion.div variants={fadeInUp}>
             <SummaryHeader
               periodLabel={data.range.label}
@@ -203,82 +196,72 @@ export function DashboardPageClient({
               categoryBreakdown={data.categoryBreakdown}
               topMerchants={data.topMerchants}
               dailySpending={data.dailySpending}
-              initialCashflow={initialExecutiveCashflow}
-              initialPace={initialSpendingPace}
-              initialBrief={initialBrief?.snapshot}
-              initialNextRecurring={initialBrief?.nextRecurring}
             />
           </motion.div>
 
-          {/* Balanced 2-Column Responsive Workspace (8:4 Desktop Grid) */}
+          {/* 2. Primary Financial Overview & Breakdown (8:4 Grid) */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-            {/* Left Primary Column (Analytics & Breakdown Hub - 8 Cols) */}
+            {/* Left Main Hub: Financial Visualizer (8 Cols) */}
             <motion.div variants={fadeInUp} className="flex min-w-0 flex-col gap-6 lg:col-span-7 xl:col-span-8">
-              {/* Main Financial Visualizer Hub (Spending Trend / P&L / Heatmap Calendar) */}
-              <FinancialHubCard
-                dailySpending={data.dailySpending}
-                initialCashflow={initialCashflow}
-                initialExecutiveCashflow={initialExecutiveCashflow}
-                initialBusinessPnl={initialBusinessPnl}
-              />
-
-              {/* Spending Breakdown 2-Card Bento */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <CategoryBreakdownList
-                  categories={data.categoryBreakdown}
-                  grandTotal={parseFloat(data.summary.total)}
-                />
-                <MerchantMemberCard
-                  merchants={data.topMerchants}
-                  personBreakdown={data.personBreakdown}
-                  itemAnalytics={data.itemAnalytics}
-                />
-              </div>
-
-              {/* AI Spending Insights & Recurring Bills Strip */}
-              <div className="flex flex-col gap-4">
-                <InsightsList
-                  data={{
-                    range: data.range,
-                    previousRange: data.previousRange,
-                    summary: data.summary,
-                    previousSummary: data.previousSummary,
-                    categoryBreakdown: data.categoryBreakdown,
-                    previousCategoryBreakdown: data.previousCategoryBreakdown,
-                    merchantBreakdown: data.topMerchants,
-                    itemAnalytics: data.itemAnalytics,
-                    dailySpending: data.dailySpending,
-                    topExpenses: data.topExpenses,
-                  }}
-                />
-                <RecurringSuggestionsCard />
-              </div>
+              <FinancialHubCard dailySpending={data.dailySpending} />
             </motion.div>
 
-            {/* Right Sidebar Column (Ledger & Activity Stream - 4 Cols) */}
+            {/* Right Sidebar: Breakdown Hub & Top Transactions (4 Cols) */}
             <motion.div variants={fadeInUp} className="flex min-w-0 flex-col gap-6 lg:col-span-5 xl:col-span-4">
-              {/* Top Debits & Credits Card */}
+              <BreakdownHubCard
+                categories={data.categoryBreakdown}
+                merchants={data.topMerchants}
+                personBreakdown={data.personBreakdown}
+                itemAnalytics={data.itemAnalytics}
+                grandTotal={parseFloat(data.summary.total)}
+              />
               <TopTransactionsCard
                 topExpenses={data.topExpenses}
                 topInflows={data.topInflows}
                 categories={data.categoryBreakdown}
               />
+            </motion.div>
+          </div>
 
-              {/* Recent Transactions Card */}
-              <div className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border">
-                <div className="flex items-center justify-between border-b border-border/50 pb-3">
-                  <div className="flex items-center gap-1.5">
-                    <Receipt className="h-4 w-4 text-brand-primary" />
-                    <h3 className="text-sm font-semibold text-foreground">Recent expenses</h3>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                      {data.recentExpenses.length}
+          {/* 3. AI Insights & Recurring Optimization Strip */}
+          <motion.div variants={fadeInUp} className="flex flex-col gap-3">
+            <InsightsList
+              data={{
+                range: data.range,
+                previousRange: data.previousRange,
+                summary: data.summary,
+                previousSummary: data.previousSummary,
+                categoryBreakdown: data.categoryBreakdown,
+                previousCategoryBreakdown: data.previousCategoryBreakdown,
+                merchantBreakdown: data.topMerchants,
+                itemAnalytics: data.itemAnalytics,
+                dailySpending: data.dailySpending,
+                topExpenses: data.topExpenses,
+              }}
+            />
+            <RecurringSuggestionsCard />
+          </motion.div>
+
+          {/* 4. Transactions Ledger & Activity Stream (8:4 Grid) */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+            {/* Left: Recent Expenses Ledger (8 Cols) */}
+            <motion.div variants={fadeInUp} className="flex min-w-0 flex-col gap-6 lg:col-span-7 xl:col-span-8">
+              <div className="flex flex-col justify-start rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs transition-all hover:border-border">
+                <div className="flex items-center justify-between border-b border-border/50 pb-3.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+                      <Receipt className="h-4 w-4" />
+                    </span>
+                    <h3 className="text-sm sm:text-base font-bold text-foreground">Recent Transactions</h3>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                      {data.recentExpenses.length} logged
                     </span>
                   </div>
                   <Link
                     href="/expenses"
-                    className="flex items-center text-xs font-medium text-primary hover:underline"
+                    className="flex items-center text-xs font-semibold text-primary hover:underline"
                   >
-                    See all <ChevronRight className="h-3.5 w-3.5" />
+                    View all transactions <ChevronRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
                 <div className="pt-2">
@@ -290,8 +273,10 @@ export function DashboardPageClient({
                   />
                 </div>
               </div>
+            </motion.div>
 
-              {/* Live Activity Audit Feed */}
+            {/* Right: Live Activity Audit Feed (4 Cols) */}
+            <motion.div variants={fadeInUp} className="flex min-w-0 flex-col gap-6 lg:col-span-5 xl:col-span-4">
               <ActivityFeedCard initialEvents={initialActivityEvents} />
             </motion.div>
           </div>
