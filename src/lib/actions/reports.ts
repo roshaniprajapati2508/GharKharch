@@ -1,7 +1,7 @@
 "use server";
 
 // Report generation (spec sections 31, 32, 62): reuses the same Phase 4
-// aggregate functions as the Analytics screen — a report is just a curated,
+// aggregate functions as the Analytics screen - a report is just a curated,
 // presentation-focused view over the same server-aggregated numbers.
 
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
@@ -233,7 +233,7 @@ export async function exportExpensesJson(range: DateRange) {
 // in a chosen period. Structured with an explicit `version` so a future
 // import feature could plausibly restore from it, even though only CSV
 // import (lib/actions/reports.ts#importExpensesFromCsv) exists today.
-// Payment instruments are included in full — per the existing schema
+// Payment instruments are included in full - per the existing schema
 // (user_cards/bank_accounts/upi_profiles), only identifiers like last4/
 // nickname/label are ever stored, never a credential, so a full-row export
 // carries nothing sensitive beyond what the household already sees on the
@@ -256,7 +256,7 @@ export interface HouseholdBackup {
   bankAccounts: Tables<"bank_accounts">[];
 }
 
-/** Full JSON snapshot of the household's own data (spec: "Backup my data" on the More/Data & Privacy screen) — every non-deleted expense (no date-range limit, unlike the CSV/JSON exports above) plus every reference table the household owns. */
+/** Full JSON snapshot of the household's own data (spec: "Backup my data" on the More/Data & Privacy screen) - every non-deleted expense (no date-range limit, unlike the CSV/JSON exports above) plus every reference table the household owns. */
 export async function exportHouseholdBackup() {
   return runAction(async (): Promise<HouseholdBackup> => {
     const { supabase, householdId } = await requireHouseholdContext();
@@ -318,12 +318,12 @@ export interface ImportResultRow {
 
 /**
  * Inserts previously-validated CSV rows one at a time via the existing
- * `createExpense` action (spec: reuse it, never a parallel insert path — that
+ * `createExpense` action (spec: reuse it, never a parallel insert path - that
  * keeps expense_patterns upsert, revalidation, and RLS-scoping all in the one
  * place they already live). Category/merchant name -> id resolution happens
  * here (case-insensitively, against the household's real categories/
  * merchants) since the client only ever sent names it matched during preview,
- * never ids it could have fabricated. Never a silent partial failure — every
+ * never ids it could have fabricated. Never a silent partial failure - every
  * row's outcome is reported back individually.
  */
 export async function importExpensesFromCsv(rows: ValidatedImportRow[]) {
@@ -340,13 +340,13 @@ export async function importExpensesFromCsv(rows: ValidatedImportRow[]) {
     const merchantByLowerName = new Map((merchants ?? []).map((m) => [m.name.toLowerCase(), m.id]));
 
     // Fallback category for rows whose category name didn't match anything
-    // (never silently invent a category — but expenses.category_id is
+    // (never silently invent a category - but expenses.category_id is
     // NOT NULL, so an unmatched row needs *some* real category to land in).
     // Prefer a household category literally named "Uncategorized"/"Other" if
     // one exists; otherwise the first category available at all.
     const fallbackCategoryId =
       categoryByLowerName.get("uncategorized") ?? categoryByLowerName.get("other") ?? categories?.[0]?.id ?? null;
-    if (!fallbackCategoryId) throw new ActionError("No categories exist yet — add a category before importing");
+    if (!fallbackCategoryId) throw new ActionError("No categories exist yet - add a category before importing");
 
     const results: ImportResultRow[] = [];
     let succeeded = 0;

@@ -11,7 +11,7 @@ import type { Database } from "@/types/database";
 type MerchantBreakdownRow = Database["public"]["Functions"]["get_merchant_breakdown"]["Returns"][number];
 type MerchantCategoryShareRow = Database["public"]["Functions"]["get_merchant_category_share"]["Returns"][number];
 
-/** Tiny inline sparkline for a trailing monthly spend series — no charting library needed for something this small. Shared with CategoryAnalyticsTab. */
+/** Tiny inline sparkline for a trailing monthly spend series - no charting library needed for something this small. Shared with CategoryAnalyticsTab. */
 export function Sparkline({ values }: { values: number[] }) {
   if (values.length < 2 || values.every((v) => v === 0)) return null;
   const width = 64;

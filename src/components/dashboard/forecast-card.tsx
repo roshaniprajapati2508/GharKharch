@@ -13,7 +13,7 @@ import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
  * different kind of claim from the brief's "what happened today/this week"
  * facts, and the brief explicitly calls it out as a standalone capability.
  * Renders nothing (not an empty-state card) when there's too little of the
- * month elapsed, or nothing spent yet, to extrapolate from — see the guard
+ * month elapsed, or nothing spent yet, to extrapolate from - see the guard
  * logic in `getHouseholdForecast()`.
  */
 export function ForecastCard({

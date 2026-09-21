@@ -319,7 +319,7 @@ export function SpendingIntelligenceClient() {
 
             <MetricHeroCard
               title="Peak Spending Activity"
-              value={data.weekdayPeak ? data.weekdayPeak.weekdayName : data.datePeak ? formatINR(data.datePeak.total) : "—"}
+              value={data.weekdayPeak ? data.weekdayPeak.weekdayName : data.datePeak ? formatINR(data.datePeak.total) : "-"}
               subtitle={
                 data.weekdayPeak
                   ? `${formatINR(data.weekdayPeak.total)} total`
@@ -373,7 +373,7 @@ export function SpendingIntelligenceClient() {
                   <div key={day.weekdayNum} className="flex flex-col items-center gap-1.5">
                     {/* Amount on top (sm+) */}
                     <span className="hidden text-[10px] font-semibold text-muted-foreground sm:block">
-                      {day.total > 0 ? formatINR(day.total) : "—"}
+                      {day.total > 0 ? formatINR(day.total) : "-"}
                     </span>
 
                     {/* Bar Container */}

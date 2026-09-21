@@ -2,11 +2,11 @@
 
 // "Spending Intelligence" (batch phase): a single consolidated action for the
 // /analytics/intelligence page, built the same way analytics.ts and
-// insights.ts already are — every aggregation happens in Postgres via
+// insights.ts already are - every aggregation happens in Postgres via
 // existing or new RPCs, never by fetching a household's raw expense history
 // into JS to sum it (spec section 48-50, 88). All figures are computed from
 // real queries for the given period; nothing here is fabricated, and nothing
-// is described in judgmental language ("wasted", "bad") — only neutral,
+// is described in judgmental language ("wasted", "bad") - only neutral,
 // factual statements about where money moved.
 
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
@@ -18,7 +18,7 @@ const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "
 
 // Below this many transactions in the range, a "highest weekday" or "highest
 // single date" figure is more noise than signal (e.g. one large purchase on
-// a Tuesday doesn't mean Tuesdays run high) — same reasoning insights.ts and
+// a Tuesday doesn't mean Tuesdays run high) - same reasoning insights.ts and
 // budgets.ts already use for not projecting/comparing off too little data.
 const MIN_TXN_FOR_PEAK_GUARDS = 8;
 // A meaningful "vs previous period" comparison needs the previous period to
@@ -89,7 +89,7 @@ export interface SpendingIntelligenceData {
   smartTakeaways: string[];
 }
 
-/** Diffs two breakdown-shaped result sets (merchant or item analytics, current vs the previous comparable period) and returns the top movers by absolute change — same merge/sort approach getSpendingChanges already uses for categories. */
+/** Diffs two breakdown-shaped result sets (merchant or item analytics, current vs the previous comparable period) and returns the top movers by absolute change - same merge/sort approach getSpendingChanges already uses for categories. */
 function diffBreakdowns(
   currentRows: { key: string; name: string; total: number }[],
   previousRows: { key: string; name: string; total: number }[],

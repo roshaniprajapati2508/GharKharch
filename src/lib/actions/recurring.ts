@@ -10,11 +10,11 @@ import type { Tables } from "@/types/database";
 
 // `recurring_expenses` (migration 001) has had a real, RLS-protected table
 // since day one, but the only thing that ever wrote to it was accepting a
-// detected "looks recurring" suggestion (intelligence.ts) — there was no way
+// detected "looks recurring" suggestion (intelligence.ts) - there was no way
 // to see, edit, pause, or manually add a recurring bill (rent, a
 // subscription, an EMI) that GharKharch hadn't already detected on its own.
 // This file + more/recurring/page.tsx close that gap. Nothing here ever
-// auto-creates an actual expense from a rule (spec section 88) — it's purely
+// auto-creates an actual expense from a rule (spec section 88) - it's purely
 // bookkeeping of what recurs, same as the existing suggestion-acceptance flow.
 
 const recurringInputSchema = z.object({
@@ -69,7 +69,7 @@ export async function listRecurringExpenses() {
 
 // Normalizes each frequency to an equivalent monthly amount, for a single
 // "total monthly recurring spend" figure (wishlist gap). Values follow the
-// actual `RecurringFrequency` enum in types/database.ts — there is no
+// actual `RecurringFrequency` enum in types/database.ts - there is no
 // biweekly/quarterly cadence in this schema, so those aren't handled.
 // "custom" has no fixed cadence to normalize, so it's excluded from the
 // monthly total (its amount is still shown per-rule in the Upcoming list).
@@ -197,7 +197,7 @@ export async function setRecurringActive(id: string, active: boolean) {
 
 /**
  * Advances a rule's next_due_date by one cycle of its frequency. "custom" has
- * no fixed interval to advance by — the date is left unchanged, and the user
+ * no fixed interval to advance by - the date is left unchanged, and the user
  * updates it manually next time they know when the next one is (mirrors how
  * MONTHLY_MULTIPLIER above excludes "custom" from the normalized total for
  * the same reason). A null next_due_date (never set) stays null.
@@ -219,7 +219,7 @@ function advanceNextDueDate(current: string | null, frequency: Tables<"recurring
  * with `recurring_rule_id`, then advances the rule's `next_due_date` forward
  * by one cycle. This is the ONLY place an expense is ever created from a
  * recurring rule, and it only ever runs from a direct, explicit user tap
- * ("Log this bill" in more/recurring/page.tsx) — never automatically, never
+ * ("Log this bill" in more/recurring/page.tsx) - never automatically, never
  * on a timer (spec: "never silently create an expense"). The caller must
  * supply the amount (and any other details) themselves rather than this
  * function defaulting to the rule's stored amount, since real bill amounts
@@ -250,7 +250,7 @@ export async function logRecurringOccurrence(
       .eq("household_id", householdId)
       .single();
     if (fetchError || !rule) throw new ActionError("Couldn't find that recurring expense");
-    if (!rule.active) throw new ActionError("This recurring expense is paused — resume it first");
+    if (!rule.active) throw new ActionError("This recurring expense is paused - resume it first");
 
     const payload = expenseFormSchema.parse({
       amount: expenseInput.amount,
@@ -291,7 +291,7 @@ export async function deleteRecurringExpense(id: string) {
     const { supabase, householdId } = await requireHouseholdContext();
     // Safe to hard-delete (unlike categories/merchants): expenses.recurring_rule_id
     // is ON DELETE SET NULL (migration 001), so past logged expenses that were
-    // tagged from this rule simply lose the tag — their amount/category/date
+    // tagged from this rule simply lose the tag - their amount/category/date
     // are untouched.
     const { error } = await supabase.from("recurring_expenses").delete().eq("id", id).eq("household_id", householdId);
     if (error) throw new ActionError(error.message);

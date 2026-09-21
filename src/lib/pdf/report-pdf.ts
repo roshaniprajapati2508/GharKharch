@@ -8,7 +8,7 @@
 // so amounts here use a plain "Rs." prefix instead of lib/utils.ts's
 // formatINR (which is fine for on-screen HTML/CSS but would render as a
 // missing-glyph box in the PDF). Everything else reuses the exact numbers
-// already computed server-side in ReportData — this file never computes a
+// already computed server-side in ReportData - this file never computes a
 // total itself, it only lays text out on a page.
 
 import { jsPDF } from "jspdf";
@@ -35,7 +35,7 @@ export interface ReportPdfPeople {
   partner: { id: string; displayName: string } | null;
 }
 
-/** Builds and triggers a browser download of a real, generated PDF report for `data`, mirroring MonthlyReportView's structure (total, category breakdown, top purchases, previous-period comparison). `people` resolves the anonymous `paid_by` ids in `data.personBreakdown` into display names, the same way MonthlyReportView does via useHousehold() — optional because this function only ever computes layout, never data. */
+/** Builds and triggers a browser download of a real, generated PDF report for `data`, mirroring MonthlyReportView's structure (total, category breakdown, top purchases, previous-period comparison). `people` resolves the anonymous `paid_by` ids in `data.personBreakdown` into display names, the same way MonthlyReportView does via useHousehold() - optional because this function only ever computes layout, never data. */
 export function downloadReportPdf(data: ReportData, people?: ReportPdfPeople) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -156,7 +156,7 @@ export function downloadReportPdf(data: ReportData, people?: ReportPdfPeople) {
     y += 8;
   }
 
-  // Person comparison (only when we can resolve names — see ReportPdfPeople doc comment)
+  // Person comparison (only when we can resolve names - see ReportPdfPeople doc comment)
   if (data.personBreakdown.length > 0 && people) {
     const nameFor = (userId: string) =>
       userId === people.userId ? "You" : people.partner && userId === people.partner.id ? people.partner.displayName.split(" ")[0] : "Household member";

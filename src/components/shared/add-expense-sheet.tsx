@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Store,
   Sparkles,
   Paperclip,
@@ -23,6 +25,12 @@ import {
   Calendar,
   Mic,
   MicOff,
+  Copy,
+  SlidersHorizontal,
+  ListPlus,
+  Calculator,
+  RotateCcw,
+  ShoppingBag,
 } from "lucide-react";
 import {
   Drawer,
@@ -58,7 +66,7 @@ import { suggestMerchant } from "@/lib/expense-intelligence/merchant-suggester";
 import { isOffline, isNetworkError, queueExpense } from "@/lib/offline/offline-queue";
 import { useOffline } from "@/lib/context/offline-context";
 import { parseQuickEntry } from "@/lib/expense-intelligence/nl-parser";
-import { matchKeywordRule } from "@/lib/expense-intelligence/keyword-map";
+import { matchKeywordRule, KEYWORD_RULES } from "@/lib/expense-intelligence/keyword-map";
 import { fuzzyMatches } from "@/lib/expense-intelligence/fuzzy-match";
 import { timeOfDayCategoryBoost } from "@/lib/expense-intelligence/time-of-day";
 import { detectPriceChange, type PriceChangeFlag } from "@/lib/actions/insights";
@@ -93,15 +101,108 @@ interface AddExpenseSheetProps {
   initialQuickEntry?: string | null;
 }
 
-interface ShoppingRow {
+export interface ShoppingRow {
   key: string;
   itemName: string;
   amount: string;
+  quantity: string;
+  unitPrice: string;
+  unit: string;
+  useMultiplier: boolean;
   category: CategorySelection | null;
+  merchant: Tables<"merchants"> | null;
+  expenseType: ExpenseType;
+  notes: string;
+  isExpanded: boolean;
 }
 
-function emptyShoppingRow(carryOver: CategorySelection | null): ShoppingRow {
-  return { key: crypto.randomUUID(), itemName: "", amount: "", category: carryOver };
+function emptyShoppingRow(
+  carryOver: CategorySelection | null = null,
+  defaultExpenseType: ExpenseType = "household",
+  defaultMerchant: Tables<"merchants"> | null = null
+): ShoppingRow {
+  return {
+    key: crypto.randomUUID(),
+    itemName: "",
+    amount: "",
+    quantity: "1",
+    unitPrice: "",
+    unit: "pcs",
+    useMultiplier: false,
+    category: carryOver,
+    merchant: defaultMerchant,
+    expenseType: defaultExpenseType,
+    notes: "",
+    isExpanded: false,
+  };
+}
+
+function autoDetectCategoryForShopping(
+  itemName: string,
+  categoriesTree: CategoryWithChildren[],
+  _flatList: Tables<"categories">[]
+): CategorySelection | null {
+  if (!itemName || !itemName.trim()) return null;
+  const raw = itemName.trim().toLowerCase();
+
+  // 1. Keyword rules
+  for (const rule of KEYWORD_RULES) {
+    const isMatched = rule.keywords.some((kw) => {
+      const kwLower = kw.toLowerCase();
+      const regex = new RegExp(`(^|\\s|[.,/\\-_])${kwLower.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}(\\s|[.,/\\-_]|$)`, "i");
+      return regex.test(raw);
+    });
+
+    if (isMatched) {
+      const parent = categoriesTree.find(
+        (c) => c.name.toLowerCase() === rule.categoryName.toLowerCase() && c.type !== "income"
+      );
+      if (parent) {
+        const sub = rule.subcategoryName
+          ? parent.children.find((s) => s.name.toLowerCase() === rule.subcategoryName?.toLowerCase())
+          : null;
+        return {
+          categoryId: parent.id,
+          subcategoryId: sub?.id ?? null,
+          categoryName: parent.name,
+          subcategoryName: sub?.name ?? null,
+        };
+      }
+    }
+  }
+
+  // 2. Subcategory match
+  for (const cat of categoriesTree) {
+    if (cat.type === "income") continue;
+    for (const sub of cat.children) {
+      const subLower = sub.name.toLowerCase();
+      if (raw.includes(subLower) || (raw.length >= 4 && subLower.includes(raw))) {
+        return {
+          categoryId: cat.id,
+          subcategoryId: sub.id,
+          categoryName: cat.name,
+          subcategoryName: sub.name,
+        };
+      }
+    }
+  }
+
+  // 3. Category match
+  for (const cat of categoriesTree) {
+    if (cat.type === "income") continue;
+    const catLower = cat.name.toLowerCase();
+    if (raw.includes(catLower)) {
+      return {
+        categoryId: cat.id,
+        subcategoryId: null,
+        categoryName: cat.name,
+        subcategoryName: null,
+      };
+    }
+  }
+
+  // 4. Default to first grocery category if name hints at food/grocery/supermarket
+  return null;
 }
 
 function getCurrentISTTime(): string {
@@ -136,6 +237,19 @@ function emptySingleState(userId: string) {
     entryType: "expense" as "expense" | "income",
   };
 }
+
+const COMMON_SHOPPING_MERCHANT_NAMES = [
+  "DMart",
+  "Blinkit",
+  "Zepto",
+  "Swiggy Instamart",
+  "Reliance Fresh",
+  "BigBasket",
+  "Nature's Basket",
+  "Local Kirana",
+];
+
+const SHOPPING_UNITS = ["pcs", "kg", "g", "L", "ml", "pack", "box", "dozen"];
 
 const COMMON_PAYMENT_METHODS = [
   { id: "UPI", label: "UPI", icon: Smartphone },
@@ -212,6 +326,26 @@ export function AddExpenseSheet({
   // Shopping mode state
   const [shoppingRows, setShoppingRows] = useState<ShoppingRow[]>([emptyShoppingRow(null)]);
   const [shoppingCategoryRowKey, setShoppingCategoryRowKey] = useState<string | null>(null);
+  const [shoppingMerchantPickerTarget, setShoppingMerchantPickerTarget] = useState<"trip" | string | null>(null);
+
+  // Shopping Trip metadata (Trip-level defaults applied across all cart items)
+  const [tripMerchant, setTripMerchant] = useState<Tables<"merchants"> | null>(null);
+  const [tripDate, setTripDate] = useState<string>(getTodayISO());
+  const [tripPaidBy, setTripPaidBy] = useState<string>(userId);
+  const [tripExpenseType, setTripExpenseType] = useState<ExpenseType>("household");
+  const [tripPaymentMethod, setTripPaymentMethod] = useState<string | null>("UPI");
+  const [tripCardId, setTripCardId] = useState<string | null>(null);
+  const [tripUpiProfileId, setTripUpiProfileId] = useState<string | null>(null);
+  const [tripBankAccountId, setTripBankAccountId] = useState<string | null>(null);
+  const [tripNotes, setTripNotes] = useState<string>("");
+  const [showTripSettings, setShowTripSettings] = useState<boolean>(false);
+  const tripDateInputRef = useRef<HTMLInputElement>(null);
+
+  // Power tools state
+  const [bulkPasteOpen, setBulkPasteOpen] = useState<boolean>(false);
+  const [bulkPasteText, setBulkPasteText] = useState<string>("");
+  const [shoppingListening, setShoppingListening] = useState<boolean>(false);
+  const shoppingSpeechRecRef = useRef<{ stop: () => void } | null>(null);
 
   // Reference data with instant client caching & 0ms instant fallback
   const [categoryTree, setCategoryTree] = useState<CategoryWithChildren[]>(() => {
@@ -263,7 +397,19 @@ export function AddExpenseSheet({
     if (!open) return;
 
     setEntryMode(initialMode);
-    setShoppingRows([emptyShoppingRow(null)]);
+    setShoppingRows([emptyShoppingRow(null, "household", null)]);
+    setTripMerchant(null);
+    setTripDate(getTodayISO());
+    setTripPaidBy(userId);
+    setTripExpenseType("household");
+    setTripPaymentMethod("UPI");
+    setTripCardId(null);
+    setTripUpiProfileId(null);
+    setTripBankAccountId(null);
+    setTripNotes("");
+    setShowTripSettings(false);
+    setBulkPasteOpen(false);
+    setBulkPasteText("");
     const hasCachedMerchants = !!getClientCachedData<Tables<"merchants">[]>("merchants_list");
     setMerchantsLoading(!hasCachedMerchants);
     setAppliedRule(null);
@@ -758,7 +904,7 @@ export function AddExpenseSheet({
     if (matchedCategory) parts.push(matchedCategory.subcategoryName ?? matchedCategory.categoryName);
     if (matchedMerchant) parts.push(matchedMerchant.name);
 
-    toast.success(parts.length > 0 ? `Smart parsed: ${parts.join(" • ")}` : "Smart parsed — review details");
+    toast.success(parts.length > 0 ? `Smart parsed: ${parts.join(" • ")}` : "Smart parsed - review details");
   }
 
   // Apply a quick-entry string handed in from outside (Cmd+K command palette
@@ -783,7 +929,6 @@ export function AddExpenseSheet({
       paymentMethod: parsed.paymentMethod ?? f.paymentMethod ?? "UPI",
       date: parsed.expenseDate,
     }));
-    toast.message("Parsed from search — review details");
   }, [open, initialQuickEntry, editExpense, duplicateFrom]);
 
   // Voice entry - speech-to-text into the same "Smart parse text" box above,
@@ -1252,6 +1397,61 @@ export function AddExpenseSheet({
       }
       setReceiptFile(file);
       setParsedReceipt(result.data);
+
+      if (entryMode === "shopping" && result.data) {
+        if (result.data.merchant) {
+          const match = merchants.find((m) => m.name.toLowerCase().includes(result.data!.merchant!.toLowerCase()));
+          if (match) setTripMerchant(match);
+        }
+        if (result.data.date) {
+          setTripDate(result.data.date);
+        }
+        if (result.data.items && result.data.items.length > 0) {
+          const newRows: ShoppingRow[] = result.data.items.map((it) => {
+            const detectedCat = autoDetectCategoryForShopping(it, expenseCategoryTree, categoryFlat);
+            const amtStr = (result.data!.items.length === 1 && result.data!.amount)
+              ? String(result.data!.amount)
+              : "";
+            return {
+              key: crypto.randomUUID(),
+              itemName: it,
+              amount: amtStr,
+              quantity: "1",
+              unitPrice: amtStr,
+              unit: "pcs",
+              useMultiplier: false,
+              category: detectedCat,
+              merchant: null,
+              expenseType: tripExpenseType,
+              notes: "",
+              isExpanded: false,
+            };
+          });
+          setShoppingRows(newRows);
+          toast.success(`✨ Extracted ${newRows.length} item${newRows.length === 1 ? "" : "s"} from receipt into cart!`);
+        } else if (result.data.amount) {
+          const detectedCat = autoDetectCategoryForShopping(result.data.categoryGuess || "Grocery", expenseCategoryTree, categoryFlat);
+          setShoppingRows([
+            {
+              key: crypto.randomUUID(),
+              itemName: result.data.merchant || "Shopping Receipt",
+              amount: String(result.data.amount),
+              quantity: "1",
+              unitPrice: String(result.data.amount),
+              unit: "pcs",
+              useMultiplier: false,
+              category: detectedCat,
+              merchant: null,
+              expenseType: tripExpenseType,
+              notes: "",
+              isExpanded: false,
+            },
+          ]);
+          toast.success(`✨ Receipt amount ₹${result.data.amount} loaded into cart!`);
+        }
+        return;
+      }
+
       setReceiptReviewOpen(true);
     } catch {
       setScanning(false);
@@ -1297,12 +1497,12 @@ export function AddExpenseSheet({
         .from("receipts")
         .upload(path, receiptFile, { contentType: receiptFile.type || "image/jpeg" });
       if (error) {
-        toast.error("Couldn't upload receipt — expense will be saved without it");
+        toast.error("Couldn't upload receipt - expense will be saved without it");
         return null;
       }
       return path;
     } catch {
-      toast.error("Couldn't upload receipt — expense will be saved without it");
+      toast.error("Couldn't upload receipt - expense will be saved without it");
       return null;
     }
   }
@@ -1326,7 +1526,7 @@ export function AddExpenseSheet({
     }));
     setAmountTouched(true);
     setCategoryTouched(true);
-    toast.info(`Loaded "${chip.itemName} ₹${chip.amount}" — tap Save Expense when ready`, { duration: 3000 });
+    toast.info(`Loaded "${chip.itemName} ₹${chip.amount}" - tap Save Expense when ready`, { duration: 3000 });
   }
 
   // Handle Single Expense Submit
@@ -1398,7 +1598,7 @@ export function AddExpenseSheet({
       if (receiptFile) toast.message("Receipt will need to be attached again once back online");
       await queueExpense(payload);
       refreshPendingCount();
-      toast.message(`${payload.item_name} queued — will sync when online`);
+      toast.message(`${payload.item_name} queued - will sync when online`);
       onOpenChange(false);
       return;
     }
@@ -1425,7 +1625,7 @@ export function AddExpenseSheet({
       if (!isEditing && isNetworkError(err)) {
         await queueExpense(payload);
         refreshPendingCount();
-        toast.message(`${payload.item_name} queued — will sync when online`);
+        toast.message(`${payload.item_name} queued - will sync when online`);
         onOpenChange(false);
       } else {
         toast.error("Something went wrong", { action: { label: "Retry", onClick: handleSubmitSingle } });
@@ -1435,62 +1635,435 @@ export function AddExpenseSheet({
 
   // Shopping Mode Handlers
   function updateShoppingRow(key: string, patch: Partial<ShoppingRow>) {
-    setShoppingRows((list) => list.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+    setShoppingRows((list) =>
+      list.map((r) => {
+        if (r.key !== key) return r;
+        const updated = { ...r, ...patch };
+        if (patch.quantity !== undefined || patch.unitPrice !== undefined || patch.useMultiplier !== undefined) {
+          if (updated.useMultiplier) {
+            const qty = parseFloat(updated.quantity) || 0;
+            const price = parseFloat(updated.unitPrice) || 0;
+            updated.amount = qty && price ? (qty * price).toFixed(2).replace(/\.00$/, "") : "";
+          }
+        }
+        return updated;
+      })
+    );
   }
 
-  function addShoppingRow() {
+  function handleShoppingItemNameChange(key: string, name: string) {
+    const detected = autoDetectCategoryForShopping(name, expenseCategoryTree, categoryFlat);
+    setShoppingRows((list) =>
+      list.map((r) => {
+        if (r.key !== key) return r;
+        return {
+          ...r,
+          itemName: name,
+          category: detected || r.category,
+        };
+      })
+    );
+  }
+
+  function addShoppingRow(presetCategory?: CategorySelection | null) {
     const last = shoppingRows[shoppingRows.length - 1];
-    setShoppingRows((list) => [...list, emptyShoppingRow(last?.category ?? null)]);
+    setShoppingRows((list) => [
+      ...list,
+      emptyShoppingRow(presetCategory ?? last?.category ?? null, tripExpenseType, tripMerchant),
+    ]);
+  }
+
+  function duplicateShoppingRow(key: string) {
+    const index = shoppingRows.findIndex((r) => r.key === key);
+    if (index === -1) return;
+    const target = shoppingRows[index];
+    const cloned: ShoppingRow = {
+      ...target,
+      key: crypto.randomUUID(),
+    };
+    const newList = [...shoppingRows];
+    newList.splice(index + 1, 0, cloned);
+    setShoppingRows(newList);
+    toast.message("Item duplicated");
   }
 
   function removeShoppingRow(key: string) {
-    setShoppingRows((list) => (list.length > 1 ? list.filter((r) => r.key !== key) : list));
+    setShoppingRows((list) => {
+      if (list.length <= 1) {
+        return [emptyShoppingRow(null, tripExpenseType, tripMerchant)];
+      }
+      return list.filter((r) => r.key !== key);
+    });
   }
 
-  const validShoppingRows = shoppingRows.filter((r) => r && typeof r.itemName === "string" && r.itemName.trim() && parseFloat(r.amount) > 0 && r.category);
-  const shoppingTotal = validShoppingRows.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+  function clearAllShoppingRows() {
+    setShoppingRows([emptyShoppingRow(null, tripExpenseType, tripMerchant)]);
+    toast.message("Cart reset");
+  }
+
+  function handleBulkPasteImport() {
+    if (!bulkPasteText || !bulkPasteText.trim()) {
+      toast.error("Please paste or type some items first");
+      return;
+    }
+    const lines = bulkPasteText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) return;
+
+    const parsedRows: ShoppingRow[] = [];
+    for (const line of lines) {
+      // 1. Multiplier format "Item 2 x 60"
+      const multMatch = line.match(/^(.+?)\s+(\d+(?:\.\d+)?)\s*(?:[xX*])\s*₹?\s*(\d+(?:\.\d+)?)\s*$/);
+      if (multMatch) {
+        const name = multMatch[1].trim().replace(/^[-*•\d+.]\s*/, "");
+        const qty = multMatch[2];
+        const price = multMatch[3];
+        const total = (parseFloat(qty) * parseFloat(price)).toFixed(2).replace(/\.00$/, "");
+        const cat = autoDetectCategoryForShopping(name, expenseCategoryTree, categoryFlat);
+        parsedRows.push({
+          key: crypto.randomUUID(),
+          itemName: name,
+          amount: total,
+          quantity: qty,
+          unitPrice: price,
+          unit: "pcs",
+          useMultiplier: true,
+          category: cat,
+          merchant: tripMerchant,
+          expenseType: tripExpenseType,
+          notes: "",
+          isExpanded: false,
+        });
+        continue;
+      }
+
+      // 2. Quantity with units "Milk 2L 120"
+      const unitMatch = line.match(/^(.+?)\s+(\d+(?:\.\d+)?)\s*(kg|g|l|ltr|litre|ml|pack|pcs|pieces|packet)\s+₹?\s*(\d+(?:\.\d+)?)\s*$/i);
+      if (unitMatch) {
+        const name = unitMatch[1].trim().replace(/^[-*•\d+.]\s*/, "");
+        const qty = unitMatch[2];
+        const unit = unitMatch[3].toLowerCase();
+        const amt = unitMatch[4];
+        const cat = autoDetectCategoryForShopping(name, expenseCategoryTree, categoryFlat);
+        parsedRows.push({
+          key: crypto.randomUUID(),
+          itemName: `${name} (${qty}${unit})`,
+          amount: amt,
+          quantity: qty,
+          unitPrice: amt,
+          unit: unit === "ltr" || unit === "litre" ? "L" : unit,
+          useMultiplier: false,
+          category: cat,
+          merchant: tripMerchant,
+          expenseType: tripExpenseType,
+          notes: "",
+          isExpanded: false,
+        });
+        continue;
+      }
+
+      // 3. Trailing amount "Milk 60"
+      const amtMatch = line.match(/^(.+?)(?:[:=-]|\s)+₹?\s*(\d+(?:\.\d+)?)\s*$/);
+      if (amtMatch) {
+        const name = amtMatch[1].trim().replace(/^[-*•\d+.]\s*/, "");
+        const amt = amtMatch[2];
+        const cat = autoDetectCategoryForShopping(name, expenseCategoryTree, categoryFlat);
+        parsedRows.push({
+          key: crypto.randomUUID(),
+          itemName: name,
+          amount: amt,
+          quantity: "1",
+          unitPrice: amt,
+          unit: "pcs",
+          useMultiplier: false,
+          category: cat,
+          merchant: tripMerchant,
+          expenseType: tripExpenseType,
+          notes: "",
+          isExpanded: false,
+        });
+        continue;
+      }
+
+      // 4. Just item name
+      const cleanName = line.replace(/^[-*•\d+.]\s*/, "").trim();
+      const cat = autoDetectCategoryForShopping(cleanName, expenseCategoryTree, categoryFlat);
+      parsedRows.push({
+        key: crypto.randomUUID(),
+        itemName: cleanName,
+        amount: "",
+        quantity: "1",
+        unitPrice: "",
+        unit: "pcs",
+        useMultiplier: false,
+        category: cat,
+        merchant: tripMerchant,
+        expenseType: tripExpenseType,
+        notes: "",
+        isExpanded: false,
+      });
+    }
+
+    if (parsedRows.length > 0) {
+      setShoppingRows((prev) => {
+        const nonEmptyPrev = prev.filter((r) => r.itemName.trim() || r.amount.trim());
+        return [...nonEmptyPrev, ...parsedRows];
+      });
+      setBulkPasteText("");
+      setBulkPasteOpen(false);
+      toast.success(`✨ Added ${parsedRows.length} item${parsedRows.length === 1 ? "" : "s"} to cart!`);
+    }
+  }
+
+  function startShoppingVoiceInput() {
+    if (typeof window === "undefined") return;
+    interface SpeechEvent {
+      results?: Array<Array<{ transcript?: string }>>;
+    }
+    interface SpeechInstance {
+      lang: string;
+      continuous: boolean;
+      interimResults: boolean;
+      onstart: () => void;
+      onresult: (e: SpeechEvent) => void;
+      onerror: () => void;
+      onend: () => void;
+      start: () => void;
+      stop: () => void;
+    }
+    const win = window as unknown as {
+      SpeechRecognition?: new () => SpeechInstance;
+      webkitSpeechRecognition?: new () => SpeechInstance;
+    };
+    const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      toast.error("Voice input is not supported in this browser");
+      return;
+    }
+
+    if (shoppingListening) {
+      if (shoppingSpeechRecRef.current) {
+        try {
+          shoppingSpeechRecRef.current.stop();
+        } catch {}
+      }
+      setShoppingListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.lang = "en-IN";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setShoppingListening(true);
+        toast.info("🎙️ Speak items (e.g. 'Milk 60, Bread 40, Apples 120')...");
+      };
+
+      recognition.onresult = (event: SpeechEvent) => {
+        const transcript = event.results?.[0]?.[0]?.transcript;
+        if (transcript && typeof transcript === "string") {
+          const parts = transcript
+            .split(/,|\band\b|\baur\b|\bane\b|\+/i)
+            .map((p: string) => p.trim())
+            .filter(Boolean);
+
+          const newRows: ShoppingRow[] = [];
+          for (const part of parts) {
+            const amtMatch = part.match(/^(.+?)(?:[:=-]|\s)+₹?\s*(\d+(?:\.\d+)?)\s*$/);
+            if (amtMatch) {
+              const name = amtMatch[1].trim();
+              const amt = amtMatch[2];
+              const cat = autoDetectCategoryForShopping(name, expenseCategoryTree, categoryFlat);
+              newRows.push({
+                key: crypto.randomUUID(),
+                itemName: name,
+                amount: amt,
+                quantity: "1",
+                unitPrice: amt,
+                unit: "pcs",
+                useMultiplier: false,
+                category: cat,
+                merchant: tripMerchant,
+                expenseType: tripExpenseType,
+                notes: "",
+                isExpanded: false,
+              });
+            } else {
+              const cat = autoDetectCategoryForShopping(part, expenseCategoryTree, categoryFlat);
+              newRows.push({
+                key: crypto.randomUUID(),
+                itemName: part,
+                amount: "",
+                quantity: "1",
+                unitPrice: "",
+                unit: "pcs",
+                useMultiplier: false,
+                category: cat,
+                merchant: tripMerchant,
+                expenseType: tripExpenseType,
+                notes: "",
+                isExpanded: false,
+              });
+            }
+          }
+
+          if (newRows.length > 0) {
+            setShoppingRows((prev) => {
+              const nonEmptyPrev = prev.filter((r) => r.itemName.trim() || r.amount.trim());
+              return [...nonEmptyPrev, ...newRows];
+            });
+            toast.success(`🎙️ Added ${newRows.length} item${newRows.length === 1 ? "" : "s"} from voice!`);
+          }
+        }
+      };
+
+      recognition.onerror = () => {
+        setShoppingListening(false);
+      };
+
+      recognition.onend = () => {
+        setShoppingListening(false);
+      };
+
+      shoppingSpeechRecRef.current = recognition;
+      recognition.start();
+    } catch {
+      setShoppingListening(false);
+      toast.error("Couldn't start voice recognition");
+    }
+  }
+
+  const validShoppingRows = useMemo(() => {
+    return shoppingRows.filter((r) => {
+      const amt = r.useMultiplier
+        ? (parseFloat(r.quantity) || 0) * (parseFloat(r.unitPrice) || 0)
+        : parseFloat(r.amount) || 0;
+      return r && typeof r.itemName === "string" && r.itemName.trim() && amt > 0 && r.category;
+    });
+  }, [shoppingRows]);
+
+  const shoppingTotal = useMemo(() => {
+    return validShoppingRows.reduce((sum, r) => {
+      const amt = r.useMultiplier
+        ? (parseFloat(r.quantity) || 0) * (parseFloat(r.unitPrice) || 0)
+        : parseFloat(r.amount) || 0;
+      return sum + amt;
+    }, 0);
+  }, [validShoppingRows]);
+
+  const shoppingCategoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const row of validShoppingRows) {
+      if (row.category) {
+        counts[row.category.categoryName] = (counts[row.category.categoryName] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [validShoppingRows]);
 
   async function handleSaveShopping() {
     if (validShoppingRows.length === 0) {
-      toast.error("Add at least one item with an amount and category");
+      toast.error("Add at least one item with a name, amount, and category");
       return;
     }
     setSubmitting(true);
     let savedCount = 0;
+    const receiptPath = await uploadReceiptIfAny();
+
     for (const row of validShoppingRows) {
       let finalCatId = row.category!.categoryId;
       if (finalCatId.startsWith("seed-")) {
-        const match = categoryFlat.find((c) => c.name.toLowerCase() === row.category!.categoryName.toLowerCase() && !c.parent_id);
+        const match = categoryFlat.find(
+          (c) => c.name.toLowerCase() === row.category!.categoryName.toLowerCase() && !c.parent_id
+        );
         if (match) finalCatId = match.id;
       }
 
-      const result = await createExpense({
-        amount: parseFloat(row.amount),
-        item_name: (typeof row.itemName === "string" ? row.itemName : "").trim(),
-        category_id: finalCatId,
-        subcategory_id: row.category!.subcategoryId,
-        merchant_id: null,
-        paid_by: userId,
-        expense_type: "household",
-        entry_type: "expense",
-        expense_date: getTodayISO(),
-      });
+      const rowAmt = row.useMultiplier
+        ? (parseFloat(row.quantity) || 1) * (parseFloat(row.unitPrice) || 0)
+        : parseFloat(row.amount);
+
+      const targetMerchant = row.merchant || tripMerchant;
+      let finalMerchantId: string | null = targetMerchant?.id ?? null;
+      if (targetMerchant && !targetMerchant.id && targetMerchant.name) {
+        const match = merchants.find((m) => m.name.toLowerCase() === targetMerchant.name.toLowerCase());
+        if (match) finalMerchantId = match.id;
+      }
+
+      const mergedNotes = [tripNotes.trim(), row.notes.trim()].filter(Boolean).join(" · ");
+
+      const result = await createExpense(
+        {
+          amount: Math.round(rowAmt * 100) / 100,
+          item_name: (typeof row.itemName === "string" ? row.itemName : "").trim(),
+          category_id: finalCatId,
+          subcategory_id: row.category!.subcategoryId,
+          merchant_id: finalMerchantId,
+          paid_by: tripPaidBy,
+          expense_type: row.expenseType || tripExpenseType,
+          entry_type: "expense",
+          payment_method: tripPaymentMethod,
+          card_id: tripCardId,
+          upi_profile_id: tripUpiProfileId,
+          bank_account_id: tripBankAccountId,
+          expense_date: tripDate,
+          expense_time: getCurrentISTTime(),
+          notes: mergedNotes || null,
+        },
+        undefined,
+        receiptPath
+      );
+
       if (result.error !== null) {
         toast.error(`Stopped after ${savedCount} saved — ${result.error}`);
         setSubmitting(false);
-        setShoppingRows((list) => list.filter((r) => !validShoppingRows.slice(0, savedCount).some((saved) => saved.key === r.key)));
+        setShoppingRows((list) =>
+          list.filter((r) => !validShoppingRows.slice(0, savedCount).some((saved) => saved.key === r.key))
+        );
         return;
       }
       savedCount += 1;
       onSaved?.(result.data);
     }
     setSubmitting(false);
-    toast.success(`${savedCount} expense${savedCount === 1 ? "" : "s"} added · ${formatINR(shoppingTotal)}`);
+    toast.success(`🎉 ${savedCount} item${savedCount === 1 ? "" : "s"} added · ${formatINR(shoppingTotal)}`);
     onOpenChange(false);
   }
 
   const todayIso = getTodayISO();
   const yesterdayIso = addDaysISO(todayIso, -1);
+
+  const isCustomTripDate = tripDate !== todayIso && tripDate !== yesterdayIso;
+  const displayTripDateText = useMemo(() => {
+    if (isCustomTripDate && tripDate) {
+      try {
+        const [y, m, d] = tripDate.split("-").map(Number);
+        if (y && m && d) {
+          const dt = new Date(y, m - 1, d);
+          return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+        }
+      } catch {
+        return tripDate;
+      }
+    }
+    return "Choose date";
+  }, [tripDate, isCustomTripDate]);
+
+  const handleOpenTripDatePicker = () => {
+    if (tripDateInputRef.current) {
+      if (typeof tripDateInputRef.current.showPicker === "function") {
+        try {
+          tripDateInputRef.current.showPicker();
+        } catch {
+          tripDateInputRef.current.focus();
+        }
+      } else {
+        tripDateInputRef.current.focus();
+      }
+    }
+  };
   const isCustomDate = form.date !== todayIso && form.date !== yesterdayIso;
   const displayDateText = useMemo(() => {
     if (isCustomDate && form.date) {
@@ -1544,18 +2117,30 @@ export function AddExpenseSheet({
           {/* Header */}
           <DrawerHeader className="px-4 sm:px-5 pt-3.5 pb-2 border-b border-border/40">
             <div className="flex items-center justify-between">
-              <DrawerTitle className="text-lg font-bold tracking-tight text-foreground">
-                {isEditing
-                  ? form.entryType === "income"
-                    ? "Edit Income"
-                    : "Edit Expense"
-                  : form.entryType === "income"
-                    ? "Add Income"
-                    : "Add Expense"}
+              <DrawerTitle className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+                {entryMode === "shopping" ? (
+                  <>
+                    <ShoppingCart className="h-5 w-5 text-brand-primary" />
+                    <span>Shopping Cart</span>
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
+                      Multi-Item
+                    </span>
+                  </>
+                ) : isEditing ? (
+                  form.entryType === "income" ? (
+                    "Edit Income"
+                  ) : (
+                    "Edit Expense"
+                  )
+                ) : form.entryType === "income" ? (
+                  "Add Income"
+                ) : (
+                  "Add Expense"
+                )}
               </DrawerTitle>
 
               <div className="flex items-center gap-1.5">
-                {isNewExpense && entryMode === "single" && aiConfigured && (
+                {isNewExpense && aiConfigured && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -1908,7 +2493,7 @@ export function AddExpenseSheet({
                 {priceMemory && (
                   <div className="mt-1.5 flex items-center justify-between gap-2 rounded-xl bg-brand-mint/60 border border-brand-primary/15 px-3 py-1.5 text-xs text-brand-primary">
                     <span>
-                      Last: {formatINR(priceMemory.last)} · Typical: {formatINR(priceMemory.typicalLow)}–{formatINR(priceMemory.typicalHigh)}
+                      Last: {formatINR(priceMemory.last)} · Typical: {formatINR(priceMemory.typicalLow)}-{formatINR(priceMemory.typicalHigh)}
                     </span>
                     <button
                       type="button"
@@ -2192,69 +2777,664 @@ export function AddExpenseSheet({
               )}
             </div>
           ) : (
-            /* SHOPPING / MULTI-ITEM MODE BODY */
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Add multiple items from a grocery or mart run in one go. Each item becomes its own individually tracked expense.
-              </p>
+            /* ENTERPRISE SHOPPING / MULTI-ITEM MODE BODY */
+            <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-3.5 space-y-4 overscroll-contain">
+              {/* Trip Defaults & Store Header Card */}
+              <div className="rounded-2xl border border-border/80 bg-muted/40 p-3.5 space-y-3 shadow-xs">
+                {/* Store / Merchant Selector */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <Store className="h-3.5 w-3.5 text-brand-primary" />
+                      Store / Merchant
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => setShoppingMerchantPickerTarget("trip")}
+                      className="text-xs font-semibold text-brand-primary flex items-center gap-0.5 hover:underline"
+                    >
+                      {tripMerchant ? "Change store" : "Browse all stores"} <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
 
-              <div className="flex flex-col gap-2.5">
-                {shoppingRows.map((row, i) => (
-                  <div
-                    key={row.key}
-                    className="flex items-center gap-2 rounded-xl border border-border/70 bg-surface p-2.5 shadow-sm"
-                  >
-                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                      <Input
-                        value={row.itemName}
-                        onChange={(e) => updateShoppingRow(row.key, { itemName: e.target.value })}
-                        placeholder={`Item ${i + 1}, e.g. Milk, Apples`}
-                        className="h-9 text-sm bg-background"
-                      />
+                  {/* Selected Merchant Active Pill or Quick Store Chips */}
+                  {tripMerchant ? (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-brand-mint/60 border border-brand-primary/30 text-xs">
+                      <div className="flex items-center gap-2 font-bold text-brand-primary">
+                        <Store className="h-4 w-4 shrink-0" />
+                        <span className="text-sm">{tripMerchant.name}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary font-semibold">
+                          Trip Merchant
+                        </span>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setShoppingCategoryRowKey(row.key)}
-                        className="flex h-8 items-center justify-between rounded-md bg-muted px-2.5 text-left text-xs text-foreground hover:bg-muted/80"
+                        onClick={() => setTripMerchant(null)}
+                        className="text-muted-foreground hover:text-destructive p-1 rounded-md transition-colors"
+                        title="Clear merchant"
                       >
-                        <span className="truncate font-medium">
-                          {row.category
-                            ? `${row.category.categoryName}${row.category.subcategoryName ? ` · ${row.category.subcategoryName}` : ""}`
-                            : "Choose category"}
-                        </span>
-                        <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {COMMON_SHOPPING_MERCHANT_NAMES.map((mName) => (
+                        <button
+                          key={mName}
+                          type="button"
+                          onClick={() => {
+                            const found = merchants.find((m) => m.name.toLowerCase() === mName.toLowerCase());
+                            setTripMerchant(
+                              found ||
+                                ({
+                                  id: `temp-${mName}`,
+                                  name: mName,
+                                  household_id: householdId,
+                                  created_at: "",
+                                  is_active: true,
+                                } as Tables<"merchants">)
+                            );
+                          }}
+                          className="px-2.5 py-1 rounded-full text-xs font-semibold border border-border/70 bg-card text-foreground hover:bg-brand-mint/40 hover:border-brand-primary/40 transition-all shadow-2xs active:scale-95"
+                        >
+                          {mName}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setShoppingMerchantPickerTarget("trip")}
+                        className="px-2.5 py-1 rounded-full text-xs font-semibold border border-dashed border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+                      >
+                        + Other store…
+                      </button>
+                    </div>
+                  )}
+                </div>
 
-                    <Input
-                      value={row.amount}
-                      onChange={(e) => updateShoppingRow(row.key, { amount: e.target.value.replace(/[^0-9.]/g, "") })}
-                      inputMode="decimal"
-                      placeholder="₹0"
-                      className="h-9 w-24 text-right font-bold text-sm bg-background"
-                    />
+                {/* Quick Summary Pill Bar & Collapsible Trip Details Toggle */}
+                <div className="pt-1 border-t border-border/40 flex items-center justify-between">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-background border border-border/60 font-semibold text-foreground">
+                      <Calendar className="h-3 w-3 text-muted-foreground" />
+                      {displayTripDateText}
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-background border border-border/60 font-semibold text-foreground">
+                      <Smartphone className="h-3 w-3 text-muted-foreground" />
+                      {tripPaymentMethod || "No payment method"}
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-background border border-border/60 font-semibold text-foreground capitalize">
+                      {tripExpenseType} · {tripPaidBy === userId ? "Me" : partner?.displayName || "Partner"}
+                    </span>
+                    {receiptFile && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-mint border border-brand-primary/20 text-brand-primary font-semibold">
+                        <Paperclip className="h-3 w-3" /> Receipt attached
+                      </span>
+                    )}
+                  </div>
 
+                  <button
+                    type="button"
+                    onClick={() => setShowTripSettings((prev) => !prev)}
+                    className="text-xs font-bold text-brand-primary flex items-center gap-1 hover:underline shrink-0 ml-2"
+                  >
+                    <SlidersHorizontal className="h-3 w-3" />
+                    <span>{showTripSettings ? "Hide details" : "Trip details"}</span>
+                    {showTripSettings ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </button>
+                </div>
+
+                {/* Expanded Trip Settings Controls */}
+                {showTripSettings && (
+                  <div className="pt-3 border-t border-border/60 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+                    {/* Payment Method Selection */}
+                    <div>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                        Payment Method
+                      </Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {COMMON_PAYMENT_METHODS.map((m) => {
+                          const isSelected = tripPaymentMethod === m.id;
+                          const Icon = m.icon;
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                setTripPaymentMethod(isSelected ? null : m.id);
+                                setTripCardId(null);
+                                setTripUpiProfileId(null);
+                                setTripBankAccountId(null);
+                              }}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                                isSelected
+                                  ? "bg-brand-primary text-white border-brand-primary shadow-sm ring-2 ring-brand-primary/20"
+                                  : "bg-background text-foreground border-border/60 hover:bg-muted"
+                              )}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                              <span>{m.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Payment Instrument Sub-Pickers */}
+                      {(tripPaymentMethod === "Credit Card" || tripPaymentMethod === "Debit Card") && cards.length > 0 && (
+                        <div className="mt-2">
+                          <CardQuickPicker cards={cards} value={tripCardId} onChange={setTripCardId} />
+                        </div>
+                      )}
+                      {tripPaymentMethod === "UPI" && upiProfiles.length > 0 && (
+                        <div className="mt-2">
+                          <UpiQuickPicker profiles={upiProfiles} value={tripUpiProfileId} onChange={setTripUpiProfileId} />
+                        </div>
+                      )}
+                      {tripPaymentMethod === "Bank Transfer" && bankAccounts.length > 0 && (
+                        <div className="mt-2">
+                          <BankQuickPicker accounts={bankAccounts} value={tripBankAccountId} onChange={setTripBankAccountId} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Date Picker */}
+                    <div>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                        Date of Purchase
+                      </Label>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setTripDate(todayIso)}
+                          className={cn(
+                            "shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
+                            tripDate === todayIso
+                              ? "bg-brand-primary text-white border-brand-primary shadow-sm"
+                              : "bg-background text-foreground border-border/60 hover:bg-muted"
+                          )}
+                        >
+                          Today
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTripDate(yesterdayIso)}
+                          className={cn(
+                            "shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
+                            tripDate === yesterdayIso
+                              ? "bg-brand-primary text-white border-brand-primary shadow-sm"
+                              : "bg-background text-foreground border-border/60 hover:bg-muted"
+                          )}
+                        >
+                          Yesterday
+                        </button>
+                        <div className="relative inline-flex items-center">
+                          <button
+                            type="button"
+                            onClick={handleOpenTripDatePicker}
+                            className={cn(
+                              "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer",
+                              isCustomTripDate
+                                ? "bg-brand-primary text-white border-brand-primary shadow-sm"
+                                : "bg-background text-foreground border-border/60 hover:bg-muted"
+                            )}
+                          >
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span>{displayTripDateText}</span>
+                          </button>
+                          <input
+                            ref={tripDateInputRef}
+                            type="date"
+                            value={tripDate}
+                            onChange={(e) => {
+                              if (e.target.value) setTripDate(e.target.value);
+                            }}
+                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                            aria-label="Pick custom date"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Paid By & Expense Type */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                          Paid By
+                        </Label>
+                        <PaidBySelector value={tripPaidBy} onChange={setTripPaidBy} />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                          Expense Type
+                        </Label>
+                        <ExpenseTypeSelector value={tripExpenseType} onChange={setTripExpenseType} />
+                      </div>
+                    </div>
+
+                    {/* Trip Notes */}
+                    <div>
+                      <Label htmlFor="trip-notes" className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                        Trip Notes (Optional)
+                      </Label>
+                      <Input
+                        id="trip-notes"
+                        value={tripNotes}
+                        onChange={(e) => setTripNotes(e.target.value)}
+                        placeholder="e.g. Monthly grocery restock, DMart haul"
+                        className="h-9 text-xs bg-background"
+                      />
+                    </div>
+
+                    {/* Receipt Status & Delete */}
+                    {receiptFile && (
+                      <div className="flex items-center justify-between rounded-xl bg-brand-mint/60 border border-brand-primary/20 px-3 py-1.5 text-xs text-brand-primary">
+                        <span className="flex items-center gap-2 font-semibold truncate">
+                          <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                          {receiptFile.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setReceiptFile(null)}
+                          className="text-muted-foreground hover:text-destructive p-1 rounded-md transition-colors"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Power Tools Toolbar */}
+              <div className="flex items-center justify-between gap-2 p-1 bg-muted/50 rounded-xl border border-border/50">
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => addShoppingRow()}
+                    className="h-8 px-2.5 text-xs font-bold gap-1 text-brand-primary hover:bg-brand-mint/60 rounded-lg"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add Item
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setBulkPasteOpen((v) => !v)}
+                    className={cn(
+                      "h-8 px-2.5 text-xs font-semibold gap-1 rounded-lg transition-colors",
+                      bulkPasteOpen ? "bg-brand-primary text-white hover:bg-brand-primary/90" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <ListPlus className="h-3.5 w-3.5" /> Bulk Paste
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={startShoppingVoiceInput}
+                    className={cn(
+                      "h-8 px-2.5 text-xs font-semibold gap-1 rounded-lg transition-colors",
+                      shoppingListening ? "bg-destructive text-white animate-pulse" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {shoppingListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                    <span>{shoppingListening ? "Listening…" : "Voice"}</span>
+                  </Button>
+                  {aiConfigured && (
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon"
-                      onClick={() => removeShoppingRow(row.key)}
-                      disabled={shoppingRows.length === 1}
-                      aria-label="Remove item"
-                      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
+                      size="sm"
+                      onClick={() => receiptScanInputRef.current?.click()}
+                      disabled={scanning}
+                      className="h-8 px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground rounded-lg"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
+                      <span>Scan</span>
                     </Button>
-                  </div>
-                ))}
+                  )}
+                </div>
 
                 <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllShoppingRows}
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive rounded-lg"
+                  title="Reset Cart"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+
+              {/* Smart Bulk Paste Panel */}
+              {bulkPasteOpen && (
+                <div className="p-3 rounded-2xl bg-card border border-brand-primary/30 shadow-md space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-brand-primary" />
+                      Smart Multi-Line Paste / Quick Entry
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setBulkPasteOpen(false)}
+                      className="text-muted-foreground hover:text-foreground p-0.5 rounded-md"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Paste lines with item name and amount/multiplier. GharKharch auto-detects quantities and assigns categories automatically!
+                  </p>
+                  <textarea
+                    value={bulkPasteText}
+                    onChange={(e) => setBulkPasteText(e.target.value)}
+                    placeholder={"Amul Milk 2L 120\nEggs 12 110\nBread 45\nBananas 60\nSurf Excel 220"}
+                    rows={4}
+                    className="w-full text-xs font-mono p-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setBulkPasteOpen(false)}
+                      className="h-8 text-xs font-medium"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleBulkPasteImport}
+                      className="h-8 text-xs font-bold bg-brand-primary text-white hover:bg-brand-primary/90"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 mr-1" /> Import to Cart
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Line Items List */}
+              <div className="space-y-3">
+                {shoppingRows.map((row, index) => {
+                  const rowAmt = row.useMultiplier
+                    ? (parseFloat(row.quantity) || 0) * (parseFloat(row.unitPrice) || 0)
+                    : parseFloat(row.amount) || 0;
+                  const swatch = row.category ? colorSwatch(row.category.categoryName) : null;
+                  const CatIcon = row.category ? getIcon("shopping-bag") : Layers;
+
+                  return (
+                    <div
+                      key={row.key}
+                      className="rounded-2xl border border-border/80 bg-card p-3 shadow-xs space-y-2.5 transition-all hover:border-brand-primary/30"
+                    >
+                      {/* Item Row Top: Counter, Name Input, Badges, Actions */}
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-muted text-[11px] font-bold text-muted-foreground">
+                          {index + 1}
+                        </span>
+
+                        <div className="relative flex-1">
+                          <Input
+                            value={row.itemName}
+                            onChange={(e) => handleShoppingItemNameChange(row.key, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                addShoppingRow(row.category);
+                              }
+                            }}
+                            placeholder="Item name (e.g. Amul Milk, Eggs, Rice 5kg)"
+                            className="h-9 text-sm bg-background font-medium"
+                          />
+                        </div>
+
+                        {/* Duplicate Button */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => duplicateShoppingRow(row.key)}
+                          title="Duplicate item"
+                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground rounded-lg"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+
+                        {/* Expand Row Settings Toggle */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => updateShoppingRow(row.key, { isExpanded: !row.isExpanded })}
+                          title="More item details"
+                          className={cn(
+                            "h-8 w-8 shrink-0 rounded-lg transition-colors",
+                            row.isExpanded ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <SlidersHorizontal className="h-3.5 w-3.5" />
+                        </Button>
+
+                        {/* Delete Row Button */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeShoppingRow(row.key)}
+                          title="Remove item"
+                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive rounded-lg"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+
+                      {/* Item Row Middle: Category Button + Amount / Multiplier Controls */}
+                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                        {/* Category Selector Button */}
+                        <button
+                          type="button"
+                          onClick={() => setShoppingCategoryRowKey(row.key)}
+                          style={swatch ? { backgroundColor: swatch.bg, color: swatch.fg, borderColor: swatch.fg + "33" } : undefined}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold max-w-[55%] truncate transition-all text-left shadow-2xs",
+                            row.category
+                              ? "hover:opacity-90"
+                              : "bg-muted text-muted-foreground border-border/70 hover:bg-muted/80"
+                          )}
+                        >
+                          <CatIcon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">
+                            {row.category
+                              ? `${row.category.categoryName}${row.category.subcategoryName ? ` · ${row.category.subcategoryName}` : ""}`
+                              : "Choose category"}
+                          </span>
+                          <ChevronRight className="h-3 w-3 shrink-0 opacity-70 ml-auto" />
+                        </button>
+
+                        {/* Amount or Multiplier Stepper */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Multiplier Toggle Button */}
+                          <button
+                            type="button"
+                            onClick={() => updateShoppingRow(row.key, { useMultiplier: !row.useMultiplier })}
+                            className={cn(
+                              "flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-bold transition-colors",
+                              row.useMultiplier
+                                ? "bg-brand-primary text-white border-brand-primary shadow-2xs"
+                                : "bg-muted text-muted-foreground border-border/60 hover:text-foreground"
+                            )}
+                            title={row.useMultiplier ? "Switch to Flat Amount" : "Switch to Quantity x Price Multiplier"}
+                          >
+                            <Calculator className="h-3.5 w-3.5" />
+                          </button>
+
+                          {row.useMultiplier ? (
+                            <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/70 text-xs">
+                              <Input
+                                value={row.quantity}
+                                onChange={(e) => updateShoppingRow(row.key, { quantity: e.target.value.replace(/[^0-9.]/g, "") })}
+                                placeholder="Qty"
+                                inputMode="decimal"
+                                className="h-7 w-12 text-center font-bold text-xs bg-background p-1"
+                              />
+                              <select
+                                value={row.unit}
+                                onChange={(e) => updateShoppingRow(row.key, { unit: e.target.value })}
+                                className="h-7 rounded-md border border-border bg-background px-1 text-[11px] font-semibold text-foreground focus:outline-none"
+                              >
+                                {SHOPPING_UNITS.map((u) => (
+                                  <option key={u} value={u}>
+                                    {u}
+                                  </option>
+                                ))}
+                              </select>
+                              <span className="text-muted-foreground font-semibold">@</span>
+                              <div className="relative">
+                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">₹</span>
+                                <Input
+                                  value={row.unitPrice}
+                                  onChange={(e) => updateShoppingRow(row.key, { unitPrice: e.target.value.replace(/[^0-9.]/g, "") })}
+                                  placeholder="0"
+                                  inputMode="decimal"
+                                  className="h-7 w-16 pl-4 pr-1 text-right font-bold text-xs bg-background"
+                                />
+                              </div>
+                              <span className="font-bold text-foreground font-mono ml-1 px-1.5 py-0.5 rounded bg-card border border-border/50">
+                                {formatINR(rowAmt)}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">₹</span>
+                              <Input
+                                value={row.amount}
+                                onChange={(e) => updateShoppingRow(row.key, { amount: e.target.value.replace(/[^0-9.]/g, "") })}
+                                inputMode="decimal"
+                                placeholder="0"
+                                className="h-8 w-24 pl-5 text-right font-bold text-sm bg-background font-mono"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Expanded Row-Specific Details (Override store, expense type, or per-item note) */}
+                      {row.isExpanded && (
+                        <div className="pt-2.5 border-t border-border/50 space-y-2 bg-muted/20 p-2 rounded-xl text-xs">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                                Store Override
+                              </Label>
+                              <button
+                                type="button"
+                                onClick={() => setShoppingMerchantPickerTarget(row.key)}
+                                className="flex h-7 w-full items-center justify-between rounded-lg border border-border bg-background px-2 text-left text-xs text-foreground hover:bg-muted"
+                              >
+                                <span className="truncate">{row.merchant?.name || tripMerchant?.name || "Trip default"}</span>
+                                <Store className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
+                              </button>
+                            </div>
+
+                            <div>
+                              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                                Expense Type
+                              </Label>
+                              <div className="grid grid-cols-2 gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => updateShoppingRow(row.key, { expenseType: "household" })}
+                                  className={cn(
+                                    "h-7 rounded-lg border text-[11px] font-bold transition-colors",
+                                    row.expenseType === "household"
+                                      ? "bg-brand-primary text-white border-brand-primary"
+                                      : "bg-background text-muted-foreground border-border"
+                                  )}
+                                >
+                                  Household
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => updateShoppingRow(row.key, { expenseType: "personal" })}
+                                  className={cn(
+                                    "h-7 rounded-lg border text-[11px] font-bold transition-colors",
+                                    row.expenseType === "personal"
+                                      ? "bg-brand-primary text-white border-brand-primary"
+                                      : "bg-background text-muted-foreground border-border"
+                                  )}
+                                >
+                                  Personal
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                              Item Note (Optional)
+                            </Label>
+                            <Input
+                              value={row.notes}
+                              onChange={(e) => updateShoppingRow(row.key, { notes: e.target.value })}
+                              placeholder="e.g. For guests, 20% discount"
+                              className="h-7 text-xs bg-background"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Add Another Item Button */}
+                <Button
+                  type="button"
                   variant="outline"
-                  onClick={addShoppingRow}
-                  className="w-full h-10 border-dashed gap-1.5 text-xs font-bold"
+                  onClick={() => addShoppingRow()}
+                  className="w-full h-11 border-dashed border-2 gap-2 text-xs font-bold hover:border-brand-primary hover:text-brand-primary bg-card"
                 >
                   <Plus className="h-4 w-4" /> Add another item
                 </Button>
+              </div>
+
+              {/* Quick Category Add Row */}
+              <div className="pt-2">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
+                  1-Tap Quick Add By Category:
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {topCategories.slice(0, 6).map((cat) => {
+                    const swatch = colorSwatch(cat.color);
+                    const Icon = getIcon(cat.icon);
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() =>
+                          addShoppingRow({
+                            categoryId: cat.id,
+                            subcategoryId: null,
+                            categoryName: cat.name,
+                            subcategoryName: null,
+                          })
+                        }
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-card text-foreground hover:bg-muted transition-all shadow-2xs"
+                      >
+                        <span
+                          className="flex h-3.5 w-3.5 items-center justify-center rounded-full"
+                          style={{ color: swatch.fg }}
+                        >
+                          <Icon className="h-3 w-3" />
+                        </span>
+                        <span>+ {cat.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -2277,8 +3457,23 @@ export function AddExpenseSheet({
             ) : (
               <div className="flex flex-col gap-2.5 w-full">
                 <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-                  <span>{validShoppingRows.length} item{validShoppingRows.length === 1 ? "" : "s"} ready</span>
-                  <span className="text-sm font-bold text-foreground">Total: {formatINR(shoppingTotal)}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-foreground">
+                      {validShoppingRows.length} item{validShoppingRows.length === 1 ? "" : "s"} ready
+                    </span>
+                    {Object.keys(shoppingCategoryCounts).length > 0 && (
+                      <span className="text-[11px] text-muted-foreground/80">
+                        ({Object.entries(shoppingCategoryCounts)
+                          .map(([cat, count]) => `${count} ${cat}`)
+                          .slice(0, 2)
+                          .join(", ")}
+                        {Object.keys(shoppingCategoryCounts).length > 2 ? "…" : ""})
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-base font-extrabold text-foreground font-mono">
+                    Total: {formatINR(shoppingTotal)}
+                  </span>
                 </div>
                 <Button
                   size="lg"
@@ -2287,7 +3482,8 @@ export function AddExpenseSheet({
                   disabled={submitting || validShoppingRows.length === 0}
                   loading={submitting}
                 >
-                  Save all {validShoppingRows.length > 0 ? `(${validShoppingRows.length} items)` : ""}
+                  <ShoppingBag className="mr-2 h-4 w-4" />
+                  Save all {validShoppingRows.length > 0 ? `(${validShoppingRows.length} items · ${formatINR(shoppingTotal)})` : ""}
                 </Button>
               </div>
             )}
@@ -2314,7 +3510,7 @@ export function AddExpenseSheet({
         }}
       />
 
-      {/* Category Picker for Shopping Rows - always expense-scoped, since Shopping mode has no Income toggle */}
+      {/* Category Picker for Shopping Rows - always expense-scoped */}
       <CategoryPicker
         open={!!shoppingCategoryRowKey}
         onOpenChange={(op) => !op && setShoppingCategoryRowKey(null)}
@@ -2331,16 +3527,38 @@ export function AddExpenseSheet({
         }}
       />
 
-      {/* Merchant Picker */}
+      {/* Unified Merchant Picker (Single mode, Shopping Trip default, or Row Override) */}
       <MerchantPicker
-        open={merchantPickerOpen}
-        onOpenChange={setMerchantPickerOpen}
+        open={merchantPickerOpen || !!shoppingMerchantPickerTarget}
+        onOpenChange={(op) => {
+          if (!op) {
+            setMerchantPickerOpen(false);
+            setShoppingMerchantPickerTarget(null);
+          }
+        }}
         merchants={merchants}
         loading={merchantsLoading}
-        onSelect={applyMerchant}
+        onSelect={(m) => {
+          if (shoppingMerchantPickerTarget === "trip") {
+            setTripMerchant(m);
+            setShoppingMerchantPickerTarget(null);
+          } else if (shoppingMerchantPickerTarget) {
+            updateShoppingRow(shoppingMerchantPickerTarget, { merchant: m });
+            setShoppingMerchantPickerTarget(null);
+          } else {
+            applyMerchant(m);
+          }
+        }}
         onMerchantCreated={(m) => {
           setMerchants((list) => [...list, m]);
           setClientCachedData("merchants_list", [...merchants, m]);
+          if (shoppingMerchantPickerTarget === "trip") {
+            setTripMerchant(m);
+            setShoppingMerchantPickerTarget(null);
+          } else if (shoppingMerchantPickerTarget) {
+            updateShoppingRow(shoppingMerchantPickerTarget, { merchant: m });
+            setShoppingMerchantPickerTarget(null);
+          }
         }}
       />
 

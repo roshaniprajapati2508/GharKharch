@@ -21,7 +21,7 @@ export interface BriefData {
 }
 
 /**
- * "Read this once a day" digest — today/week snapshot, this-month's category
+ * "Read this once a day" digest - today/week snapshot, this-month's category
  * movers, and the soonest-due recurring bill.
  */
 export function DailyBriefCard({

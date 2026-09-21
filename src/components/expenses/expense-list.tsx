@@ -97,7 +97,7 @@ export function ExpenseList({
     return (
       <EmptyState
         title="Your household spending story starts here."
-        description="Once you add an expense, GharKharch starts building your spending picture — automatically."
+        description="Once you add an expense, GharKharch starts building your spending picture - automatically."
         ctaLabel={onAdd ? "Add your first expense" : undefined}
         onCta={onAdd}
         chips={["Milk", "Groceries", "Petrol", "Shopping"]}
@@ -112,12 +112,12 @@ export function ExpenseList({
         <div key={group.date}>
           <div className="mb-2 flex items-baseline justify-between px-1">
             <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
-            <div className="flex items-center gap-2 text-xs font-medium">
+            <div className="flex items-center gap-2 text-xs font-semibold tabular-nums">
               {group.incomeTotal > 0 && (
                 <span className="text-emerald-600 dark:text-emerald-400">+{formatINR(group.incomeTotal)}</span>
               )}
               {group.expenseTotal > 0 && (
-                <span className="text-muted-foreground">-{formatINR(group.expenseTotal)}</span>
+                <span className="text-rose-600 dark:text-rose-400">-{formatINR(group.expenseTotal)}</span>
               )}
               {group.incomeTotal === 0 && group.expenseTotal === 0 && (
                 <span className="text-muted-foreground">{formatINR(0)}</span>

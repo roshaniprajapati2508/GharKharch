@@ -1,10 +1,10 @@
 // "Ask GharKharch" query pipeline, stage 1-2 (spec section 46, 47):
 //   User question -> Intent detection -> Safe query builder
-// Both stages here are pure, deterministic, and keyword-based — no LLM call
+// Both stages here are pure, deterministic, and keyword-based - no LLM call
 // happens until the very end (lib/ai/insight-generator.ts), and this file
 // never touches the database itself. The actual DB aggregation (stage 3) runs
 // in actions/ai-assistant.ts, calling the same RPC functions the
-// Analytics/Dashboard screens already use — never a raw, unscoped query.
+// Analytics/Dashboard screens already use - never a raw, unscoped query.
 
 import {
   getMonthRange,
@@ -37,7 +37,7 @@ export type QueryIntent =
 
 const WEEKDAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
-/** Resolves "last <weekday>" (e.g. "last Sunday") to that specific past date — always strictly before today, even when today itself is that weekday. */
+/** Resolves "last <weekday>" (e.g. "last Sunday") to that specific past date - always strictly before today, even when today itself is that weekday. */
 function resolveLastWeekday(question: string): { range: DateRange; label: string } | null {
   const q = question.toLowerCase();
   const match = WEEKDAY_NAMES.find((day) => q.includes(`last ${day}`));
@@ -102,7 +102,7 @@ export interface IntentContext {
   frequentItemNames: string[];
 }
 
-/** Extracts a rupee amount from "above/over/more than 5000" or "below/under/less than ₹5,000" phrasing — strips ₹, commas and "rs"/"rupees" before parsing. */
+/** Extracts a rupee amount from "above/over/more than 5000" or "below/under/less than ₹5,000" phrasing - strips ₹, commas and "rs"/"rupees" before parsing. */
 function parseAmountThreshold(question: string): { amount: number; direction: "above" | "below" } | null {
   const q = question.toLowerCase();
   const amountMatch = q.match(/(?:₹|rs\.?|rupees)?\s*([\d,]+(?:\.\d+)?)\s*(?:₹|rs\.?|rupees)?/);

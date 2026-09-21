@@ -171,7 +171,7 @@ export interface Database {
           item_name: string;
           category_id: string;
           subcategory_id: string | null;
-          payment_method: string | null; // free text, matches a payment_methods.name (see migration 005) — not a fixed enum
+          payment_method: string | null; // free text, matches a payment_methods.name (see migration 005) - not a fixed enum
           card_id: string | null;
           upi_profile_id: string | null;
           bank_account_id: string | null;
@@ -180,7 +180,7 @@ export interface Database {
           notes: string | null;
           is_recurring: boolean;
           recurring_rule_id: string | null;
-          /** Storage object path inside the private `receipts` bucket (e.g. "{household_id}/{uuid}.jpg"), or null — never a URL, since the bucket is private and a stored URL would go stale (migration 017). */
+          /** Storage object path inside the private `receipts` bucket (e.g. "{household_id}/{uuid}.jpg"), or null - never a URL, since the bucket is private and a stored URL would go stale (migration 017). */
           receipt_path: string | null;
           created_at: string;
           updated_at: string;

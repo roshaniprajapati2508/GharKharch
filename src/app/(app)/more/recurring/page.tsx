@@ -182,11 +182,11 @@ export default function RecurringExpensesPage() {
     load();
   }
 
-  // "Log this bill" (spec: never a one-tap silent log — the person must be
+  // "Log this bill" (spec: never a one-tap silent log - the person must be
   // able to review/adjust the amount, since real bill amounts drift). A
   // small inline confirm rather than reusing AddExpenseSheet's
   // duplicateFrom: that prop expects an EnrichedExpense (a full past
-  // expense row with id/created_at/etc.), which a recurring RULE isn't —
+  // expense row with id/created_at/etc.), which a recurring RULE isn't -
   // building a fake one would be more surface area than this focused form,
   // which only needs the handful of fields logRecurringOccurrence actually
   // takes.
@@ -244,7 +244,7 @@ export default function RecurringExpensesPage() {
         <h1 className="text-xl font-bold tracking-tight text-foreground">Recurring expenses</h1>
       </div>
       <p className="-mt-3 text-xs text-muted-foreground">
-        Track rent, subscriptions, EMIs and other bills that repeat. GharKharch will never log an expense on its own from these — they&apos;re just bookkeeping for what to expect.
+        Track rent, subscriptions, EMIs and other bills that repeat. GharKharch will never log an expense on its own from these - they&apos;re just bookkeeping for what to expect.
       </p>
 
       {!loading && summary && summary.upcoming.length > 0 && (
@@ -383,7 +383,7 @@ export default function RecurringExpensesPage() {
                       <option value={top.id}>{top.name}</option>
                       {top.children.map((child) => (
                         <option key={child.id} value={child.id}>
-                          {"— " + child.name}
+                          {"- " + child.name}
                         </option>
                       ))}
                     </Fragment>
@@ -437,7 +437,7 @@ export default function RecurringExpensesPage() {
           <div className="w-full max-w-md rounded-t-2xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:rounded-2xl sm:p-5" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-1 text-lg font-semibold text-foreground">Log this bill</h2>
             <p className="mb-4 text-xs text-muted-foreground">
-              Adds a real expense for {logTarget.name} and moves its next due date forward. Review the amount before saving — prices change.
+              Adds a real expense for {logTarget.name} and moves its next due date forward. Review the amount before saving - prices change.
             </p>
 
             <div className="flex flex-col gap-3">
@@ -494,7 +494,7 @@ export default function RecurringExpensesPage() {
         open={!!removeTarget}
         onOpenChange={(open) => !open && setRemoveTarget(null)}
         title={`Remove "${removeTarget?.name}"?`}
-        description="Past expenses already logged from this rule keep their amount and category — they just won't be tagged as recurring anymore."
+        description="Past expenses already logged from this rule keep their amount and category - they just won't be tagged as recurring anymore."
         confirmLabel="Remove"
         destructive
         onConfirm={handleDelete}

@@ -1,13 +1,13 @@
 "use server";
 
 // "Analyze this expense" (spec section 2). Every number here is computed by
-// Postgres/the existing breakdown functions — this file only assembles short,
+// Postgres/the existing breakdown functions - this file only assembles short,
 // factual statements out of numbers that were already computed elsewhere; it
 // never invents a narrative, and a line is simply omitted when the fact
 // behind it can't be computed (no merchant, too little history, etc.) rather
 // than guessed at. Same "AI explains/assists, never decides" discipline as
 // lib/ai/insight-generator.ts and lib/ai/expense-parser.ts, except there's no
-// AI involved at all here — every line is a plain arithmetic fact.
+// AI involved at all here - every line is a plain arithmetic fact.
 
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
 import { detectPriceChange, type PriceChangeFlag } from "@/lib/actions/insights";
@@ -22,7 +22,7 @@ function escapeIlike(value: string): string {
   return value.replace(/[%_\\]/g, (ch) => `\\${ch}`);
 }
 
-/** Calendar-month bounds (UTC) for the month that contains a given ISO date — like `date-utils.ts`'s `getMonthRange`, but anchored to an arbitrary date instead of "today minus N months", since an analyzed expense may not be from the current month. */
+/** Calendar-month bounds (UTC) for the month that contains a given ISO date - like `date-utils.ts`'s `getMonthRange`, but anchored to an arbitrary date instead of "today minus N months", since an analyzed expense may not be from the current month. */
 function monthRangeForDate(dateISO: string): { start: string; end: string } {
   const [y, m] = dateISO.split("-").map(Number);
   const start = new Date(Date.UTC(y, m - 1, 1));
@@ -40,7 +40,7 @@ export interface CategoryShareFact {
 export interface MerchantComparisonFact {
   merchantName: string;
   thisAmount: number;
-  /** Average of this merchant's transactions over the trailing 6 months (a fixed, documented window — not all-time, since a merchant's typical spend can drift). */
+  /** Average of this merchant's transactions over the trailing 6 months (a fixed, documented window - not all-time, since a merchant's typical spend can drift). */
   merchantAvg: number;
   diffPct: number | null;
 }
@@ -159,7 +159,7 @@ export async function analyzeExpense(expenseId: string) {
       }
     }
 
-    // Impact on the current calendar month's total — only meaningful when this expense actually falls in the current month.
+    // Impact on the current calendar month's total - only meaningful when this expense actually falls in the current month.
     const monthTotal = Number(currentMonthSummaryRes.data?.[0]?.total ?? 0);
     const monthImpact: MonthImpactFact | null =
       expense.expense_date >= currentMonth.start && expense.expense_date <= currentMonth.end && monthTotal > 0
@@ -173,7 +173,7 @@ export async function analyzeExpense(expenseId: string) {
         byId.set(row.id, {
           id: row.id,
           itemName: row.item_name,
-          merchantName: null, // name lookup isn't needed for this short list — the item name / date / amount already give useful context
+          merchantName: null, // name lookup isn't needed for this short list - the item name / date / amount already give useful context
           amount: Number(row.amount),
           date: row.expense_date,
         });

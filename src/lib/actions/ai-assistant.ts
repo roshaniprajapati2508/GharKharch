@@ -1,13 +1,13 @@
 "use server";
 
-// "Ask GharKharch" — the full pipeline from spec sections 46-47:
+// "Ask GharKharch" - the full pipeline from spec sections 46-47:
 //   User question -> Intent detection -> Safe query builder -> Database
 //   aggregation -> Structured result -> AI explanation
 // This is the only file that runs stage 3 (it calls the same SQL analytics
-// RPCs the Dashboard/Analytics screens use — never a raw, unscoped query),
+// RPCs the Dashboard/Analytics screens use - never a raw, unscoped query),
 // and it is the only place stage 1-2 (lib/ai/financial-query.ts) and stage
 // 4-5 (lib/ai/insight-generator.ts) meet. The `facts` object returned
-// alongside the narration is exactly what was given to the AI to explain —
+// alongside the narration is exactly what was given to the AI to explain -
 // surfacing it in the UI lets the user verify the AI didn't add anything.
 
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
@@ -166,7 +166,7 @@ async function resolveIntent(
     case "item_average": {
       // expense_patterns rows are already per-item aggregates (spec section
       // 88: never re-derive an average from raw expense rows in JS when the
-      // DB already tracks one) — one item can span several merchants/
+      // DB already tracks one) - one item can span several merchants/
       // categories, so combine them with a usage-weighted average.
       const rows = ctx.namedPatterns.filter((p) => p.item_name.toLowerCase() === intent.itemName.toLowerCase());
       const totalUsage = rows.reduce((sum, r) => sum + r.usage_count, 0);
@@ -182,7 +182,7 @@ async function resolveIntent(
 
     case "most_frequent_items": {
       // get_item_analytics is already ordered by usage internally (spec
-      // section 88: never re-derive this in JS) — sort defensively by
+      // section 88: never re-derive this in JS) - sort defensively by
       // txn_count here too since the RPC's contract doesn't promise an order.
       const { data, error } = await supabase.rpc("get_item_analytics", {
         p_household_id: householdId,
@@ -204,7 +204,7 @@ async function resolveIntent(
 
     case "amount_threshold": {
       // No existing analytics RPC filters by amount, so this queries
-      // `expenses` directly — still fully household- and RLS-scoped via the
+      // `expenses` directly - still fully household- and RLS-scoped via the
       // same `supabase` client every other action here uses, never a raw
       // unscoped query.
       let query = supabase

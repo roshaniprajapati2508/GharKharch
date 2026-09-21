@@ -81,17 +81,17 @@ function revalidateExpensePages() {
 
 /**
  * `recurringRuleId` is an internal-only parameter (not part of the public
- * expense form) — set exclusively by `logRecurringOccurrence` in
+ * expense form) - set exclusively by `logRecurringOccurrence` in
  * recurring.ts when the user explicitly taps "Log this bill" on a recurring
  * rule. It is never inferred or set automatically for a normal Add Expense
- * submission (spec: "never silently create an expense" applies here too —
+ * submission (spec: "never silently create an expense" applies here too -
  * the *tagging* as recurring must trace back to that one explicit action).
  */
 /**
  * `receiptPath` is an internal-only third parameter, additive on top of the
  * existing (rawInput, recurringRuleId) signature so every existing caller
  * keeps working unchanged. It is set only when the person actually attached
- * or scanned a receipt image (add-expense-sheet.tsx) — the file itself is
+ * or scanned a receipt image (add-expense-sheet.tsx) - the file itself is
  * always uploaded client-side first (to the private `receipts` bucket, see
  * migration 017), and only the resulting storage *path* is ever passed here.
  */
@@ -565,7 +565,7 @@ export interface ExpenseFilters {
   limit?: number;
 }
 
-/** Enriched shape the UI actually renders — joined in JS, never via PostgREST embeds (see database.ts header). */
+/** Enriched shape the UI actually renders - joined in JS, never via PostgREST embeds (see database.ts header). */
 export type EnrichedExpense = Tables<"expenses"> & {
   category_name: string | null;
   category_icon: string | null;
@@ -673,7 +673,7 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
 
 /**
  * Mints a short-lived signed URL for a receipt image (the `receipts` bucket
- * is private — migration 017 — so there is no public URL to just read off
+ * is private - migration 017 - so there is no public URL to just read off
  * the expense row). Re-checks the path's household prefix server-side before
  * calling Storage, on top of the bucket's own RLS, so a stale/tampered path
  * can never be used to probe another household's folder.

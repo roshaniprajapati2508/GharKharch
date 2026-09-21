@@ -19,7 +19,7 @@ function ShareBar({ pct }: { pct: number }) {
   );
 }
 
-/** Payment analytics depth (spec section 8, batch phase): the free-text payment-method breakdown, plus by-card, by-UPI-app depth, and a cash this-month-vs-last-month comparison — each in its own clearly labeled section. */
+/** Payment analytics depth (spec section 8, batch phase): the free-text payment-method breakdown, plus by-card, by-UPI-app depth, and a cash this-month-vs-last-month comparison - each in its own clearly labeled section. */
 export function PaymentMethodAnalyticsTab({ methods, range }: { methods: PaymentMethodBreakdownRow[]; range: DateRange }) {
   const [depth, setDepth] = useState<PaymentDepthData | null>(null);
   const [cash, setCash] = useState<CashComparison | null>(null);

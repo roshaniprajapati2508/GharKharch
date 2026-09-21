@@ -16,7 +16,7 @@ export interface ReceiptReviewValues {
 
 /**
  * The mandatory "review before it becomes a transaction" step for AI receipt
- * scanning (spec section 3) — every extracted field lands here as a normal,
+ * scanning (spec section 3) - every extracted field lands here as a normal,
  * editable input, never a pre-saved expense. Confirming hands the values off
  * into the existing Add Expense form (add-expense-sheet.tsx sets its own
  * state from `onConfirm`'s result and the person still taps the form's own
@@ -55,7 +55,7 @@ export function ReceiptReviewSheet({
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>Review scanned receipt</DrawerTitle>
-          <DrawerDescription>Check and correct anything before it&apos;s added — nothing is saved yet.</DrawerDescription>
+          <DrawerDescription>Check and correct anything before it&apos;s added - nothing is saved yet.</DrawerDescription>
         </DrawerHeader>
 
         <div className="flex flex-col gap-4 px-5 pb-4">
@@ -92,7 +92,7 @@ export function ReceiptReviewSheet({
             </div>
           )}
 
-          {parsed?.categoryGuess && <p className="text-xs text-muted-foreground">Suggested category: {parsed.categoryGuess} — you can change this next.</p>}
+          {parsed?.categoryGuess && <p className="text-xs text-muted-foreground">Suggested category: {parsed.categoryGuess} - you can change this next.</p>}
         </div>
 
         <DrawerFooter>

@@ -1,12 +1,12 @@
 // Small hand-rolled CSV parser for the "Import expenses from CSV" flow
-// (spec section 3: a bounded, well-specified format — the exact headers
+// (spec section 3: a bounded, well-specified format - the exact headers
 // exportExpensesCsv already produces). Deliberately not a library: the
 // format is small and fixed, and this never evals/execs anything from the
 // file, just splits text into rows of strings per RFC 4180 quoting rules
 // (a quoted field, "" as an escaped quote inside one, and commas/newlines
 // allowed inside quotes).
 
-/** Parses CSV text into rows of raw string cells (no header handling — the caller does that). */
+/** Parses CSV text into rows of raw string cells (no header handling - the caller does that). */
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];

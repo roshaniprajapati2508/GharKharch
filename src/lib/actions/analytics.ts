@@ -1,7 +1,7 @@
 "use server";
 
 // Thin wrappers around the SQL analytics functions from migration 006. Every
-// aggregation happens in Postgres — this file never pulls raw transactions
+// aggregation happens in Postgres - this file never pulls raw transactions
 // into JS to sum them (spec section 48-50, 88: "do NOT fetch all expenses and
 // calculate everything in React").
 
@@ -53,7 +53,7 @@ export interface AnalyticsFilters {
 function resolvePaidBy(filters: AnalyticsFilters, userId: string, partnerId: string | null): string | null {
   if (filters.person === "me") return userId;
   if (filters.person === "partner") return partnerId ?? userId;
-  return null; // household — no filter
+  return null; // household - no filter
 }
 
 /** "all" -> no filter needed at all (skip the extra query, matches every RPC's own null default). */
@@ -515,7 +515,7 @@ export async function getIncomeSummary(range: DateRange) {
   });
 }
 
-/** Per-category monthly trend for the small sparkline on the Category Analytics tab — mirrors getMerchantMonthlyTrend exactly. */
+/** Per-category monthly trend for the small sparkline on the Category Analytics tab - mirrors getMerchantMonthlyTrend exactly. */
 export async function getCategoryMonthlyTrend(categoryId: string, months = 6) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();
@@ -550,7 +550,7 @@ export type UpiBreakdownRow = Database["public"]["Functions"]["get_upi_breakdown
 export interface PaymentDepthData {
   cardBreakdown: CardBreakdownRow[];
   upiBreakdown: UpiBreakdownRow[];
-  /** Top row of each breakdown, sorted by total spend — "most used" reads more usefully here than transaction count, since a card used for one large bill is arguably more "in use" than one tapped for a handful of tiny ones. */
+  /** Top row of each breakdown, sorted by total spend - "most used" reads more usefully here than transaction count, since a card used for one large bill is arguably more "in use" than one tapped for a handful of tiny ones. */
   mostUsedCard: CardBreakdownRow | null;
   mostUsedUpi: UpiBreakdownRow | null;
 }
@@ -585,7 +585,7 @@ export interface CashComparison {
   changePct: number | null;
 }
 
-/** Cash this-month-vs-last-month, filtered to the "Cash" row of the existing payment-method breakdown — no new SQL needed. */
+/** Cash this-month-vs-last-month, filtered to the "Cash" row of the existing payment-method breakdown - no new SQL needed. */
 export async function getCashComparison() {
   return runAction(async (): Promise<CashComparison> => {
     const { supabase, householdId } = await requireHouseholdContext();
@@ -612,7 +612,7 @@ export async function getCashComparison() {
   });
 }
 
-/** Daily totals for the spending calendar heatmap (spec section 8F, 33) — independent of the page's own period filter, driven by `monthsAgo`. */
+/** Daily totals for the spending calendar heatmap (spec section 8F, 33) - independent of the page's own period filter, driven by `monthsAgo`. */
 export async function getCalendarMonthData(monthsAgo: number) {
   return runAction(async () => {
     const { supabase, householdId } = await requireHouseholdContext();

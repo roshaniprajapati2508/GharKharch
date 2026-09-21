@@ -324,7 +324,7 @@ export function ExpenseRow({
                 }}
                 className="flex shrink-0 items-center text-muted-foreground"
                 aria-label="View receipt"
-                title="Receipt attached — tap to view"
+                title="Receipt attached - tap to view"
               >
                 <Paperclip className="h-3 w-3" />
               </button>
@@ -411,10 +411,10 @@ export function ExpenseRow({
               )}
               <p
                 className={cn(
-                  "text-sm font-semibold tabular-nums",
+                  "text-sm font-bold tabular-nums",
                   expense.entry_type === "income"
                     ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-foreground"
+                    : "text-rose-600 dark:text-rose-400"
                 )}
               >
                 {expense.entry_type === "income" ? `+${formatINR(expense.amount)}` : `-${formatINR(expense.amount)}`}

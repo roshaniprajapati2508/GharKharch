@@ -4,7 +4,7 @@
 // Matches the exact column headers exportExpensesCsv (lib/actions/reports.ts)
 // produces, so a user's own exported CSV round-trips cleanly. Category and
 // merchant names are matched case-insensitively against the household's real
-// categories/merchants — an unmatched name is never silently turned into a
+// categories/merchants - an unmatched name is never silently turned into a
 // new category/merchant, it's just left uncategorized/no-merchant.
 
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -138,7 +138,7 @@ export default function ImportCsvPage() {
             if (partner && lowerPaidBy === partner.displayName.toLowerCase()) {
               resolvedPaidById = partner.id;
             }
-            // else: falls back to the current user rather than guessing — never fabricated.
+            // else: falls back to the current user rather than guessing - never fabricated.
           }
 
           return {
@@ -164,7 +164,7 @@ export default function ImportCsvPage() {
         setExcluded(new Set(parsed.filter((r) => r.errors.length > 0).map((r) => r.rowNumber)));
         setStep(2);
       } catch {
-        toast.error("Couldn't read that file — make sure it's a valid CSV");
+        toast.error("Couldn't read that file - make sure it's a valid CSV");
       } finally {
         setLoading(false);
       }
@@ -213,7 +213,7 @@ export default function ImportCsvPage() {
     setResults(result.data.results);
     setStep(3);
     if (result.data.failed === 0) toast.success(`Imported ${result.data.succeeded} expense${result.data.succeeded === 1 ? "" : "s"}`);
-    else toast.warning(`Imported ${result.data.succeeded}, ${result.data.failed} failed — see details below`);
+    else toast.warning(`Imported ${result.data.succeeded}, ${result.data.failed} failed - see details below`);
   }
 
   function reset() {
@@ -262,7 +262,7 @@ export default function ImportCsvPage() {
             <p className="font-semibold text-foreground">Expected column format</p>
             <p className="mt-1">Required: <span className="font-medium text-foreground">Date</span> (YYYY-MM-DD), <span className="font-medium text-foreground">Item</span>, <span className="font-medium text-foreground">Amount</span> (positive number).</p>
             <p className="mt-1">Optional: Time, Merchant, Category, Paid By, Payment Method, Type (personal/household/shared), Notes.</p>
-            <p className="mt-1">Category and Merchant are matched by name against your existing ones (case-insensitive) — an unrecognized name is left uncategorized rather than creating a new one.</p>
+            <p className="mt-1">Category and Merchant are matched by name against your existing ones (case-insensitive) - an unrecognized name is left uncategorized rather than creating a new one.</p>
             <p className="mt-1">Column headers: {EXPECTED_HEADERS.join(", ")}</p>
           </div>
         </div>
@@ -306,11 +306,11 @@ export default function ImportCsvPage() {
                       <td className="px-2 py-2">
                         <Checkbox checked={!isExcluded} onCheckedChange={() => toggleRow(r.rowNumber)} disabled={hasError} />
                       </td>
-                      <td className="px-2 py-2 text-foreground">{r.date || "—"}</td>
-                      <td className="max-w-[140px] truncate px-2 py-2 text-foreground">{r.item || "—"}</td>
-                      <td className="px-2 py-2 text-foreground">{r.amountRaw || "—"}</td>
-                      <td className="px-2 py-2 text-muted-foreground">{r.resolvedCategoryName ?? (r.category ? `${r.category} (uncategorized)` : "—")}</td>
-                      <td className="px-2 py-2 text-muted-foreground">{r.resolvedMerchantName ?? (r.merchant ? `${r.merchant} (no match)` : "—")}</td>
+                      <td className="px-2 py-2 text-foreground">{r.date || "-"}</td>
+                      <td className="max-w-[140px] truncate px-2 py-2 text-foreground">{r.item || "-"}</td>
+                      <td className="px-2 py-2 text-foreground">{r.amountRaw || "-"}</td>
+                      <td className="px-2 py-2 text-muted-foreground">{r.resolvedCategoryName ?? (r.category ? `${r.category} (uncategorized)` : "-")}</td>
+                      <td className="px-2 py-2 text-muted-foreground">{r.resolvedMerchantName ?? (r.merchant ? `${r.merchant} (no match)` : "-")}</td>
                       <td className="px-2 py-2 text-muted-foreground">
                         {r.resolvedPaidById === userId ? "You" : partner?.displayName ?? "You"}
                       </td>

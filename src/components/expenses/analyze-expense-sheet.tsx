@@ -10,8 +10,8 @@ import type { EnrichedExpense } from "@/lib/actions/expenses";
 /**
  * Bottom sheet behind expense-row.tsx's "Analyze" menu item. Every line shown
  * here is a short, factual statement backed by a number `analyzeExpense`
- * computed via existing SQL breakdown functions — never an invented
- * narrative — and a line is simply left out when its underlying fact
+ * computed via existing SQL breakdown functions - never an invented
+ * narrative - and a line is simply left out when its underlying fact
  * couldn't be computed (spec section 2).
  */
 export function AnalyzeExpenseSheet({
@@ -113,7 +113,7 @@ export function AnalyzeExpenseSheet({
                 <FactLine>
                   Price appears <strong>{analysis.priceChange.direction}</strong> than your previous typical amount for{" "}
                   <strong>{expense?.item_name}</strong> ({formatINR(analysis.priceChange.recent)} vs. your usual {formatINR(analysis.priceChange.previousTypical)}
-                  ) — based only on your own past purchases, not a market price.
+                  ) - based only on your own past purchases, not a market price.
                 </FactLine>
               )}
 

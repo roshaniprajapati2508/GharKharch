@@ -14,7 +14,7 @@ import { formatINR } from "@/lib/utils";
 import { toastUndo } from "@/lib/toast-helpers";
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
