@@ -23,9 +23,11 @@ import type { DateRange } from "@/lib/date-utils";
  * rather than surfacing a raw Postgres error on every Analytics/Dashboard
  * load for a feature the household hasn't turned on yet.
  */
-export function MiniPnlCard({ range }: { range?: DateRange }) {
+export function MiniPnlCard({ range, initialData }: { range?: DateRange; initialData?: BusinessPnl | null }) {
   const effectiveRange = range ?? getMonthRange();
-  const [pnl, setPnl] = useState<BusinessPnl | null | undefined>(undefined); // undefined = loading
+  const [pnl, setPnl] = useState<BusinessPnl | null | undefined>(
+    initialData !== undefined ? initialData : undefined
+  ); // undefined = loading
 
   async function load() {
     const result = await getBusinessPnl(effectiveRange);
@@ -33,9 +35,11 @@ export function MiniPnlCard({ range }: { range?: DateRange }) {
   }
 
   useEffect(() => {
-    load();
+    if (initialData === undefined) {
+      load();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveRange.start, effectiveRange.end]);
+  }, [effectiveRange.start, effectiveRange.end, initialData]);
 
   useOnExpenseSaved(load);
 

@@ -1,7 +1,5 @@
-"use client";
-
 import { useRef, useState } from "react";
-import { Pencil, Copy, Trash2, MessageSquarePlus, MoreVertical, Repeat, Sparkles, Paperclip, Check, Tag, User, CreditCard } from "lucide-react";
+import { Pencil, Copy, Trash2, MessageSquarePlus, MoreVertical, Repeat, Sparkles, Paperclip, Check, X, Loader2, Tag, User, CreditCard } from "lucide-react";
 import { CategoryIcon } from "@/lib/icon-map";
 import { formatINR } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -92,25 +90,49 @@ export function ExpenseRow({
   const [dragX, setDragX] = useState(0);
   const startX = useRef<number | null>(null);
   const dragging = useRef(false);
+  const isCancelling = useRef(false);
   const [editingField, setEditingField] = useState<"amount" | "item_name" | null>(null);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
 
   function startInlineEdit(field: "amount" | "item_name") {
     if (!onInlineUpdate || selectionMode) return;
+    isCancelling.current = false;
     setEditingField(field);
-    setEditValue(field === "amount" ? String(parseFloat(expense.amount)) : expense.item_name);
+    if (field === "amount") {
+      const parsed = parseFloat(expense.amount);
+      setEditValue(Number.isFinite(parsed) && parsed > 0 ? String(parsed) : "");
+    } else {
+      setEditValue(expense.merchant_name || expense.item_name || "");
+    }
+  }
+
+  function cancelInlineEdit() {
+    isCancelling.current = true;
+    setEditingField(null);
   }
 
   async function commitInlineEdit() {
-    if (!editingField || !onInlineUpdate) return;
+    if (isCancelling.current || !editingField || !onInlineUpdate || saving) return;
     const field = editingField;
     const value = (typeof editValue === "string" ? editValue : "").trim();
-    const original = field === "amount" ? String(parseFloat(expense.amount)) : expense.item_name;
+    const original = field === "amount"
+      ? String(parseFloat(expense.amount))
+      : (expense.merchant_name || expense.item_name || "").trim();
+
     if (!value || value === original) {
       setEditingField(null);
       return;
     }
+
+    if (field === "amount") {
+      const num = parseFloat(value);
+      if (isNaN(num) || num <= 0) {
+        setEditingField(null);
+        return;
+      }
+    }
+
     setSaving(true);
     const ok = await onInlineUpdate(field, value);
     setSaving(false);
@@ -207,31 +229,74 @@ export function ExpenseRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             {editingField === "item_name" ? (
-              <input
-                autoFocus
-                value={editValue}
-                disabled={saving}
-                onChange={(e) => setEditValue(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                onBlur={commitInlineEdit}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitInlineEdit();
-                  if (e.key === "Escape") setEditingField(null);
-                }}
-                className="min-w-0 flex-1 rounded border border-brand-primary/50 bg-background px-1.5 py-0.5 text-sm font-medium text-foreground outline-none"
-              />
+              <div className="flex items-center gap-1 min-w-0 flex-1" onClick={(e) => e.stopPropagation()}>
+                <input
+                  autoFocus
+                  value={editValue}
+                  disabled={saving}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={commitInlineEdit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitInlineEdit();
+                    if (e.key === "Escape") cancelInlineEdit();
+                  }}
+                  className="min-w-0 flex-1 rounded-md border border-brand-primary/60 bg-background px-2 py-0.5 text-sm font-medium text-foreground shadow-xs outline-none ring-1 ring-brand-primary/40 focus:border-brand-primary"
+                  placeholder="Expense name"
+                />
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    commitInlineEdit();
+                  }}
+                  disabled={saving}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-primary text-primary-foreground hover:bg-brand-primary/90 transition-colors shadow-xs"
+                  title="Save changes (Enter)"
+                  aria-label="Save changes"
+                >
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                </button>
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    cancelInlineEdit();
+                  }}
+                  disabled={saving}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  title="Cancel (Esc)"
+                  aria-label="Cancel"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             ) : (
-              <p
+              <div
+                className={cn("group/name flex items-center gap-1 min-w-0", onInlineUpdate && !selectionMode && "cursor-pointer")}
                 onDoubleClick={(e) => {
                   e.stopPropagation();
                   startInlineEdit("item_name");
                 }}
-                className={cn("truncate text-sm font-medium text-foreground", onInlineUpdate && !selectionMode && "cursor-text")}
                 title={onInlineUpdate && !selectionMode ? "Double-click to rename" : undefined}
               >
-                {expense.merchant_name ?? expense.item_name}
-              </p>
+                <p className="truncate text-sm font-medium text-foreground">
+                  {expense.merchant_name ?? expense.item_name}
+                </p>
+                {onInlineUpdate && !selectionMode && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startInlineEdit("item_name");
+                    }}
+                    className="hidden sm:inline-flex opacity-0 group-hover/name:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
+                    title="Edit name"
+                    aria-label="Edit name"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
             )}
             {expense.entry_type === "income" && (
               <span
@@ -274,39 +339,87 @@ export function ExpenseRow({
 
         <div className="flex shrink-0 items-center gap-1">
           {editingField === "amount" ? (
-            <input
-              autoFocus
-              type="number"
-              inputMode="decimal"
-              value={editValue}
-              disabled={saving}
-              onChange={(e) => setEditValue(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              onBlur={commitInlineEdit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitInlineEdit();
-                if (e.key === "Escape") setEditingField(null);
-              }}
-              className="w-20 rounded border border-brand-primary/50 bg-background px-1.5 py-0.5 text-right text-sm font-semibold text-foreground outline-none"
-            />
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <div className="relative flex items-center">
+                <span className="absolute left-2 text-xs font-semibold text-muted-foreground">₹</span>
+                <input
+                  autoFocus
+                  type="number"
+                  step="any"
+                  inputMode="decimal"
+                  value={editValue}
+                  disabled={saving}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={commitInlineEdit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitInlineEdit();
+                    if (e.key === "Escape") cancelInlineEdit();
+                  }}
+                  className="w-24 rounded-md border border-brand-primary/60 bg-background pl-5 pr-2 py-0.5 text-right text-sm font-semibold text-foreground tabular-nums shadow-xs outline-none ring-1 ring-brand-primary/40 focus:border-brand-primary"
+                  placeholder="0"
+                />
+              </div>
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  commitInlineEdit();
+                }}
+                disabled={saving}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-primary text-primary-foreground hover:bg-brand-primary/90 transition-colors shadow-xs"
+                title="Save changes (Enter)"
+                aria-label="Save changes"
+              >
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+              </button>
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  cancelInlineEdit();
+                }}
+                disabled={saving}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                title="Cancel (Esc)"
+                aria-label="Cancel"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ) : (
-            <p
+            <div
+              className={cn("group/amt flex items-center gap-1", onInlineUpdate && !selectionMode && "cursor-pointer")}
               onDoubleClick={(e) => {
                 e.stopPropagation();
                 startInlineEdit("amount");
               }}
-              className={cn(
-                "text-sm font-semibold tabular-nums",
-                expense.entry_type === "income"
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-foreground",
-                onInlineUpdate && !selectionMode && "cursor-text"
-              )}
               title={onInlineUpdate && !selectionMode ? "Double-click to edit amount" : undefined}
             >
-              {expense.entry_type === "income" ? `+${formatINR(expense.amount)}` : `-${formatINR(expense.amount)}`}
-            </p>
+              {onInlineUpdate && !selectionMode && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startInlineEdit("amount");
+                  }}
+                  className="hidden sm:inline-flex opacity-0 group-hover/amt:opacity-100 text-muted-foreground hover:text-foreground transition-opacity mr-0.5"
+                  title="Edit amount"
+                  aria-label="Edit amount"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
+              <p
+                className={cn(
+                  "text-sm font-semibold tabular-nums",
+                  expense.entry_type === "income"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-foreground"
+                )}
+              >
+                {expense.entry_type === "income" ? `+${formatINR(expense.amount)}` : `-${formatINR(expense.amount)}`}
+              </p>
+            </div>
           )}
 
           {/* Desktop/tablet hover micro-action dock (spec: Feature 3.3) - a

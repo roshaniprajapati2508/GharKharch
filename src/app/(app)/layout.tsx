@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: membership } = await supabase
     .from("household_members")
-    .select("household_id")
+    .select("household_id, role")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -25,45 +25,40 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/onboarding");
   }
 
-  // This layout runs on every full/hard navigation into the (app) segment, so each
-  // extra sequential round trip here is latency every page in the app pays on top
-  // of its own data fetch. household_members.user_id and profiles.id both reference
-  // auth.users but aren't FK'd to each other, so they can't be embedded in one
-  // PostgREST query - but we can still fetch household + member ids in parallel,
-  // then fetch every member's profile (mine and the partner's) in a single `.in()`
-  // query instead of two separate profile look-ups.
-  const [{ data: household }, { data: members }] = await Promise.all([
+  // Fetch household, all members, and current user's profile in parallel to reduce sequential latency
+  const [{ data: household }, { data: members }, { data: profile }] = await Promise.all([
     supabase.from("households").select("id, name, invite_code").eq("id", membership.household_id).single(),
     supabase.from("household_members").select("user_id, role").eq("household_id", membership.household_id),
+    supabase.from("profiles").select("id, display_name, username, avatar_url").eq("id", user.id).maybeSingle(),
   ]);
 
   const memberIds = (members ?? []).map((m) => m.user_id);
-  const isOwner = (members ?? []).find((m) => m.user_id === user.id)?.role === "owner";
+  const isOwner = membership.role === "owner";
   const partnerUserId = memberIds.find((id) => id !== user.id) ?? null;
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, display_name, username, avatar_url")
-    .in("id", memberIds.length > 0 ? memberIds : [user.id]);
-
-  const profile = (profiles ?? []).find((p) => p.id === user.id) ?? null;
-  const partnerProfile = partnerUserId ? (profiles ?? []).find((p) => p.id === partnerUserId) ?? null : null;
-  const partnerDisplayName = partnerProfile?.display_name ?? null;
-  const partnerAvatarUrl = partnerProfile?.avatar_url ?? null;
+  let partnerProfile: { id: string; display_name: string | null; username: string | null; avatar_url: string | null } | null = null;
+  if (partnerUserId) {
+    const { data: pProfile } = await supabase
+      .from("profiles")
+      .select("id, display_name, username, avatar_url")
+      .eq("id", partnerUserId)
+      .maybeSingle();
+    partnerProfile = pProfile ?? null;
+  }
 
   return (
     <HouseholdProvider
       value={{
-        householdId: household!.id,
-        householdName: household!.name,
-        inviteCode: household!.invite_code,
+        householdId: household?.id ?? membership.household_id,
+        householdName: household?.name ?? "Household",
+        inviteCode: household?.invite_code ?? "",
         userId: user.id,
         isOwner,
         displayName: profile?.display_name ?? user.email?.split("@")[0] ?? "You",
         username: profile?.username ?? null,
         avatarUrl: profile?.avatar_url ?? null,
         partner: partnerUserId
-          ? { id: partnerUserId, displayName: partnerDisplayName ?? "Partner", avatarUrl: partnerAvatarUrl }
+          ? { id: partnerUserId, displayName: partnerProfile?.display_name ?? "Partner", avatarUrl: partnerProfile?.avatar_url ?? null }
           : null,
       }}
     >

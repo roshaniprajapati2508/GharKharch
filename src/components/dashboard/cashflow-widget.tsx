@@ -20,8 +20,10 @@ function healthColor(pct: number): string {
  * only shows meaningful "inflow" once Mini P&L / Feature 1 has income
  * logged), and budget health bars reusing the existing Budgets feature.
  */
-export function CashflowWidget() {
-  const [snapshot, setSnapshot] = useState<CashflowSnapshot | null | undefined>(undefined);
+export function CashflowWidget({ initialData }: { initialData?: CashflowSnapshot | null }) {
+  const [snapshot, setSnapshot] = useState<CashflowSnapshot | null | undefined>(
+    initialData !== undefined ? initialData : undefined
+  );
 
   async function load() {
     const result = await getCashflowSnapshot();
@@ -29,8 +31,10 @@ export function CashflowWidget() {
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    if (initialData === undefined) {
+      load();
+    }
+  }, [initialData]);
 
   useOnExpenseSaved(load);
 

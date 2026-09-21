@@ -27,6 +27,7 @@ import { listPaymentMethodsForHousehold } from "@/lib/actions/payment-methods";
 import { formatINR } from "@/lib/utils";
 import { toastUndo } from "@/lib/toast-helpers";
 import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
+import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";
 import type { Tables } from "@/types/database";
 
 export function ExpensesPageClient({
@@ -47,12 +48,20 @@ export function ExpensesPageClient({
   const [loading, setLoading] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [paymentMethods, setPaymentMethods] = useState<Tables<"payment_methods">[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<Tables<"payment_methods">[]>(() => {
+    return getClientCachedData<Tables<"payment_methods">[]>("payment_methods_active") ?? [];
+  });
 
   useEffect(() => {
-    listPaymentMethodsForHousehold().then((result) => {
-      if (result.data) setPaymentMethods(result.data);
-    });
+    const cached = getClientCachedData<Tables<"payment_methods">[]>("payment_methods_active");
+    if (!cached) {
+      listPaymentMethodsForHousehold().then((result) => {
+        if (result.data) {
+          setPaymentMethods(result.data);
+          setClientCachedData("payment_methods_active", result.data);
+        }
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -155,30 +164,83 @@ export function ExpensesPageClient({
     setExpenses((list) =>
       list.map((e) => {
         if (e.id !== expense.id) return e;
+        let updated: EnrichedExpense;
         if (field === "category_id") {
           const cat = categories.find((c) => c.id === value);
-          return { ...e, category_id: value, subcategory_id: null, category_name: cat?.name ?? e.category_name, category_icon: cat?.icon ?? e.category_icon, category_color: cat?.color ?? e.category_color, subcategory_name: null };
+          updated = {
+            ...e,
+            category_id: value,
+            subcategory_id: null,
+            category_name: cat?.name ?? e.category_name,
+            category_icon: cat?.icon ?? e.category_icon,
+            category_color: cat?.color ?? e.category_color,
+            subcategory_name: null,
+          };
+        } else if (field === "item_name") {
+          updated = {
+            ...e,
+            item_name: value,
+            merchant_name: value,
+            merchant_id: null,
+          };
+        } else if (field === "amount") {
+          updated = {
+            ...e,
+            amount: value,
+          };
+        } else {
+          updated = { ...e, [field]: value } as EnrichedExpense;
         }
-        return { ...e, [field]: field === "amount" ? value : value } as EnrichedExpense;
+        poolRef.set(expense.id, updated);
+        return updated;
       })
     );
 
     const result = await updateExpenseField(expense.id, field, value);
     if (result.error !== null) {
-      toast.error(result.error, { action: { label: "Undo", onClick: () => setExpenses(previous) } });
+      toast.error(result.error, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            setExpenses(previous);
+            poolRef.set(expense.id, expense);
+          },
+        },
+      });
       setExpenses(previous);
+      poolRef.set(expense.id, expense);
       return false;
     }
+
+    toast.success(
+      field === "amount"
+        ? `Amount updated to ${formatINR(value)}`
+        : field === "item_name"
+        ? `Renamed to "${value}"`
+        : "Expense updated"
+    );
     return true;
   }
 
   function handlePaidByChange(expense: EnrichedExpense, userId: string, label: string) {
     const previous = expenses;
-    setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, paid_by: userId, payer_name: label } : e)));
+    setExpenses((list) =>
+      list.map((e) => {
+        if (e.id === expense.id) {
+          const updated = { ...e, paid_by: userId, payer_name: label };
+          poolRef.set(expense.id, updated);
+          return updated;
+        }
+        return e;
+      })
+    );
     updateExpenseField(expense.id, "paid_by", userId).then((result) => {
       if (result.error !== null) {
         toast.error(result.error);
         setExpenses(previous);
+        poolRef.set(expense.id, expense);
+      } else {
+        toast.success(`Paid by updated to ${label}`);
       }
     });
   }

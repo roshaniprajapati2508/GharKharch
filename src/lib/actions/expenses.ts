@@ -261,7 +261,7 @@ export async function updateExpenseField(id: string, field: InlineEditableField,
       case "item_name": {
         const item_name = (value ?? "").trim();
         if (!item_name) throw new ActionError("Item name can't be empty");
-        patch = { item_name };
+        patch = { item_name, merchant_id: null };
         break;
       }
       case "category_id": {

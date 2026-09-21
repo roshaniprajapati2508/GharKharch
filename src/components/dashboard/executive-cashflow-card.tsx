@@ -17,8 +17,10 @@ import { formatINR, cn } from "@/lib/utils";
  * is the household-wide "are we net positive this month" view that ties
  * both of those together.
  */
-export function ExecutiveCashflowCard() {
-  const [data, setData] = useState<ExecutiveCashflow | null | undefined>(undefined);
+export function ExecutiveCashflowCard({ initialData }: { initialData?: ExecutiveCashflow | null }) {
+  const [data, setData] = useState<ExecutiveCashflow | null | undefined>(
+    initialData !== undefined ? initialData : undefined
+  );
 
   async function load() {
     const range = getMonthRange();
@@ -27,8 +29,10 @@ export function ExecutiveCashflowCard() {
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    if (initialData === undefined) {
+      load();
+    }
+  }, [initialData]);
 
   useOnExpenseSaved(load);
 

@@ -1,6 +1,14 @@
 import { Suspense } from "react";
-import { getDashboardData } from "@/lib/actions/analytics";
-import { getDailyWeeklySnapshot, getSpendingChanges, getHouseholdForecast } from "@/lib/actions/insights";
+import { getDashboardData, getBusinessPnl } from "@/lib/actions/analytics";
+import {
+  getDailyWeeklySnapshot,
+  getSpendingChanges,
+  getHouseholdForecast,
+  getCashflowSnapshot,
+  getExecutiveCashflow,
+  getSpendingPaceBenchmark,
+} from "@/lib/actions/insights";
+import { getRecentActivity } from "@/lib/actions/activity";
 import { getRecurringSummary } from "@/lib/actions/recurring";
 import { getMonthRange } from "@/lib/date-utils";
 import { DashboardPageClient } from "@/components/dashboard/dashboard-page-client";
@@ -14,12 +22,33 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const range = getMonthRange(0);
-  const [result, snapshotRes, changesRes, recurringRes, forecastRes] = await Promise.all([
+
+  // Consolidated parallel fetch across all dashboard widgets during SSR.
+  // Because requireHouseholdContext is cached in React per-request, all of these
+  // share the same single authenticated Supabase session, eliminating the client-side
+  // post-mount HTTP POST stampede.
+  const [
+    result,
+    snapshotRes,
+    changesRes,
+    recurringRes,
+    forecastRes,
+    cashflowRes,
+    execCashflowRes,
+    spendingPaceRes,
+    activityRes,
+    businessPnlRes,
+  ] = await Promise.all([
     getDashboardData({ range, person: "household" }),
     getDailyWeeklySnapshot(),
     getSpendingChanges(),
     getRecurringSummary(),
     getHouseholdForecast(),
+    getCashflowSnapshot(),
+    getExecutiveCashflow({ start: range.start, end: range.end }),
+    getSpendingPaceBenchmark(),
+    getRecentActivity(10),
+    getBusinessPnl(range),
   ]);
 
   const initialBrief = snapshotRes.data
@@ -36,6 +65,11 @@ export default async function DashboardPage() {
         initialData={result.data}
         initialBrief={initialBrief}
         initialForecast={forecastRes.data ?? null}
+        initialCashflow={cashflowRes.data ?? null}
+        initialExecutiveCashflow={execCashflowRes.data ?? null}
+        initialSpendingPace={spendingPaceRes.data ?? null}
+        initialActivityEvents={activityRes.data ?? null}
+        initialBusinessPnl={businessPnlRes.data ?? null}
       />
     </Suspense>
   );

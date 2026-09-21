@@ -32,8 +32,10 @@ const EVENT_META: Record<ActivityEvent["type"], { verb: string; icon: typeof Plu
  * dashboard-page-client.tsx's toastUndo call) rather than being duplicated
  * here.
  */
-export function ActivityFeedCard() {
-  const [events, setEvents] = useState<ActivityEvent[] | null>(null);
+export function ActivityFeedCard({ initialEvents }: { initialEvents?: ActivityEvent[] | null }) {
+  const [events, setEvents] = useState<ActivityEvent[] | null>(
+    initialEvents !== undefined ? initialEvents : null
+  );
 
   async function load() {
     const result = await getRecentActivity(10);
@@ -41,8 +43,10 @@ export function ActivityFeedCard() {
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    if (initialEvents === undefined) {
+      load();
+    }
+  }, [initialEvents]);
 
   // Refresh whenever the global Add Expense sheet saves, so a just-added
   // expense shows up here without a manual reload (same pattern every other

@@ -33,8 +33,10 @@ const STATUS_STYLE = {
  * rather than a literal speedometer arc/SVG gauge, matching this app's
  * other dashboard widgets (CashflowWidget's inflow/outflow bar).
  */
-export function SpendingPaceCard() {
-  const [data, setData] = useState<SpendingPaceBenchmark | null | undefined>(undefined);
+export function SpendingPaceCard({ initialData }: { initialData?: SpendingPaceBenchmark | null }) {
+  const [data, setData] = useState<SpendingPaceBenchmark | null | undefined>(
+    initialData !== undefined ? initialData : undefined
+  );
   const [baseline, setBaseline] = useState<Baseline>("6m");
 
   async function load() {
@@ -43,8 +45,10 @@ export function SpendingPaceCard() {
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    if (initialData === undefined) {
+      load();
+    }
+  }, [initialData]);
 
   useOnExpenseSaved(load);
 

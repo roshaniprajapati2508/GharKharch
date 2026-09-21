@@ -36,7 +36,9 @@ import { toastUndo } from "@/lib/toast-helpers";
 import { getMonthRange, type DateRange } from "@/lib/date-utils";
 import { formatINR } from "@/lib/utils";
 import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
-import type { HouseholdForecast } from "@/lib/actions/insights";
+import type { CashflowSnapshot, ExecutiveCashflow, HouseholdForecast, SpendingPaceBenchmark } from "@/lib/actions/insights";
+import type { ActivityEvent } from "@/lib/actions/activity";
+import type { BusinessPnl } from "@/lib/actions/analytics";
 
 function getDashboardCacheKey(range: DateRange, person: PersonFilter) {
   return `dashboard_${range.start}_${range.end}_${person}`;
@@ -46,12 +48,22 @@ interface DashboardPageClientProps {
   initialData?: DashboardData | null;
   initialBrief?: BriefData | null;
   initialForecast?: HouseholdForecast | null;
+  initialCashflow?: CashflowSnapshot | null;
+  initialExecutiveCashflow?: ExecutiveCashflow | null;
+  initialSpendingPace?: SpendingPaceBenchmark | null;
+  initialActivityEvents?: ActivityEvent[] | null;
+  initialBusinessPnl?: BusinessPnl | null;
 }
 
 export function DashboardPageClient({
   initialData,
   initialBrief,
   initialForecast,
+  initialCashflow,
+  initialExecutiveCashflow,
+  initialSpendingPace,
+  initialActivityEvents,
+  initialBusinessPnl,
 }: DashboardPageClientProps) {
   const { displayName } = useHousehold();
   const { openAdd } = useAddExpense();
@@ -168,7 +180,7 @@ export function DashboardPageClient({
       ) : data && hasAnyActivity ? (
         <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="dashboard-grid">
           <motion.div variants={fadeInUp} style={{ gridArea: "cashflow-exec" }}>
-            <ExecutiveCashflowCard />
+            <ExecutiveCashflowCard initialData={initialExecutiveCashflow} />
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "brief" }} className="h-full flex flex-col">
@@ -239,19 +251,19 @@ export function DashboardPageClient({
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "pnl" }}>
-            <MiniPnlCard />
+            <MiniPnlCard initialData={initialBusinessPnl} />
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "cashflow" }}>
-            <CashflowWidget />
+            <CashflowWidget initialData={initialCashflow} />
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "pace" }}>
-            <SpendingPaceCard />
+            <SpendingPaceCard initialData={initialSpendingPace} />
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "activity" }}>
-            <ActivityFeedCard />
+            <ActivityFeedCard initialEvents={initialActivityEvents} />
           </motion.div>
 
           <motion.div variants={fadeInUp} style={{ gridArea: "calendar" }}>
