@@ -357,37 +357,40 @@ const DEFAULT_TOP_INCOME_CATEGORIES: CategoryWithChildren[] = [
 ];
 
 export const LUXEKRAFT_INCOME_QUICK_CHIPS = [
-  // Mobile Covers & Sets (Official Offer Prices)
-  { itemName: "Cover Only", categoryName: "Mobile Covers & Sets", subcategoryName: "Mobile Cover", amount: 999 },
-  { itemName: "Cover + Waist Judo", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Waist Judo", amount: 1299 },
-  { itemName: "Cover + Sling Chain with Ghugri", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Sling Chain with Ghugri", amount: 1499 },
-  { itemName: "Cover + Sling Chain with Ghugri, Coins & Metal Kodi", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Sling Chain with Ghugri, Coins & Metal Kodi", amount: 1599 },
-  { itemName: "Full Set 1 (Cover + Judo + Sling Ghugri)", categoryName: "Mobile Covers & Sets", subcategoryName: "Full Set 1: Cover + Waist Judo + Sling Chain with Ghugri", amount: 1899 },
-  { itemName: "Full Set 2 (Cover + Judo + Coins & Kodi)", categoryName: "Mobile Covers & Sets", subcategoryName: "Full Set 2: Cover + Waist Judo + Sling Chain with Ghugri, Coins & Metal Kodi", amount: 1999 },
-  { itemName: "Cover + Jul", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Jul", amount: 1199 },
-  { itemName: "Cover + Short Chain", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Short Chain", amount: 1399 },
-  { itemName: "Cover + Feather", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Feather", amount: 1399 },
-  { itemName: "Cover + Waist Judo + Jul", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Waist Judo + Jul", amount: 1399 },
-  { itemName: "Cover + Short Chain + Waist Judo", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Short Chain + Waist Judo", amount: 1599 },
-  { itemName: "Cover + Feather With Jul", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Feather With Jul", amount: 1599 },
+  // Mobile Covers & Combos (Current Offer Prices)
+  { itemName: "Cover Only", categoryName: "Mobile Covers & Sets", subcategoryName: "Mobile Cover", amount: 1099 },
+  { itemName: "Cover + Jul", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Jul", amount: 1299 },
+  { itemName: "Cover + Waist Judo", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Waist Judo", amount: 1399 },
+  { itemName: "Cover + Short Chain", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Short Chain", amount: 1499 },
+  { itemName: "Cover + Feather", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Feather", amount: 1499 },
+  { itemName: "Cover + Waist Judo + Jul", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Waist Judo + Jul", amount: 1499 },
+  { itemName: "Cover + Sling Chain with Ghugri", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Sling Chain with Ghugri", amount: 1599 },
+  { itemName: "Cover + Sling Chain with Ghugri, Coins & Metal Kodi", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Sling Chain with Ghugri, Coins & Metal Kodi", amount: 1699 },
+  { itemName: "Cover + Short Chain + Waist Judo (2 in 1)", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Short Chain + Waist Judo", amount: 1699 },
+  { itemName: "Cover + Feather With Jul", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Feather With Jul", amount: 1699 },
+  { itemName: "Full Set 1 (Cover + Waist Judo + Sling Ghugri)", categoryName: "Mobile Covers & Sets", subcategoryName: "Full Set 1: Cover + Waist Judo + Sling Chain with Ghugri", amount: 1899 },
+  { itemName: "Full Set 2 (Cover + Judo + Coins & Metal Kodi)", categoryName: "Mobile Covers & Sets", subcategoryName: "Full Set 2: Cover + Waist Judo + Sling Chain with Ghugri, Coins & Metal Kodi", amount: 1999 },
 
-  // Standalone Accessories (Official Offer Prices)
+  // Standalone Accessories
   { itemName: "Only Sling Chain with Ghugri", categoryName: "Only Accessories", subcategoryName: "Only Sling Chain with Ghugri", amount: 599 },
   { itemName: "Only Sling Chain with Ghugri, Coins & Metal Kodi", categoryName: "Only Accessories", subcategoryName: "Only Sling Chain with Ghugri, Coins & Metal Kodi", amount: 699 },
   { itemName: "Only Waist Judo", categoryName: "Only Accessories", subcategoryName: "Only Waist Judo", amount: 599 },
+  { itemName: "Macramé Mobile Sling", categoryName: "Only Accessories", subcategoryName: "Macrame Mobile Sling", amount: 399 },
 
-  // Custom Add-on
+  // Custom Name Add-on
   { itemName: "Custom Name on Cover", categoryName: "Mobile Covers & Sets", subcategoryName: "Mobile Cover", amount: 100 },
 
-  // Collections & Crafts
-  { itemName: "Navratri Collection", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Navratri Collection", amount: 850 },
-  { itemName: "Haldi Jewellery", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Haldi Jewellery", amount: 1200 },
-  { itemName: "Mehndi Jewellery", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Mehndi Jewellery", amount: 1500 },
-  { itemName: "Kashmiri Watch", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Kashmiri Watch", amount: 799 },
-  { itemName: "Other Handmade Jewellery", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Other Handmade Jewellery", amount: 500 },
-  { itemName: "Lippon Art", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Lippon Art", amount: 2500 },
-  { itemName: "Return Gift", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Return Gift", amount: 1800 },
-  { itemName: "Baby Shower", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Baby Shower", amount: 2200 },
+  // Handmade Jewellery, Watches & Collections
+  { itemName: "Kashmiri Watch", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Kashmiri Watch", amount: 499 },
+  { itemName: "Haldi Jewellery (Starts)", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Haldi Jewellery", amount: 999 },
+  { itemName: "Mehndi Jewellery (Starts)", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Mehndi Jewellery", amount: 999 },
+  { itemName: "Navratri Collection (Starts)", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Navratri Collection", amount: 999 },
+  { itemName: "Other Handmade Jewellery", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Other Handmade Jewellery", amount: 499 },
+
+  // Handmade Crafts & Occasions
+  { itemName: "Lippon Art (Starts)", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Lippon Art", amount: 999 },
+  { itemName: "Return Gift (Custom)", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Return Gift", amount: 999 },
+  { itemName: "Baby Shower (Custom)", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Baby Shower", amount: 999 },
 ];
 
 const DEFAULT_PRESEEDED_CARDS: EnrichedUserCard[] = DEFAULT_HOUSEHOLD_CARDS.map((c, idx) => ({

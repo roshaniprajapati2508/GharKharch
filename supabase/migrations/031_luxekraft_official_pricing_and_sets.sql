@@ -32,18 +32,18 @@ do nothing;
 -- =========================================================
 insert into automation_rules (household_id, name, priority, conditions, actions)
 values
-  -- Cover + Waist Judo (Most Popular - Rs 1,299)
-  (null, 'LuxeKraft Cover + Waist Judo (Rs 1,299)', 110,
+  -- Cover + Waist Judo (Rs 1,399)
+  (null, 'LuxeKraft Cover + Waist Judo (Rs 1,399)', 110,
     '{"keywords": ["cover + waist judo", "cover with waist judo", "cover and waist judo", "cover judo"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Mobile Covers & Sets", "subcategory_name": "Cover + Waist Judo", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
 
-  -- Cover + Sling Chain with Ghugri (Rs 1,499)
-  (null, 'LuxeKraft Cover + Sling Ghugri (Rs 1,499)', 110,
+  -- Cover + Sling Chain with Ghugri (Rs 1,599)
+  (null, 'LuxeKraft Cover + Sling Ghugri (Rs 1,599)', 110,
     '{"keywords": ["cover + sling chain with ghugri", "cover with ghugri sling", "cover and sling ghugri"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Mobile Covers & Sets", "subcategory_name": "Cover + Sling Chain with Ghugri", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
 
-  -- Cover + Sling Chain with Ghugri, Coins & Metal Kodi (Rs 1,599)
-  (null, 'LuxeKraft Cover + Coins & Kodi Sling (Rs 1,599)', 110,
+  -- Cover + Sling Chain with Ghugri, Coins & Metal Kodi (Rs 1,699)
+  (null, 'LuxeKraft Cover + Coins & Kodi Sling (Rs 1,699)', 110,
     '{"keywords": ["cover + sling chain with ghugri, coins & metal kodi", "cover with coins and kodi", "cover kodi sling"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Mobile Covers & Sets", "subcategory_name": "Cover + Sling Chain with Ghugri, Coins & Metal Kodi", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
 
@@ -57,35 +57,45 @@ values
     '{"keywords": ["full set 2", "full set 2: cover + waist judo + sling chain with ghugri, coins & metal kodi", "full set 2 cover", "bestseller set"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Mobile Covers & Sets", "subcategory_name": "Full Set 2: Cover + Waist Judo + Sling Chain with Ghugri, Coins & Metal Kodi", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
 
-  -- Cover + Jul (Rs 1,199)
-  (null, 'LuxeKraft Cover + Jul (Rs 1,199)', 105,
+  -- Cover + Jul (Rs 1,299)
+  (null, 'LuxeKraft Cover + Jul (Rs 1,299)', 105,
     '{"keywords": ["cover + jul", "cover with jul"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Mobile Covers & Sets", "subcategory_name": "Cover + Jul", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
 
-  -- Cover + Short Chain (Rs 1,399)
-  (null, 'LuxeKraft Cover + Short Chain (Rs 1,399)', 105,
+  -- Cover + Short Chain (Rs 1,499)
+  (null, 'LuxeKraft Cover + Short Chain (Rs 1,499)', 105,
     '{"keywords": ["cover + short chain", "cover with short chain"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Mobile Covers & Sets", "subcategory_name": "Cover + Short Chain", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
 
-  -- Cover + Feather (Rs 1,399)
-  (null, 'LuxeKraft Cover + Feather (Rs 1,399)', 105,
+  -- Cover + Feather (Rs 1,499)
+  (null, 'LuxeKraft Cover + Feather (Rs 1,499)', 105,
     '{"keywords": ["cover + feather", "cover with feather"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Mobile Covers & Sets", "subcategory_name": "Cover + Feather", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
 
-  -- Cover + Waist Judo + Jul (Rs 1,399)
-  (null, 'LuxeKraft Cover + Judo + Jul (Rs 1,399)', 105,
+  -- Cover + Waist Judo + Jul (Rs 1,499)
+  (null, 'LuxeKraft Cover + Judo + Jul (Rs 1,499)', 105,
     '{"keywords": ["cover + waist judo + jul", "cover with judo and jul"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Mobile Covers & Sets", "subcategory_name": "Cover + Waist Judo + Jul", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
 
-  -- Cover + Short Chain + Waist Judo (Rs 1,599)
-  (null, 'LuxeKraft Cover + Short Chain + Judo (Rs 1,599)', 105,
+  -- Cover + Short Chain + Waist Judo (Rs 1,699)
+  (null, 'LuxeKraft Cover + Short Chain + Judo (Rs 1,699)', 105,
     '{"keywords": ["cover + short chain + waist judo", "short chain waist judo 2 in 1"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Mobile Covers & Sets", "subcategory_name": "Cover + Short Chain + Waist Judo", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
 
-  -- Cover + Feather With Jul (Rs 1,599)
-  (null, 'LuxeKraft Cover + Feather With Jul (Rs 1,599)', 105,
+  -- Cover + Feather With Jul (Rs 1,699)
+  (null, 'LuxeKraft Cover + Feather With Jul (Rs 1,699)', 105,
     '{"keywords": ["cover + feather with jul", "feather with jul cover"], "entry_type": null}'::jsonb,
     '{"entry_type": "income", "category_name": "Mobile Covers & Sets", "subcategory_name": "Cover + Feather With Jul", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
+
+  -- Macrame Mobile Sling (Rs 399)
+  (null, 'LuxeKraft Macrame Mobile Sling (Rs 399)', 100,
+    '{"keywords": ["macrame mobile sling", "macrame sling", "macrame phone strap"], "entry_type": null}'::jsonb,
+    '{"entry_type": "income", "category_name": "Only Accessories", "subcategory_name": "Macrame Mobile Sling", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
+
+  -- Kashmiri Watch (Rs 499)
+  (null, 'LuxeKraft Kashmiri Watch (Rs 499)', 100,
+    '{"keywords": ["kashmiri watch", "kashmiri belt watch"], "entry_type": null}'::jsonb,
+    '{"entry_type": "income", "category_name": "Handmade Jewellery, Watches & Collections", "subcategory_name": "Kashmiri Watch", "merchant_name": "LuxeKraft", "paid_by_name": "Roshni", "payment_method": "UPI"}'::jsonb),
 
   -- Custom Name on Cover Add-on (Rs 100)
   (null, 'LuxeKraft Custom Name Add-on (Rs 100)', 100,
