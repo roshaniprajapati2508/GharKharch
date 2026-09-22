@@ -69,7 +69,7 @@ export function BreakdownHubCard({
             )}
           >
             <PieChart className="h-3.5 w-3.5 text-brand-primary" />
-            <span>Categories</span>
+            <span>Kisme Kharcha</span>
           </button>
 
           {merchants.length > 0 && (
@@ -84,7 +84,7 @@ export function BreakdownHubCard({
               )}
             >
               <Store className="h-3.5 w-3.5 text-indigo-500" />
-              <span>Merchants</span>
+              <span>Dukan / Merchants</span>
             </button>
           )}
 
@@ -100,7 +100,7 @@ export function BreakdownHubCard({
               )}
             >
               <Users className="h-3.5 w-3.5 text-amber-500" />
-              <span>By Member</span>
+              <span>Kaun Kitna</span>
             </button>
           )}
 
@@ -116,7 +116,7 @@ export function BreakdownHubCard({
               )}
             >
               <Repeat className="h-3.5 w-3.5 text-violet-500" />
-              <span>Frequent</span>
+              <span>Baar-Baar</span>
             </button>
           )}
         </div>

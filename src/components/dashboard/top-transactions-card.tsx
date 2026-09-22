@@ -29,14 +29,14 @@ export function TopTransactionsCard({
   return (
     <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border">
       {/* Header & Tabs */}
-      <div className="flex items-center justify-between border-b border-border/50 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-3">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
           {activeTab === "debits" ? (
             <TrendingDown className="h-4 w-4 text-rose-500" />
           ) : (
             <TrendingUp className="h-4 w-4 text-emerald-500" />
           )}
-          Top Transactions
+          Bade Kharche & Kamai
         </h3>
         {hasInflows ? (
           <div className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/40 p-0.5">
@@ -51,7 +51,7 @@ export function TopTransactionsCard({
               )}
             >
               <ArrowUpRight className="h-3 w-3 text-rose-500" />
-              Debits ({topExpenses.length})
+              Kharche ({topExpenses.length})
             </button>
             <button
               type="button"
@@ -64,12 +64,12 @@ export function TopTransactionsCard({
               )}
             >
               <ArrowDownLeft className="h-3 w-3 text-emerald-500" />
-              Credits ({topInflows.length})
+              Kamai ({topInflows.length})
             </button>
           </div>
         ) : (
           <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
-            Outflow
+            Kharche
           </span>
         )}
       </div>

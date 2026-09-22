@@ -47,6 +47,9 @@ interface DashboardPageClientProps {
 
 export function DashboardPageClient({
   initialData,
+  initialBrief,
+  initialExecutiveCashflow,
+  initialSpendingPace,
   initialActivityEvents,
 }: DashboardPageClientProps) {
   const { displayName } = useHousehold();
@@ -73,7 +76,7 @@ export function DashboardPageClient({
 
     if (cached && !forceFresh) {
       setData(cached);
-    } else if (!cached && !data) {
+    } else {
       setLoading(true);
     }
 
@@ -87,7 +90,7 @@ export function DashboardPageClient({
 
     setClientCachedData(cacheKey, result.data);
     setData(result.data);
-  }, [data]);
+  }, []);
 
   useEffect(() => {
     if (!initialData && !data) {
@@ -143,18 +146,27 @@ export function DashboardPageClient({
 
   const hasAnyActivity = data ? data.summary.txn_count > 0 : false;
 
+  const periodHeading = (() => {
+    if (period === "today") return "Today · Aaj";
+    if (period === "7d") return "Last 7 Days · Pichhle 7 Din";
+    if (period === "30d") return "Last 30 Days · Pichhle 30 Din";
+    if (period === "month") return data?.range.label ? `${data.range.label} · Yeh Mahina` : "This Month · Yeh Mahina";
+    if (period === "lastMonth") return "Last Month · Pichhla Mahina";
+    return data?.range.label ?? range.label;
+  })();
+
   return (
     <div className="relative flex min-w-0 max-w-full flex-col gap-6 overflow-x-clip pb-12">
       <DashboardBackgroundDecoration />
 
-      {/* Modern Enterprise Header */}
+      {/* Couple-Friendly Dashboard Header */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-            Good to see you, <span className="font-semibold text-foreground">{displayName.split(" ")[0]}</span> 👋
+            Namaste, <span className="font-semibold text-foreground">{displayName.split(" ")[0]}</span> 👋
           </p>
           <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-heading">
-            {data?.range.label ?? range.label}
+            {periodHeading}
           </h1>
         </div>
 
@@ -166,7 +178,7 @@ export function DashboardPageClient({
             className="flex items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition-all hover:bg-brand-primary/90 cursor-pointer active:scale-98"
           >
             <Plus className="h-4 w-4" />
-            <span>Add Expense</span>
+            <span>+ Kharcha Jodo</span>
           </button>
         </div>
       </div>
@@ -187,15 +199,20 @@ export function DashboardPageClient({
         </div>
       ) : data && hasAnyActivity ? (
         <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-6">
-          {/* 1. Executive KPI Bento Row (Top) */}
+          {/* 1. Desi Couple KPI Bento Row (Top) */}
           <motion.div variants={fadeInUp}>
             <SummaryHeader
+              period={period}
+              range={range}
               periodLabel={data.range.label}
               summary={data.summary}
               previousSummary={data.previousSummary}
               categoryBreakdown={data.categoryBreakdown}
               topMerchants={data.topMerchants}
               dailySpending={data.dailySpending}
+              initialCashflow={initialExecutiveCashflow}
+              initialPace={initialSpendingPace}
+              initialBrief={initialBrief?.snapshot}
             />
           </motion.div>
 
@@ -247,21 +264,21 @@ export function DashboardPageClient({
             {/* Left: Recent Expenses Ledger (8 Cols) */}
             <motion.div variants={fadeInUp} className="flex min-w-0 flex-col gap-6 lg:col-span-7 xl:col-span-8">
               <div className="flex flex-col justify-start rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs transition-all hover:border-border">
-                <div className="flex items-center justify-between border-b border-border/50 pb-3.5">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-3.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
                       <Receipt className="h-4 w-4" />
                     </span>
-                    <h3 className="text-sm sm:text-base font-bold text-foreground">Recent Transactions</h3>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                      {data.recentExpenses.length} logged
+                    <h3 className="text-sm sm:text-base font-bold text-foreground">Recent Kharche</h3>
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                      {data.recentExpenses.length} entries
                     </span>
                   </div>
                   <Link
                     href="/expenses"
-                    className="flex items-center text-xs font-semibold text-primary hover:underline"
+                    className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-primary hover:underline"
                   >
-                    View all transactions <ChevronRight className="h-3.5 w-3.5" />
+                    View all <ChevronRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
                 <div className="pt-2">

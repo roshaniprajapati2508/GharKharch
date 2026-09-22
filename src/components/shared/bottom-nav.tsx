@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const LEFT_NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/expenses", label: "Expenses", icon: Receipt },
+  { href: "/expenses", label: "Kharche", icon: Receipt },
 ] as const;
 
 const RIGHT_NAV_ITEMS = [

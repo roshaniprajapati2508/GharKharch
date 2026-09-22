@@ -25,11 +25,11 @@ import { Button } from "@/components/ui/button";
 export type QuickPeriod = "today" | "7d" | "30d" | "month" | "lastMonth" | "custom";
 
 const QUICK_PERIODS: { key: QuickPeriod; label: string; resolve: () => DateRange }[] = [
-  { key: "today", label: "Today", resolve: getTodayRange },
-  { key: "7d", label: "7D", resolve: getLast7DaysRange },
-  { key: "30d", label: "30D", resolve: getLast30DaysRange },
-  { key: "month", label: "This Month", resolve: () => getMonthRange(0) },
-  { key: "lastMonth", label: "Last Month", resolve: getPreviousMonthRange },
+  { key: "today", label: "Today (Aaj)", resolve: getTodayRange },
+  { key: "7d", label: "7 Days (7 Din)", resolve: getLast7DaysRange },
+  { key: "30d", label: "30 Days (30 Din)", resolve: getLast30DaysRange },
+  { key: "month", label: "This Month (Yeh Mahina)", resolve: () => getMonthRange(0) },
+  { key: "lastMonth", label: "Last Month (Pichhla)", resolve: getPreviousMonthRange },
 ];
 
 export function DashboardFilters({

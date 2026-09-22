@@ -18,7 +18,8 @@ import { formatINR, percentChange, cn } from "@/lib/utils";
 import { getExecutiveCashflow, getSpendingPaceBenchmark, getDailyWeeklySnapshot, type ExecutiveCashflow, type SpendingPaceBenchmark, type DailyWeeklySnapshot } from "@/lib/actions/insights";
 import { getRecurringSummary, type RecurringWithCategory } from "@/lib/actions/recurring";
 import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
-import { getMonthRange } from "@/lib/date-utils";
+import { getMonthRange, type DateRange } from "@/lib/date-utils";
+import type { QuickPeriod } from "@/components/dashboard/dashboard-filters";
 import type { Database } from "@/types/database";
 
 type ExpenseSummaryRow = Database["public"]["Functions"]["get_expense_summary"]["Returns"][number];
@@ -40,6 +41,8 @@ function mostFrequentMerchant(merchants: MerchantBreakdownRow[]): MerchantBreakd
 }
 
 interface SummaryHeaderProps {
+  period?: QuickPeriod;
+  range?: DateRange;
   periodLabel: string;
   summary: ExpenseSummaryRow;
   previousSummary: ExpenseSummaryRow;
@@ -53,6 +56,8 @@ interface SummaryHeaderProps {
 }
 
 export function SummaryHeader({
+  period = "month",
+  range,
   periodLabel,
   summary,
   previousSummary,
@@ -77,9 +82,9 @@ export function SummaryHeader({
 
   const loadSupportingData = async () => {
     try {
-      const month = getMonthRange();
+      const activeRange = range ?? getMonthRange();
       const [cashflowRes, paceRes, briefRes, recRes] = await Promise.all([
-        getExecutiveCashflow({ start: month.start, end: month.end }),
+        getExecutiveCashflow({ start: activeRange.start, end: activeRange.end }),
         getSpendingPaceBenchmark(),
         getDailyWeeklySnapshot(),
         getRecurringSummary(),
@@ -94,21 +99,21 @@ export function SummaryHeader({
   };
 
   useEffect(() => {
-    if (initialCashflow === undefined && initialPace === undefined) {
-      loadSupportingData();
-    }
-  }, [initialCashflow, initialPace]);
+    loadSupportingData();
+    // Re-run whenever the selected date range changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range?.start, range?.end]);
 
   useOnExpenseSaved(loadSupportingData);
 
   const frequentMerchant = mostFrequentMerchant(topMerchants);
   const highestDay = highestSpendingDayLabel(dailySpending);
 
-  // Cashflow calculations
-  const netSavings = cashflow ? cashflow.netSavings : 0;
-  const isSavingsPositive = netSavings >= 0;
+  // Cashflow calculations for the active range
   const totalInflow = cashflow ? cashflow.totalInflow : 0;
   const totalOutflow = cashflow ? cashflow.totalOutflow : total;
+  const netSavings = cashflow ? cashflow.netSavings : (totalInflow - total);
+  const isSavingsPositive = netSavings >= 0;
 
   // Pace calculations
   const projectedMonthEnd = pace ? pace.projectedMonthEnd : total;
@@ -116,15 +121,37 @@ export function SummaryHeader({
   const isPaceFrugal = pacePct <= -5;
   const isPaceElevated = pacePct >= 10;
 
+  // Dynamic titles based on selected period
+  const spendCardTitle = (() => {
+    if (period === "today") return "Aaj Ka Kharcha (Today's Spend)";
+    if (period === "7d") return "Pichhle 7 Din Ka Kharcha";
+    if (period === "30d") return "Pichhle 30 Din Ka Kharcha";
+    if (period === "month") return "Is Mahine Ka Kharcha";
+    if (period === "lastMonth") return "Pichhle Mahine Ka Kharcha";
+    return "Kul Kharcha (Total Spend)";
+  })();
+
+  const incomeCardTitle = (() => {
+    if (period === "today") return "Aaj Ki Kamai (Income / Aaya)";
+    if (period === "month") return "Is Mahine Ki Kamai";
+    return "Kul Kamai (Income / Aaya)";
+  })();
+
+  const savingsCardTitle = (() => {
+    if (period === "today") return "Aaj Ki Bachat (Net In Hand)";
+    if (period === "month") return "Is Mahine Ki Bachat";
+    return "Kul Bachat (Net Savings)";
+  })();
+
   return (
     <div className="flex flex-col gap-4">
-      {/* 4-Column Executive KPI Bento Strip */}
+      {/* 4-Column Desi Couple KPI Bento Strip */}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-        {/* KPI 1: Total Outflow & Delta */}
+        {/* KPI 1: Spend (Kharcha) */}
         <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <Receipt className="h-3.5 w-3.5 text-brand-primary" /> Total Outflow
+              <Receipt className="h-3.5 w-3.5 text-brand-primary" /> {spendCardTitle}
             </span>
             {change !== null && prevTotal > 0 && (
               <span
@@ -136,7 +163,7 @@ export function SummaryHeader({
                 )}
               >
                 {change <= 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
-                {Math.abs(change).toFixed(0)}% vs prev
+                {Math.abs(change).toFixed(0)}% {change <= 0 ? "kam" : "zyada"}
               </span>
             )}
           </div>
@@ -145,40 +172,79 @@ export function SummaryHeader({
               {formatINR(total)}
             </p>
             <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-              <span>Daily Run: <strong className="font-semibold text-foreground">{formatINR(dailyAvg)}</strong></span>
-              <span>{summary.txn_count} transaction{summary.txn_count === 1 ? "" : "s"}</span>
+              {period === "today" ? (
+                <>
+                  <span>Entries: <strong className="font-semibold text-foreground">{summary.txn_count} kharche</strong></span>
+                  <span>Pura din</span>
+                </>
+              ) : (
+                <>
+                  <span>Roz ka average: <strong className="font-semibold text-foreground">{formatINR(dailyAvg)}</strong></span>
+                  <span>{summary.txn_count} transaction{summary.txn_count === 1 ? "" : "s"}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* KPI 2: Net Cashflow & Inflow */}
+        {/* KPI 2: Kamai / Income (Aaya Hua Paisa) */}
         <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <PiggyBank className="h-3.5 w-3.5 text-indigo-500" /> Net Cashflow
+              <PiggyBank className="h-3.5 w-3.5 text-indigo-500" /> {incomeCardTitle}
             </span>
-            {cashflow?.savingsRatePct !== null && cashflow?.savingsRatePct !== undefined && totalInflow > 0 && (
-              <span className="inline-flex items-center rounded-full bg-indigo-500/10 px-2 py-0.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
-                {cashflow.savingsRatePct.toFixed(0)}% saved
+            {totalInflow > 0 && (
+              <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                +{formatINR(totalInflow)}
               </span>
             )}
+          </div>
+          <div className="mt-3">
+            <p className="text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400 tabular-nums sm:text-3xl">
+              +{formatINR(totalInflow)}
+            </p>
+            <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                {cashflow?.incomeByCategory?.length ? `${cashflow.incomeByCategory.length} income sources` : "Kamai / Aaya"}
+              </span>
+              <span>Inflow</span>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI 3: Bachat / Savings (Haath Me Bacha) */}
+        <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border hover:shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" /> {savingsCardTitle}
+            </span>
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold",
+                isSavingsPositive
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+              )}
+            >
+              {isSavingsPositive ? "Bachat hui 🎉" : "Kharcha zyada ⚠️"}
+            </span>
           </div>
           <div className="mt-3">
             <p className={cn("text-2xl font-extrabold tracking-tight tabular-nums sm:text-3xl", isSavingsPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
               {isSavingsPositive ? "+" : ""}{formatINR(netSavings)}
             </p>
             <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium">In: +{formatINR(totalInflow)}</span>
-              <span className="text-rose-600 dark:text-rose-400 font-medium">Out: -{formatINR(totalOutflow)}</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">Aaya: +{formatINR(totalInflow)}</span>
+              <span className="text-rose-600 dark:text-rose-400 font-medium">Gaya: -{formatINR(total > 0 ? total : totalOutflow)}</span>
             </div>
           </div>
         </div>
 
-        {/* KPI 3: Spending Pace & Month-End Forecast */}
+        {/* KPI 4: Mahine Ka Andaaza (Month Forecast & Status) */}
         <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <Gauge className="h-3.5 w-3.5 text-amber-500" /> Month Forecast
+              <Gauge className="h-3.5 w-3.5 text-amber-500" /> Mahine Ka Andaaza
             </span>
             <span
               className={cn(
@@ -191,7 +257,7 @@ export function SummaryHeader({
               )}
             >
               {isPaceFrugal ? <TrendingDown className="h-3 w-3" /> : isPaceElevated ? <TrendingUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
-              {isPaceFrugal ? "Frugal" : isPaceElevated ? "Elevated" : "On Track"}
+              {isPaceFrugal ? "Kharcha kam hai 👍" : isPaceElevated ? "Thoda sambhalke ⚠️" : "Control me hai 👌"}
             </span>
           </div>
           <div className="mt-3">
@@ -199,58 +265,27 @@ export function SummaryHeader({
               ~{formatINR(projectedMonthEnd)}
             </p>
             <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-              <span>MTD: <strong className="font-semibold text-foreground">{formatINR(total)}</strong></span>
-              <span>{pace ? `Day ${pace.currentDay}/${pace.daysInMonth}` : "Current month"}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 4: Daily Pulse & Soonest Due Bill */}
-        <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border hover:shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <Clock className="h-3.5 w-3.5 text-violet-500" /> Daily Pulse
-            </span>
-            {brief?.weekChangePct !== null && brief?.weekChangePct !== undefined && (
-              <span className={cn("inline-flex items-center text-[11px] font-bold", brief.weekChangePct <= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
-                {brief.weekChangePct <= 0 ? "↓" : "↑"} {Math.abs(brief.weekChangePct).toFixed(0)}% 7D
-              </span>
-            )}
-          </div>
-          <div className="mt-3">
-            <p className="text-2xl font-extrabold tracking-tight text-foreground tabular-nums sm:text-3xl">
-              {formatINR(brief ? brief.todayTotal : 0)}
-            </p>
-            <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-              {nextRecurring ? (
-                <span className="truncate flex items-center gap-1 text-foreground font-medium">
-                  <CalendarDays className="h-3 w-3 text-brand-primary shrink-0" />
-                  <span className="truncate">{nextRecurring.name}</span>
-                  <span className="shrink-0 text-muted-foreground">({formatINR(Number(nextRecurring.amount))})</span>
-                </span>
-              ) : (
-                <span>Today: {brief ? brief.todayCount : 0} expense{brief?.todayCount === 1 ? "" : "s"}</span>
-              )}
-              <span className="shrink-0">{brief ? `7D: ${formatINR(brief.weekTotal)}` : ""}</span>
+              <span>Ab tak kharcha: <strong className="font-semibold text-foreground">{formatINR(pace?.currentMtdSpend ?? total)}</strong></span>
+              <span>{pace ? `Din ${pace.currentDay}/${pace.daysInMonth}` : "Yeh mahina"}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Intelligence Ribbon / Highlights */}
+      {/* Highlights Strip */}
       {(frequentMerchant || highestDay) && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-border/50 bg-muted/30 px-3.5 py-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1 font-semibold text-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Key highlights:
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Khas baatein (Highlights):
           </span>
           {frequentMerchant && (
             <span>
-              Most frequent merchant: <strong className="font-semibold text-foreground">{frequentMerchant.merchant_name}</strong> ({frequentMerchant.txn_count} purchases)
+              Sabse zyada visit: <strong className="font-semibold text-foreground">{frequentMerchant.merchant_name}</strong> ({frequentMerchant.txn_count} purchases)
             </span>
           )}
           {highestDay && (
             <span>
-              Peak day: <strong className="font-semibold text-foreground">{highestDay}</strong>
+              Sabse zyada kharch ka din: <strong className="font-semibold text-foreground">{highestDay}</strong>
             </span>
           )}
         </div>

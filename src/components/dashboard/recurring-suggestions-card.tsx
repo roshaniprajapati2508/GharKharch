@@ -98,7 +98,7 @@ export function RecurringSuggestionsCard() {
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <h3 className="text-sm font-semibold text-foreground">Looks recurring</h3>
+      <h3 className="text-sm font-semibold text-foreground">Har Baar Hone Wale Kharche (Recurring)</h3>
       <div className="mt-3 flex flex-col gap-2">
         {visible.slice(0, 3).map((c) => (
           <div key={c.itemName} className="flex items-center gap-3 rounded-lg bg-brand-mint p-2.5">
