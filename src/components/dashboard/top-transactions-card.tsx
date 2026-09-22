@@ -36,7 +36,7 @@ export function TopTransactionsCard({
           ) : (
             <TrendingUp className="h-4 w-4 text-emerald-500" />
           )}
-          Bade Kharche & Kamai
+          મોટા ખર્ચા અને આવક
         </h3>
         {hasInflows ? (
           <div className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/40 p-0.5">
@@ -46,12 +46,12 @@ export function TopTransactionsCard({
               className={cn(
                 "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer",
                 activeTab === "debits"
-                  ? "bg-card text-foreground shadow-xs"
+                  ? "bg-card text-foreground shadow-xs font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               <ArrowUpRight className="h-3 w-3 text-rose-500" />
-              Kharche ({topExpenses.length})
+              ખર્ચા ({topExpenses.length})
             </button>
             <button
               type="button"
@@ -59,17 +59,17 @@ export function TopTransactionsCard({
               className={cn(
                 "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer",
                 activeTab === "credits"
-                  ? "bg-card text-foreground shadow-xs"
+                  ? "bg-card text-foreground shadow-xs font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               <ArrowDownLeft className="h-3 w-3 text-emerald-500" />
-              Kamai ({topInflows.length})
+              આવક ({topInflows.length})
             </button>
           </div>
         ) : (
           <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
-            Kharche
+            ખર્ચા
           </span>
         )}
       </div>

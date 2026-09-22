@@ -25,11 +25,11 @@ import { Button } from "@/components/ui/button";
 export type QuickPeriod = "today" | "7d" | "30d" | "month" | "lastMonth" | "custom";
 
 const QUICK_PERIODS: { key: QuickPeriod; label: string; resolve: () => DateRange }[] = [
-  { key: "today", label: "Today (Aaj)", resolve: getTodayRange },
-  { key: "7d", label: "7 Days (7 Din)", resolve: getLast7DaysRange },
-  { key: "30d", label: "30 Days (30 Din)", resolve: getLast30DaysRange },
-  { key: "month", label: "This Month (Yeh Mahina)", resolve: () => getMonthRange(0) },
-  { key: "lastMonth", label: "Last Month (Pichhla)", resolve: getPreviousMonthRange },
+  { key: "today", label: "આજ (Today)", resolve: getTodayRange },
+  { key: "7d", label: "૭ દિવસ (7D)", resolve: getLast7DaysRange },
+  { key: "30d", label: "૩૦ દિવસ (30D)", resolve: getLast30DaysRange },
+  { key: "month", label: "આ મહિનો (Month)", resolve: () => getMonthRange(0) },
+  { key: "lastMonth", label: "ગયો મહિનો (Last)", resolve: getPreviousMonthRange },
 ];
 
 export function DashboardFilters({
@@ -62,7 +62,7 @@ export function DashboardFilters({
             className={cn(
               "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
               period === p.key
-                ? "border-primary bg-primary text-primary-foreground"
+                ? "border-primary bg-primary text-primary-foreground font-semibold"
                 : "border-border bg-surface text-muted-foreground hover:bg-muted"
             )}
           >
@@ -76,12 +76,12 @@ export function DashboardFilters({
               className={cn(
                 "flex shrink-0 items-center gap-1 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
                 period === "custom"
-                  ? "border-primary bg-primary text-primary-foreground"
+                  ? "border-primary bg-primary text-primary-foreground font-semibold"
                   : "border-border bg-surface text-muted-foreground hover:bg-muted"
               )}
             >
               <Calendar className="h-3.5 w-3.5" />
-              Custom
+              તારીખ પસંદ કરો (Custom)
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-64">

@@ -15,7 +15,7 @@ export function InsightsList({ data }: { data: InsightsInput }) {
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <h3 className="text-sm font-semibold text-foreground">Ghar Ke Kharch Par Nazar (Insights)</h3>
+      <h3 className="text-sm font-semibold text-foreground">ઘરના ખર્ચ પર નજર (Insights)</h3>
       <div className="mt-3 flex flex-col gap-2">
         {insights.map((insight) => {
           const style = TONE_STYLES[insight.tone];

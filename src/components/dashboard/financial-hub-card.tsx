@@ -43,7 +43,7 @@ export function FinancialHubCard({
               <CalendarDays className="h-4 w-4" />
             )}
           </span>
-          <h2 className="text-sm sm:text-base font-bold text-foreground">Ghar Ka Hisaab</h2>
+          <h2 className="text-sm sm:text-base font-bold text-foreground">ઘરનો હિસાબ</h2>
         </div>
 
         {/* Tab Controls */}
@@ -59,7 +59,7 @@ export function FinancialHubCard({
             )}
           >
             <LineChart className="h-3.5 w-3.5 text-brand-primary" />
-            <span>Roz Ka Kharcha</span>
+            <span>રોજનો ખર્ચ</span>
           </button>
           <button
             type="button"
@@ -72,7 +72,7 @@ export function FinancialHubCard({
             )}
           >
             <ShieldCheck className="h-3.5 w-3.5 text-indigo-500" />
-            <span>Aaya &amp; Gaya</span>
+            <span>આવક-જાવક</span>
           </button>
           <button
             type="button"
@@ -85,7 +85,7 @@ export function FinancialHubCard({
             )}
           >
             <CalendarDays className="h-3.5 w-3.5 text-amber-500" />
-            <span>Calendar</span>
+            <span>કેલેન્ડર</span>
           </button>
         </div>
       </div>

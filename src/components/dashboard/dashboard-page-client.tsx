@@ -147,11 +147,11 @@ export function DashboardPageClient({
   const hasAnyActivity = data ? data.summary.txn_count > 0 : false;
 
   const periodHeading = (() => {
-    if (period === "today") return "Today · Aaj";
-    if (period === "7d") return "Last 7 Days · Pichhle 7 Din";
-    if (period === "30d") return "Last 30 Days · Pichhle 30 Din";
-    if (period === "month") return data?.range.label ? `${data.range.label} · Yeh Mahina` : "This Month · Yeh Mahina";
-    if (period === "lastMonth") return "Last Month · Pichhla Mahina";
+    if (period === "today") return "આજનો ખર્ચ (Today)";
+    if (period === "7d") return "છેલ્લા ૭ દિવસનો ખર્ચ (7 Days)";
+    if (period === "30d") return "છેલ્લા ૩૦ દિવસનો ખર્ચ (30 Days)";
+    if (period === "month") return data?.range.label ? `${data.range.label} · આ મહિનો` : "આ મહિનો (This Month)";
+    if (period === "lastMonth") return "ગયો મહિનો (Last Month)";
     return data?.range.label ?? range.label;
   })();
 
@@ -163,7 +163,7 @@ export function DashboardPageClient({
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-            Namaste, <span className="font-semibold text-foreground">{displayName.split(" ")[0]}</span> 👋
+            નમસ્તે, <span className="font-semibold text-foreground">{displayName.split(" ")[0]}</span> 👋
           </p>
           <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-heading">
             {periodHeading}
@@ -178,7 +178,7 @@ export function DashboardPageClient({
             className="flex items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition-all hover:bg-brand-primary/90 cursor-pointer active:scale-98"
           >
             <Plus className="h-4 w-4" />
-            <span>+ Kharcha Jodo</span>
+            <span>+ ખર્ચ ઉમેરો</span>
           </button>
         </div>
       </div>
@@ -269,16 +269,16 @@ export function DashboardPageClient({
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
                       <Receipt className="h-4 w-4" />
                     </span>
-                    <h3 className="text-sm sm:text-base font-bold text-foreground">Recent Kharche</h3>
+                    <h3 className="text-sm sm:text-base font-bold text-foreground">તાજેતરના ખર્ચા</h3>
                     <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                      {data.recentExpenses.length} entries
+                      {data.recentExpenses.length} નોંધાયા
                     </span>
                   </div>
                   <Link
                     href="/expenses"
                     className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-primary hover:underline"
                   >
-                    View all <ChevronRight className="h-3.5 w-3.5" />
+                    બધા જુઓ <ChevronRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
                 <div className="pt-2">
@@ -300,11 +300,11 @@ export function DashboardPageClient({
         </motion.div>
       ) : (
         <EmptyState
-          title="Your household spending story starts here."
-          description="Once you add an expense, GharKharch starts building your spending picture - automatically."
-          ctaLabel="Add your first expense"
+          title="તમારા ઘરનો હિસાબ અહીંથી શરૂ થાય છે."
+          description="જેવો તમે કોઈ ખર્ચ ઉમેરશો, GharKharch તેનો હિસાબ આપમેળે તૈયાર કરી દેશે."
+          ctaLabel="+ પહેલો ખર્ચ ઉમેરો"
           onCta={() => openAdd()}
-          chips={["Milk", "Groceries", "Petrol", "Shopping"]}
+          chips={["દૂધ (Milk)", "કરિયાણું (Groceries)", "પેટ્રોલ (Petrol)", "શોપિંગ (Shopping)"]}
         />
       )}
 

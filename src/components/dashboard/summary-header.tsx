@@ -123,31 +123,31 @@ export function SummaryHeader({
 
   // Dynamic titles based on selected period
   const spendCardTitle = (() => {
-    if (period === "today") return "Aaj Ka Kharcha (Today's Spend)";
-    if (period === "7d") return "Pichhle 7 Din Ka Kharcha";
-    if (period === "30d") return "Pichhle 30 Din Ka Kharcha";
-    if (period === "month") return "Is Mahine Ka Kharcha";
-    if (period === "lastMonth") return "Pichhle Mahine Ka Kharcha";
-    return "Kul Kharcha (Total Spend)";
+    if (period === "today") return "આજનો ખર્ચ (Today's Spend)";
+    if (period === "7d") return "છેલ્લા ૭ દિવસનો ખર્ચ";
+    if (period === "30d") return "છેલ્લા ૩૦ દિવસનો ખર્ચ";
+    if (period === "month") return "આ મહિનાનો ખર્ચ";
+    if (period === "lastMonth") return "ગયા મહિનાનો ખર્ચ";
+    return "કુલ ખર્ચ (Total Spend)";
   })();
 
   const incomeCardTitle = (() => {
-    if (period === "today") return "Aaj Ki Kamai (Income / Aaya)";
-    if (period === "month") return "Is Mahine Ki Kamai";
-    return "Kul Kamai (Income / Aaya)";
+    if (period === "today") return "આજની આવક (Income / કમાણી)";
+    if (period === "month") return "આ મહિનાની આવક";
+    return "કુલ આવક (Total Income)";
   })();
 
   const savingsCardTitle = (() => {
-    if (period === "today") return "Aaj Ki Bachat (Net In Hand)";
-    if (period === "month") return "Is Mahine Ki Bachat";
-    return "Kul Bachat (Net Savings)";
+    if (period === "today") return "આજની બચત (Net In Hand)";
+    if (period === "month") return "આ મહિનાની બચત";
+    return "કુલ બચત (Net Savings)";
   })();
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* 4-Column Desi Couple KPI Bento Strip */}
+    <div className="flex flex-col gap-4 font-sans">
+      {/* 4-Column Gujarati Couple KPI Bento Strip */}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-        {/* KPI 1: Spend (Kharcha) */}
+        {/* KPI 1: Spend (ખર્ચ) */}
         <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
@@ -163,7 +163,7 @@ export function SummaryHeader({
                 )}
               >
                 {change <= 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
-                {Math.abs(change).toFixed(0)}% {change <= 0 ? "kam" : "zyada"}
+                {Math.abs(change).toFixed(0)}% {change <= 0 ? "ઓછો" : "વધુ"}
               </span>
             )}
           </div>
@@ -174,20 +174,20 @@ export function SummaryHeader({
             <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
               {period === "today" ? (
                 <>
-                  <span>Entries: <strong className="font-semibold text-foreground">{summary.txn_count} kharche</strong></span>
-                  <span>Pura din</span>
+                  <span>નોંધાયા: <strong className="font-semibold text-foreground">{summary.txn_count} ખર્ચા</strong></span>
+                  <span>આખો દિવસ</span>
                 </>
               ) : (
                 <>
-                  <span>Roz ka average: <strong className="font-semibold text-foreground">{formatINR(dailyAvg)}</strong></span>
-                  <span>{summary.txn_count} transaction{summary.txn_count === 1 ? "" : "s"}</span>
+                  <span>રોજનો સરેરાશ: <strong className="font-semibold text-foreground">{formatINR(dailyAvg)}</strong></span>
+                  <span>{summary.txn_count} વ્યવહારો</span>
                 </>
               )}
             </div>
           </div>
         </div>
 
-        {/* KPI 2: Kamai / Income (Aaya Hua Paisa) */}
+        {/* KPI 2: Kamai / Income (આવક) */}
         <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
@@ -205,14 +205,14 @@ export function SummaryHeader({
             </p>
             <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
               <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                {cashflow?.incomeByCategory?.length ? `${cashflow.incomeByCategory.length} income sources` : "Kamai / Aaya"}
+                {cashflow?.incomeByCategory?.length ? `${cashflow.incomeByCategory.length} આવક સ્ત્રોત` : "આવક / કમાણી"}
               </span>
-              <span>Inflow</span>
+              <span>આવેલા નાણાં</span>
             </div>
           </div>
         </div>
 
-        {/* KPI 3: Bachat / Savings (Haath Me Bacha) */}
+        {/* KPI 3: Bachat / Savings (બચત) */}
         <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
@@ -226,7 +226,7 @@ export function SummaryHeader({
                   : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
               )}
             >
-              {isSavingsPositive ? "Bachat hui 🎉" : "Kharcha zyada ⚠️"}
+              {isSavingsPositive ? "બચત થઈ 🎉" : "ખર્ચ વધુ થયો ⚠️"}
             </span>
           </div>
           <div className="mt-3">
@@ -234,17 +234,17 @@ export function SummaryHeader({
               {isSavingsPositive ? "+" : ""}{formatINR(netSavings)}
             </p>
             <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium">Aaya: +{formatINR(totalInflow)}</span>
-              <span className="text-rose-600 dark:text-rose-400 font-medium">Gaya: -{formatINR(total > 0 ? total : totalOutflow)}</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">આવક: +{formatINR(totalInflow)}</span>
+              <span className="text-rose-600 dark:text-rose-400 font-medium">ખર્ચ: -{formatINR(total > 0 ? total : totalOutflow)}</span>
             </div>
           </div>
         </div>
 
-        {/* KPI 4: Mahine Ka Andaaza (Month Forecast & Status) */}
+        {/* KPI 4: Mahine Ka Andaaza (મહિનાનો અંદાજ) */}
         <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all hover:border-border hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <Gauge className="h-3.5 w-3.5 text-amber-500" /> Mahine Ka Andaaza
+              <Gauge className="h-3.5 w-3.5 text-amber-500" /> મહિનાનો અંદાજ
             </span>
             <span
               className={cn(
@@ -257,7 +257,7 @@ export function SummaryHeader({
               )}
             >
               {isPaceFrugal ? <TrendingDown className="h-3 w-3" /> : isPaceElevated ? <TrendingUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
-              {isPaceFrugal ? "Kharcha kam hai 👍" : isPaceElevated ? "Thoda sambhalke ⚠️" : "Control me hai 👌"}
+              {isPaceFrugal ? "નિયંત્રણમાં છે 👍" : isPaceElevated ? "થોડું સંભાળીને ⚠️" : "બરાબર ચાલે છે 👌"}
             </span>
           </div>
           <div className="mt-3">
@@ -265,8 +265,8 @@ export function SummaryHeader({
               ~{formatINR(projectedMonthEnd)}
             </p>
             <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-              <span>Ab tak kharcha: <strong className="font-semibold text-foreground">{formatINR(pace?.currentMtdSpend ?? total)}</strong></span>
-              <span>{pace ? `Din ${pace.currentDay}/${pace.daysInMonth}` : "Yeh mahina"}</span>
+              <span>અત્યાર સુધી ખર્ચ: <strong className="font-semibold text-foreground">{formatINR(pace?.currentMtdSpend ?? total)}</strong></span>
+              <span>{pace ? `દિવસ ${pace.currentDay}/${pace.daysInMonth}` : "આ મહિનો"}</span>
             </div>
           </div>
         </div>
@@ -276,16 +276,16 @@ export function SummaryHeader({
       {(frequentMerchant || highestDay) && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-border/50 bg-muted/30 px-3.5 py-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1 font-semibold text-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Khas baatein (Highlights):
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> મુખ્ય બાબતો (Highlights):
           </span>
           {frequentMerchant && (
             <span>
-              Sabse zyada visit: <strong className="font-semibold text-foreground">{frequentMerchant.merchant_name}</strong> ({frequentMerchant.txn_count} purchases)
+              સૌથી વધુ મુલાકાત: <strong className="font-semibold text-foreground">{frequentMerchant.merchant_name}</strong> ({frequentMerchant.txn_count} વખત)
             </span>
           )}
           {highestDay && (
             <span>
-              Sabse zyada kharch ka din: <strong className="font-semibold text-foreground">{highestDay}</strong>
+              સૌથી વધુ ખર્ચનો દિવસ: <strong className="font-semibold text-foreground">{highestDay}</strong>
             </span>
           )}
         </div>

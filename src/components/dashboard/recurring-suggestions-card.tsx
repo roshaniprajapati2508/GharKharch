@@ -98,7 +98,7 @@ export function RecurringSuggestionsCard() {
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <h3 className="text-sm font-semibold text-foreground">Har Baar Hone Wale Kharche (Recurring)</h3>
+      <h3 className="text-sm font-semibold text-foreground">વારંવાર થતા ખર્ચા (Recurring)</h3>
       <div className="mt-3 flex flex-col gap-2">
         {visible.slice(0, 3).map((c) => (
           <div key={c.itemName} className="flex items-center gap-3 rounded-lg bg-brand-mint p-2.5">
@@ -114,9 +114,9 @@ export function RecurringSuggestionsCard() {
             <button
               type="button"
               onClick={() => openConfirm(c)}
-              className="shrink-0 rounded-full border border-primary/30 bg-white px-3 py-1.5 text-xs font-medium text-primary"
+              className="shrink-0 rounded-full border border-primary/30 bg-white px-3 py-1.5 text-xs font-medium text-primary font-semibold"
             >
-              Set recurring
+              નિયમિત ખર્ચમાં ઉમેરો
             </button>
             <button
               type="button"

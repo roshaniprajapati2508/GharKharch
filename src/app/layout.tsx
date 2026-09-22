@@ -1,14 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans, Anek_Gujarati } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, SITE_LOCALE, BRAND, absoluteUrl } from "@/lib/seo/site";
 import "./globals.css";
 
 // Typography system: Plus Jakarta Sans for headings/titles, Inter for body/UI
-// text - both self-hosted at build time via next/font (zero layout shift,
-// no external request at runtime) and exposed as CSS variables that
-// globals.css's `@theme` block turns into the `font-sans`/`font-body` and
-// `font-heading`/`font-headings` Tailwind utilities.
+// text, and Anek Gujarati for Gujarati text.
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -19,6 +16,12 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-jakarta",
   weight: ["500", "600", "700", "800"],
+  display: "swap",
+});
+const anekGujarati = Anek_Gujarati({
+  subsets: ["gujarati", "latin"],
+  variable: "--font-anek-gujarati",
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -92,7 +95,7 @@ const organizationJsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-IN" className={`${inter.variable} ${plusJakartaSans.variable}`}>
+    <html lang="gu-IN" className={`${inter.variable} ${plusJakartaSans.variable} ${anekGujarati.variable}`}>
       <body className="antialiased">
         <script
           type="application/ld+json"
