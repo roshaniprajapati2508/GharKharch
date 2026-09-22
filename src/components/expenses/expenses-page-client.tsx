@@ -7,12 +7,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { ExpenseTopFilterBar } from "@/components/expenses/expense-top-filter-bar";
+import { ExpenseSummaryCards } from "@/components/expenses/expense-summary-cards";
 import { BulkActionBar } from "@/components/expenses/bulk-action-bar";
 import { ExpenseFiltersSheet, type AppliedFilters } from "@/components/expenses/expense-filters-sheet";
 import { ExpenseSearch } from "@/components/expenses/expense-search";
 import { AddExpenseSheet } from "@/components/shared/add-expense-sheet";
 import {
   getExpenses,
+  getExpensesKpiSummary,
+  type ExpensesKpiSummary,
   softDeleteExpense,
   restoreExpense,
   duplicateExpense,
@@ -34,14 +37,17 @@ import type { Tables } from "@/types/database";
 export function ExpensesPageClient({
   initialExpenses,
   categories,
+  initialKpi,
 }: {
   initialExpenses: EnrichedExpense[];
   categories: CategoryWithChildren[];
+  initialKpi?: ExpensesKpiSummary | null;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const [expenses, setExpenses] = useState(initialExpenses);
+  const [kpi, setKpi] = useState<ExpensesKpiSummary | null>(initialKpi ?? null);
   const [filters, setFilters] = useState<AppliedFilters>({});
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(searchParams.get("focus") === "search");
@@ -106,7 +112,18 @@ export function ExpensesPageClient({
     setExpenses(result.data);
   }, [poolRef]);
 
-  useOnExpenseSaved(useCallback(() => refetch(filters), [refetch, filters]));
+  const refreshKpi = useCallback(() => {
+    getExpensesKpiSummary().then((res) => {
+      if (res.data) setKpi(res.data);
+    });
+  }, []);
+
+  useOnExpenseSaved(
+    useCallback(() => {
+      refetch(filters);
+      refreshKpi();
+    }, [refetch, filters, refreshKpi])
+  );
 
   function applyFilters(next: AppliedFilters) {
     setFilters(next);
@@ -135,9 +152,13 @@ export function ExpensesPageClient({
       setExpenses((list) => [expense, ...list]);
       return;
     }
+    refreshKpi();
     toastUndo(`${formatINR(expense.amount)} expense deleted`, async () => {
       const restored = await restoreExpense(expense.id);
-      if (!restored.error) setExpenses((list) => [expense, ...list]);
+      if (!restored.error) {
+        setExpenses((list) => [expense, ...list]);
+        refreshKpi();
+      }
     });
   }
 
@@ -149,6 +170,7 @@ export function ExpensesPageClient({
     }
     toast.success(`Duplicated · ${formatINR(expense.amount)}`);
     refetch(filters);
+    refreshKpi();
   }
 
   // Ultra-Fast CRM Power-Table (spec: Feature 3) - a single atomic patch
@@ -341,6 +363,9 @@ export function ExpensesPageClient({
           )}
         </div>
       </div>
+
+      {/* KPI Cards Summary Deck */}
+      <ExpenseSummaryCards kpi={kpi} expenses={expenses} filters={filters} />
 
       {/* Modern Top Filter Bar */}
       <ExpenseTopFilterBar

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { expenseFormSchema, type ExpenseFormInput } from "@/lib/validations/expense";
 import { requireHouseholdContext, runAction, ActionError } from "@/lib/actions/auth-helpers";
 import { logActivityEvent } from "@/lib/actions/activity-events";
-import { getTodayISO } from "@/lib/date-utils";
+import { getTodayISO, getMonthRange, getPreviousMonthRange, daysBetweenISO } from "@/lib/date-utils";
+import { percentChange } from "@/lib/utils";
 import type { Tables } from "@/types/database";
 
 function normalizeItemName(name: string) {
@@ -689,3 +690,143 @@ export async function getReceiptSignedUrl(receiptPath: string) {
     return data.signedUrl;
   });
 }
+
+export interface ExpensesKpiSummary {
+  // Current Month Spend
+  totalExpense: number;
+  expenseCount: number;
+  prevTotalExpense: number;
+  expenseChangePct: number | null;
+  dailyAvgExpense: number;
+
+  // Current Month Income
+  totalIncome: number;
+  incomeCount: number;
+  prevTotalIncome: number;
+  incomeChangePct: number | null;
+  businessIncome: number;
+
+  // Net Cashflow / Savings
+  netCashflow: number;
+  savingsRatePct: number | null;
+
+  // Top Category
+  topCategoryName: string | null;
+  topCategoryIcon: string | null;
+  topCategoryColor: string | null;
+  topCategoryAmount: number;
+  topCategoryPct: number;
+
+  // Date metadata
+  monthLabel: string;
+  daysElapsed: number;
+  daysInMonth: number;
+}
+
+/**
+ * High-performance executive KPI summary for the Expenses screen header.
+ * Aggregates this month vs previous month expenses, incomes, net cashflow,
+ * and top expense category in parallel via Postgres RPCs.
+ */
+export async function getExpensesKpiSummary() {
+  return runAction(async (): Promise<ExpensesKpiSummary> => {
+    const { supabase, householdId } = await requireHouseholdContext();
+
+    const today = getTodayISO();
+    const currentMonth = getMonthRange(0);
+    const prevMonth = getPreviousMonthRange();
+    const daysElapsed = Math.max(1, daysBetweenISO(currentMonth.start, today));
+    const daysInMonth = daysBetweenISO(currentMonth.start, currentMonth.end);
+
+    const [expCurrentRes, expPrevRes, incCurrentRes, incPrevRes, catRes, pnlRes] = await Promise.all([
+      supabase.rpc("get_expense_summary", {
+        p_household_id: householdId,
+        p_start: currentMonth.start,
+        p_end: currentMonth.end,
+        p_paid_by: null,
+      }),
+      supabase.rpc("get_expense_summary", {
+        p_household_id: householdId,
+        p_start: prevMonth.start,
+        p_end: prevMonth.end,
+        p_paid_by: null,
+      }),
+      supabase.rpc("get_income_summary", {
+        p_household_id: householdId,
+        p_start: currentMonth.start,
+        p_end: currentMonth.end,
+      }),
+      supabase.rpc("get_income_summary", {
+        p_household_id: householdId,
+        p_start: prevMonth.start,
+        p_end: prevMonth.end,
+      }),
+      supabase.rpc("get_category_breakdown", {
+        p_household_id: householdId,
+        p_start: currentMonth.start,
+        p_end: currentMonth.end,
+        p_paid_by: null,
+      }),
+      supabase.rpc("get_business_pnl", {
+        p_household_id: householdId,
+        p_start: currentMonth.start,
+        p_end: currentMonth.end,
+      }),
+    ]);
+
+    if (expCurrentRes.error) throw new ActionError(expCurrentRes.error.message);
+    if (expPrevRes.error) throw new ActionError(expPrevRes.error.message);
+    if (incCurrentRes.error) throw new ActionError(incCurrentRes.error.message);
+    if (incPrevRes.error) throw new ActionError(incPrevRes.error.message);
+
+    const totalExpense = Number(expCurrentRes.data?.[0]?.total ?? 0);
+    const expenseCount = Number(expCurrentRes.data?.[0]?.txn_count ?? 0);
+    const prevTotalExpense = Number(expPrevRes.data?.[0]?.total ?? 0);
+    const expenseChangePct = prevTotalExpense > 0 ? percentChange(totalExpense, prevTotalExpense) : null;
+    const dailyAvgExpense = totalExpense / daysElapsed;
+
+    const currentIncomes = incCurrentRes.data ?? [];
+    const totalIncome = currentIncomes.reduce((acc, row) => acc + parseFloat(String(row.total || 0)), 0);
+    const incomeCount = currentIncomes.reduce((acc, row) => acc + Number(row.txn_count || 0), 0);
+    const prevIncomes = incPrevRes.data ?? [];
+    const prevTotalIncome = prevIncomes.reduce((acc, row) => acc + parseFloat(String(row.total || 0)), 0);
+    const incomeChangePct = prevTotalIncome > 0 ? percentChange(totalIncome, prevTotalIncome) : null;
+
+    const pnlRow = pnlRes.data?.[0];
+    const businessIncome = Number(pnlRow?.income_total ?? 0);
+
+    const netCashflow = totalIncome - totalExpense;
+    const savingsRatePct = totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : null;
+
+    const topCategoryRow = catRes.data?.[0];
+    const topCategoryName = topCategoryRow?.category_name ?? null;
+    const topCategoryIcon = topCategoryRow?.icon ?? null;
+    const topCategoryColor = topCategoryRow?.color ?? null;
+    const topCategoryAmount = Number(topCategoryRow?.total ?? 0);
+    const topCategoryPct = totalExpense > 0 ? (topCategoryAmount / totalExpense) * 100 : 0;
+
+    return {
+      totalExpense,
+      expenseCount,
+      prevTotalExpense,
+      expenseChangePct,
+      dailyAvgExpense,
+      totalIncome,
+      incomeCount,
+      prevTotalIncome,
+      incomeChangePct,
+      businessIncome,
+      netCashflow,
+      savingsRatePct,
+      topCategoryName,
+      topCategoryIcon,
+      topCategoryColor,
+      topCategoryAmount,
+      topCategoryPct,
+      monthLabel: currentMonth.label,
+      daysElapsed,
+      daysInMonth,
+    };
+  });
+}
+
