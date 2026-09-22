@@ -113,7 +113,8 @@ export async function getScratchpadQuickSuggestions() {
       { id: "hh-veggies", label: "🥦 Sabzi & Bhaji", template: "Sabzi veggies 150 cash", source: "household" },
       { id: "hh-auto", label: "🛺 Auto Rickshaw", template: "Auto rickshaw 50 upi", source: "household" },
       { id: "hh-chai", label: "☕ Chai & Snacks", template: "Chai snacks 40 cash", source: "household" },
-      { id: "hh-swiggy", label: "🍕 Swiggy Order", template: "Swiggy food 350 upi", source: "household" },
+      { id: "hh-swiggy", label: "🍔 Swiggy / Zomato", template: "Swiggy food 350 upi", source: "household" },
+      { id: "hh-dominos", label: "🍕 Domino's Pizza", template: "Dominos pizza 450 upi", source: "household" },
       { id: "hh-recharge", label: "📱 Mobile Recharge", template: "Mobile recharge 299 upi", source: "household" },
       { id: "hh-maid", label: "🧹 Maid / Help", template: "Maid salary 3000 bank", source: "household" },
     ];

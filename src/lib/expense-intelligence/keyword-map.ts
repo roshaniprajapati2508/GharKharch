@@ -29,6 +29,7 @@ export const KEYWORD_RULES: KeywordRule[] = [
   { keywords: ["tea", "chai", "coffee", "juice", "cold drink", "soda", "sharbat"], categoryName: "Food & Grocery", subcategoryName: "Beverages" },
   { keywords: ["chicken", "mutton", "fish", "egg", "meat"], categoryName: "Food & Grocery", subcategoryName: "Meat" },
   { keywords: ["grocery", "groceries", "kirana", "kariyana", "ration", "khiru", "batter", "dmart", "d-mart", "local vendor", "local shop"], categoryName: "Food & Grocery", subcategoryName: "Grocery" },
+  { keywords: ["swiggy", "zomato", "food delivery", "online food", "dominos", "domino's", "domino", "mcdonalds", "mcdonald's", "mcd", "burger king", "la pinoz", "la pino'z", "lapinoz", "la milano", "la milano pizzeria", "lamilano", "pizza hut", "subway", "kfc", "eatclub", "box8", "mojo pizza", "faasos", "behrouz", "ovenstory", "pizza", "burger", "garlic bread", "french fries"], categoryName: "Food & Grocery", subcategoryName: "Food Delivery" },
 
   // Transport
   { keywords: ["petrol", "petrol pump"], categoryName: "Transport", subcategoryName: "Petrol" },
@@ -62,7 +63,7 @@ export const KEYWORD_RULES: KeywordRule[] = [
   { keywords: ["netflix", "hotstar", "prime video", "ott", "spotify"], categoryName: "Entertainment", subcategoryName: "OTT" },
   { keywords: ["game", "gaming", "playstation", "xbox"], categoryName: "Entertainment", subcategoryName: "Games" },
   { keywords: ["concert", "event ticket", "show"], categoryName: "Entertainment", subcategoryName: "Events" },
-  { keywords: ["restaurant", "dinner", "lunch out", "swiggy", "zomato", "cafe", "dining"], categoryName: "Entertainment", subcategoryName: "Dining Out" },
+  { keywords: ["restaurant", "dinner out", "lunch out", "cafe", "fine dining", "eating out", "buffet"], categoryName: "Entertainment", subcategoryName: "Dining Out" },
 
   // Fashion
   { keywords: ["shirt", "jeans", "kurta", "clothing", "clothes", "saree"], categoryName: "Fashion", subcategoryName: "Clothing" },

@@ -137,73 +137,6 @@ function emptyShoppingRow(
   };
 }
 
-function autoDetectCategoryForShopping(
-  itemName: string,
-  categoriesTree: CategoryWithChildren[],
-  _flatList: Tables<"categories">[]
-): CategorySelection | null {
-  if (!itemName || !itemName.trim()) return null;
-  const raw = itemName.trim().toLowerCase();
-
-  // 1. Keyword rules
-  for (const rule of KEYWORD_RULES) {
-    const isMatched = rule.keywords.some((kw) => {
-      const kwLower = kw.toLowerCase();
-      const regex = new RegExp(`(^|\\s|[.,/\\-_])${kwLower.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}(\\s|[.,/\\-_]|$)`, "i");
-      return regex.test(raw);
-    });
-
-    if (isMatched) {
-      const parent = categoriesTree.find(
-        (c) => c.name.toLowerCase() === rule.categoryName.toLowerCase() && c.type !== "income"
-      );
-      if (parent) {
-        const sub = rule.subcategoryName
-          ? parent.children.find((s) => s.name.toLowerCase() === rule.subcategoryName?.toLowerCase())
-          : null;
-        return {
-          categoryId: parent.id,
-          subcategoryId: sub?.id ?? null,
-          categoryName: parent.name,
-          subcategoryName: sub?.name ?? null,
-        };
-      }
-    }
-  }
-
-  // 2. Subcategory match
-  for (const cat of categoriesTree) {
-    if (cat.type === "income") continue;
-    for (const sub of cat.children) {
-      const subLower = sub.name.toLowerCase();
-      if (raw.includes(subLower) || (raw.length >= 4 && subLower.includes(raw))) {
-        return {
-          categoryId: cat.id,
-          subcategoryId: sub.id,
-          categoryName: cat.name,
-          subcategoryName: sub.name,
-        };
-      }
-    }
-  }
-
-  // 3. Category match
-  for (const cat of categoriesTree) {
-    if (cat.type === "income") continue;
-    const catLower = cat.name.toLowerCase();
-    if (raw.includes(catLower)) {
-      return {
-        categoryId: cat.id,
-        subcategoryId: null,
-        categoryName: cat.name,
-        subcategoryName: null,
-      };
-    }
-  }
-
-  // 4. Default to first grocery category if name hints at food/grocery/supermarket
-  return null;
-}
 
 function getCurrentISTTime(): string {
   try {
@@ -249,6 +182,15 @@ const COMMON_SHOPPING_MERCHANT_NAMES = [
   "Local Kirana",
 ];
 
+const COMMON_INCOME_SOURCE_NAMES = [
+  "LuxeKraft",
+  "Website Orders",
+  "Amazon Seller Payout",
+  "Instagram DM",
+  "Direct Client",
+  "Cash Sale",
+];
+
 const SHOPPING_UNITS = ["pcs", "kg", "g", "L", "ml", "pack", "box", "dozen"];
 
 const COMMON_PAYMENT_METHODS = [
@@ -261,7 +203,26 @@ const COMMON_PAYMENT_METHODS = [
 
 /** Pre-seeded instant top categories (0ms fallback before or during network cache hydration) */
 const DEFAULT_TOP_CATEGORIES: CategoryWithChildren[] = [
-  { id: "seed-food", name: "Food & Grocery", icon: "shopping-basket", color: "green", sort_order: 10, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
+  {
+    id: "seed-food",
+    name: "Food & Grocery",
+    icon: "shopping-basket",
+    color: "green",
+    sort_order: 10,
+    parent_id: null,
+    household_id: null,
+    is_active: true,
+    type: "expense",
+    created_at: "",
+    children: [
+      { id: "seed-sub-food-delivery", name: "Food Delivery", icon: "utensils", color: "green", sort_order: 15, parent_id: "seed-food", household_id: null, is_active: true, type: "expense", created_at: "" },
+      { id: "seed-sub-grocery", name: "Grocery", icon: "shopping-basket", color: "green", sort_order: 8, parent_id: "seed-food", household_id: null, is_active: true, type: "expense", created_at: "" },
+      { id: "seed-sub-milk", name: "Milk", icon: "milk", color: "green", sort_order: 1, parent_id: "seed-food", household_id: null, is_active: true, type: "expense", created_at: "" },
+      { id: "seed-sub-vegetables", name: "Vegetables", icon: "carrot", color: "green", sort_order: 6, parent_id: "seed-food", household_id: null, is_active: true, type: "expense", created_at: "" },
+      { id: "seed-sub-fruits", name: "Fruits", icon: "apple", color: "green", sort_order: 7, parent_id: "seed-food", household_id: null, is_active: true, type: "expense", created_at: "" },
+      { id: "seed-sub-snacks", name: "Snacks", icon: "cookie", color: "green", sort_order: 9, parent_id: "seed-food", household_id: null, is_active: true, type: "expense", created_at: "" },
+    ],
+  },
   { id: "seed-shopping", name: "Shopping", icon: "shopping-bag", color: "pink", sort_order: 20, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
   { id: "seed-fashion", name: "Fashion", icon: "shirt", color: "purple", sort_order: 30, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
   { id: "seed-household", name: "Household", icon: "home", color: "amber", sort_order: 50, parent_id: null, household_id: null, is_active: true, type: "expense", created_at: "", children: [] },
@@ -390,8 +351,132 @@ export const LUXEKRAFT_INCOME_QUICK_CHIPS = [
   // Handmade Crafts & Occasions
   { itemName: "Lippon Art (Starts)", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Lippon Art", amount: 999 },
   { itemName: "Return Gift (Custom)", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Return Gift", amount: 999 },
-  { itemName: "Baby Shower (Custom)", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Baby Shower", amount: 999 },
 ];
+
+function autoDetectCategoryForShopping(
+  itemName: string,
+  categoriesTree: CategoryWithChildren[],
+  _flatList: Tables<"categories">[],
+  entryType: "expense" | "income" = "expense"
+): CategorySelection | null {
+  if (!itemName || !itemName.trim()) return null;
+  const raw = itemName.trim().toLowerCase();
+
+  // 1. Income category auto-detection (LuxeKraft & custom income categories)
+  if (entryType === "income") {
+    // Check LuxeKraft predefined chips first for highest accuracy
+    const chipMatch = LUXEKRAFT_INCOME_QUICK_CHIPS.find(
+      (c) =>
+        raw.includes(c.itemName.toLowerCase()) ||
+        raw.includes(c.subcategoryName.toLowerCase()) ||
+        c.itemName.toLowerCase().includes(raw)
+    );
+    if (chipMatch) {
+      const parent = categoriesTree.find(
+        (c) => c.name.toLowerCase() === chipMatch.categoryName.toLowerCase() && c.type === "income"
+      );
+      if (parent) {
+        const sub = parent.children.find(
+          (s) => s.name.toLowerCase() === chipMatch.subcategoryName.toLowerCase()
+        );
+        return {
+          categoryId: parent.id,
+          subcategoryId: sub?.id ?? null,
+          categoryName: parent.name,
+          subcategoryName: sub?.name ?? chipMatch.subcategoryName,
+        };
+      }
+    }
+
+    // Check Subcategories for income
+    for (const cat of categoriesTree) {
+      if (cat.type !== "income") continue;
+      for (const sub of cat.children) {
+        const subLower = sub.name.toLowerCase();
+        if (raw.includes(subLower) || (raw.length >= 4 && subLower.includes(raw))) {
+          return {
+            categoryId: cat.id,
+            subcategoryId: sub.id,
+            categoryName: cat.name,
+            subcategoryName: sub.name,
+          };
+        }
+      }
+    }
+
+    // Check Top categories for income
+    for (const cat of categoriesTree) {
+      if (cat.type !== "income") continue;
+      const catLower = cat.name.toLowerCase();
+      if (raw.includes(catLower)) {
+        return {
+          categoryId: cat.id,
+          subcategoryId: null,
+          categoryName: cat.name,
+          subcategoryName: null,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  // 2. Expense category auto-detection (Keyword rules, subcategories, top categories)
+  for (const rule of KEYWORD_RULES) {
+    const isMatched = rule.keywords.some((kw) => {
+      const kwLower = kw.toLowerCase();
+      const regex = new RegExp(`(^|\\s|[.,/\\-_])${kwLower.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}(\\s|[.,/\\-_]|$)`, "i");
+      return regex.test(raw);
+    });
+
+    if (isMatched) {
+      const parent = categoriesTree.find(
+        (c) => c.name.toLowerCase() === rule.categoryName.toLowerCase() && c.type !== "income"
+      );
+      if (parent) {
+        const sub = rule.subcategoryName
+          ? parent.children.find((s) => s.name.toLowerCase() === rule.subcategoryName?.toLowerCase())
+          : null;
+        return {
+          categoryId: parent.id,
+          subcategoryId: sub?.id ?? null,
+          categoryName: parent.name,
+          subcategoryName: sub?.name ?? null,
+        };
+      }
+    }
+  }
+
+  for (const cat of categoriesTree) {
+    if (cat.type === "income") continue;
+    for (const sub of cat.children) {
+      const subLower = sub.name.toLowerCase();
+      if (raw.includes(subLower) || (raw.length >= 4 && subLower.includes(raw))) {
+        return {
+          categoryId: cat.id,
+          subcategoryId: sub.id,
+          categoryName: cat.name,
+          subcategoryName: sub.name,
+        };
+      }
+    }
+  }
+
+  for (const cat of categoriesTree) {
+    if (cat.type === "income") continue;
+    const catLower = cat.name.toLowerCase();
+    if (raw.includes(catLower)) {
+      return {
+        categoryId: cat.id,
+        subcategoryId: null,
+        categoryName: cat.name,
+        subcategoryName: null,
+      };
+    }
+  }
+
+  return null;
+}
 
 const DEFAULT_PRESEEDED_CARDS: EnrichedUserCard[] = DEFAULT_HOUSEHOLD_CARDS.map((c, idx) => ({
   id: `preseeded-${idx}`,
@@ -430,6 +515,7 @@ export function AddExpenseSheet({
 
   // Active Tab Mode: 'single' | 'shopping'
   const [entryMode, setEntryMode] = useState<"single" | "shopping">(initialMode);
+  const [multiEntryType, setMultiEntryType] = useState<"expense" | "income">("expense");
 
   // Single mode state
   const [form, setForm] = useState(() => emptySingleState(userId));
@@ -646,12 +732,15 @@ export function AddExpenseSheet({
       setCategoryTouched(true);
       setAmountTouched(true);
       setEntryMode("single");
+      setMultiEntryType(source.entry_type === "income" ? "income" : "expense");
       setNlEntryOpen(false);
       setNlText("");
     } else {
       setForm(emptySingleState(userId));
       setCategoryTouched(false);
       setAmountTouched(false);
+      setEntryMode(initialMode);
+      setMultiEntryType("expense");
       setNlEntryOpen(true);
       setNlText("");
     }
@@ -1681,8 +1770,78 @@ export function AddExpenseSheet({
     toast.info(`Loaded LuxeKraft sale "${chip.itemName} ₹${chip.amount}" - tap Save Income when ready`, { duration: 3000 });
   }
 
-  // Handle Single Expense Submit
-  async function handleSubmitSingle() {
+  // Quick Add for LuxeKraft incoming sales directly into Multi-Order list
+  function handleAddLuxeKraftChipToShopping(chip: (typeof LUXEKRAFT_INCOME_QUICK_CHIPS)[number]) {
+    const activeTree = incomeCategoryTree.length > 0 ? incomeCategoryTree : DEFAULT_TOP_INCOME_CATEGORIES;
+    const parentCat = activeTree.find(
+      (c) => c.name.toLowerCase() === chip.categoryName.toLowerCase()
+    );
+    const subCat = parentCat?.children?.find(
+      (s) => s.name.toLowerCase() === chip.subcategoryName.toLowerCase()
+    );
+    const catSelection: CategorySelection | null = parentCat
+      ? {
+          categoryId: parentCat.id,
+          subcategoryId: subCat?.id ?? null,
+          categoryName: parentCat.name,
+          subcategoryName: subCat?.name ?? chip.subcategoryName,
+        }
+      : null;
+
+    const luxeMerchant =
+      merchants.find((m) => m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft") ??
+      tripMerchant;
+
+    if (!tripMerchant && luxeMerchant) {
+      setTripMerchant(luxeMerchant);
+    }
+
+    setShoppingRows((prev) => {
+      // If only one row and it's empty, replace it
+      if (prev.length === 1 && !prev[0].itemName.trim() && !prev[0].amount.trim()) {
+        return [
+          {
+            key: prev[0].key,
+            itemName: chip.itemName,
+            amount: String(chip.amount),
+            quantity: "1",
+            unitPrice: String(chip.amount),
+            unit: "pcs",
+            useMultiplier: false,
+            category: catSelection,
+            merchant: luxeMerchant,
+            expenseType: tripExpenseType,
+            notes: "",
+            isExpanded: false,
+          },
+        ];
+      }
+
+      // Otherwise append new item
+      return [
+        ...prev,
+        {
+          key: crypto.randomUUID(),
+          itemName: chip.itemName,
+          amount: String(chip.amount),
+          quantity: "1",
+          unitPrice: String(chip.amount),
+          unit: "pcs",
+          useMultiplier: false,
+          category: catSelection,
+          merchant: luxeMerchant,
+          expenseType: tripExpenseType,
+          notes: "",
+          isExpanded: false,
+        },
+      ];
+    });
+
+    toast.success(`Added "${chip.itemName}" (₹${chip.amount}) to order`);
+  }
+
+  // Handle Single Expense / Income Submit
+  async function handleSubmitSingle(opts?: { keepOpen?: boolean }) {
     let currentForm = form;
     if (nlEntryOpen && nlText && nlText.trim()) {
       const res = resolveNaturalLanguage(nlText.trim());
@@ -1751,7 +1910,7 @@ export function AddExpenseSheet({
       await queueExpense(payload);
       refreshPendingCount();
       toast.message(`${payload.item_name} queued - will sync when online`);
-      onOpenChange(false);
+      if (!opts?.keepOpen) onOpenChange(false);
       return;
     }
 
@@ -1763,14 +1922,41 @@ export function AddExpenseSheet({
       setSubmitting(false);
 
       if (result.error !== null) {
-        toast.error(result.error, { action: { label: "Retry", onClick: handleSubmitSingle } });
+        toast.error(result.error, { action: { label: "Retry", onClick: () => handleSubmitSingle(opts) } });
         return;
       }
 
       if (!isEditing) onOptimisticAdd?.(result.data);
       onSaved?.(result.data);
       if (appliedRule) recordRuleExecution(appliedRule.id, appliedRule.name).catch(() => {});
-      toast.success(isEditing ? "Expense updated" : "Expense added");
+
+      if (opts?.keepOpen) {
+        setForm((f) => ({
+          ...emptySingleState(userId),
+          entryType: f.entryType,
+          merchant: f.merchant,
+          paymentMethod: f.paymentMethod,
+          paidBy: f.paidBy,
+          date: f.date,
+        }));
+        setAmountTouched(false);
+        setCategoryTouched(false);
+        setNlText("");
+        setAppliedRule(null);
+        lastRuleCheckedText.current = null;
+        toast.success(
+          currentForm.entryType === "income"
+            ? `Logged "${cleanItemName}" (${formatINR(amount)}) · Ready for next order`
+            : `Added "${cleanItemName}" (${formatINR(amount)}) · Ready for next`
+        );
+        return;
+      }
+
+      toast.success(
+        isEditing
+          ? currentForm.entryType === "income" ? "Income updated" : "Expense updated"
+          : currentForm.entryType === "income" ? "Income logged" : "Expense added"
+      );
       onOpenChange(false);
     } catch (err) {
       setSubmitting(false);
@@ -1778,9 +1964,9 @@ export function AddExpenseSheet({
         await queueExpense(payload);
         refreshPendingCount();
         toast.message(`${payload.item_name} queued - will sync when online`);
-        onOpenChange(false);
+        if (!opts?.keepOpen) onOpenChange(false);
       } else {
-        toast.error("Something went wrong", { action: { label: "Retry", onClick: handleSubmitSingle } });
+        toast.error("Something went wrong", { action: { label: "Retry", onClick: () => handleSubmitSingle(opts) } });
       }
     }
   }
@@ -1804,7 +1990,8 @@ export function AddExpenseSheet({
   }
 
   function handleShoppingItemNameChange(key: string, name: string) {
-    const detected = autoDetectCategoryForShopping(name, expenseCategoryTree, categoryFlat);
+    const activeTree = multiEntryType === "income" ? incomeCategoryTree : expenseCategoryTree;
+    const detected = autoDetectCategoryForShopping(name, activeTree, categoryFlat, multiEntryType);
     setShoppingRows((list) =>
       list.map((r) => {
         if (r.key !== key) return r;
@@ -1861,6 +2048,7 @@ export function AddExpenseSheet({
     const lines = bulkPasteText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     if (lines.length === 0) return;
 
+    const activeTree = multiEntryType === "income" ? incomeCategoryTree : expenseCategoryTree;
     const parsedRows: ShoppingRow[] = [];
     for (const line of lines) {
       // 1. Multiplier format "Item 2 x 60"
@@ -1870,7 +2058,7 @@ export function AddExpenseSheet({
         const qty = multMatch[2];
         const price = multMatch[3];
         const total = (parseFloat(qty) * parseFloat(price)).toFixed(2).replace(/\.00$/, "");
-        const cat = autoDetectCategoryForShopping(name, expenseCategoryTree, categoryFlat);
+        const cat = autoDetectCategoryForShopping(name, activeTree, categoryFlat, multiEntryType);
         parsedRows.push({
           key: crypto.randomUUID(),
           itemName: name,
@@ -1895,7 +2083,7 @@ export function AddExpenseSheet({
         const qty = unitMatch[2];
         const unit = unitMatch[3].toLowerCase();
         const amt = unitMatch[4];
-        const cat = autoDetectCategoryForShopping(name, expenseCategoryTree, categoryFlat);
+        const cat = autoDetectCategoryForShopping(name, activeTree, categoryFlat, multiEntryType);
         parsedRows.push({
           key: crypto.randomUUID(),
           itemName: `${name} (${qty}${unit})`,
@@ -1918,7 +2106,7 @@ export function AddExpenseSheet({
       if (amtMatch) {
         const name = amtMatch[1].trim().replace(/^[-*•\d+.]\s*/, "");
         const amt = amtMatch[2];
-        const cat = autoDetectCategoryForShopping(name, expenseCategoryTree, categoryFlat);
+        const cat = autoDetectCategoryForShopping(name, activeTree, categoryFlat, multiEntryType);
         parsedRows.push({
           key: crypto.randomUUID(),
           itemName: name,
@@ -1938,7 +2126,7 @@ export function AddExpenseSheet({
 
       // 4. Just item name
       const cleanName = line.replace(/^[-*•\d+.]\s*/, "").trim();
-      const cat = autoDetectCategoryForShopping(cleanName, expenseCategoryTree, categoryFlat);
+      const cat = autoDetectCategoryForShopping(cleanName, activeTree, categoryFlat, multiEntryType);
       parsedRows.push({
         key: crypto.randomUUID(),
         itemName: cleanName,
@@ -1962,7 +2150,7 @@ export function AddExpenseSheet({
       });
       setBulkPasteText("");
       setBulkPasteOpen(false);
-      toast.success(`✨ Added ${parsedRows.length} item${parsedRows.length === 1 ? "" : "s"} to cart!`);
+      toast.success(`✨ Added ${parsedRows.length} item${parsedRows.length === 1 ? "" : "s"} to ${multiEntryType === "income" ? "order" : "cart"}!`);
     }
   }
 
@@ -2021,13 +2209,14 @@ export function AddExpenseSheet({
             .map((p: string) => p.trim())
             .filter(Boolean);
 
+          const activeTree = multiEntryType === "income" ? incomeCategoryTree : expenseCategoryTree;
           const newRows: ShoppingRow[] = [];
           for (const part of parts) {
             const amtMatch = part.match(/^(.+?)(?:[:=-]|\s)+₹?\s*(\d+(?:\.\d+)?)\s*$/);
             if (amtMatch) {
               const name = amtMatch[1].trim();
               const amt = amtMatch[2];
-              const cat = autoDetectCategoryForShopping(name, expenseCategoryTree, categoryFlat);
+              const cat = autoDetectCategoryForShopping(name, activeTree, categoryFlat, multiEntryType);
               newRows.push({
                 key: crypto.randomUUID(),
                 itemName: name,
@@ -2043,7 +2232,7 @@ export function AddExpenseSheet({
                 isExpanded: false,
               });
             } else {
-              const cat = autoDetectCategoryForShopping(part, expenseCategoryTree, categoryFlat);
+              const cat = autoDetectCategoryForShopping(part, activeTree, categoryFlat, multiEntryType);
               newRows.push({
                 key: crypto.randomUUID(),
                 itemName: part,
@@ -2155,7 +2344,7 @@ export function AddExpenseSheet({
           merchant_id: finalMerchantId,
           paid_by: tripPaidBy,
           expense_type: row.expenseType || tripExpenseType,
-          entry_type: "expense",
+          entry_type: multiEntryType,
           payment_method: tripPaymentMethod,
           card_id: tripCardId,
           upi_profile_id: tripUpiProfileId,
@@ -2180,7 +2369,11 @@ export function AddExpenseSheet({
       onSaved?.(result.data);
     }
     setSubmitting(false);
-    toast.success(`🎉 ${savedCount} item${savedCount === 1 ? "" : "s"} added · ${formatINR(shoppingTotal)}`);
+    toast.success(
+      multiEntryType === "income"
+        ? `🎉 ${savedCount} order item${savedCount === 1 ? "" : "s"} logged · ${formatINR(shoppingTotal)}`
+        : `🎉 ${savedCount} item${savedCount === 1 ? "" : "s"} added · ${formatINR(shoppingTotal)}`
+    );
     onOpenChange(false);
   }
 
@@ -2260,6 +2453,19 @@ export function AddExpenseSheet({
     return DEFAULT_TOP_CATEGORIES.slice(0, 7);
   }, [form.entryType, incomeCategoryTree, expenseCategoryTree]);
 
+  const multiTopCategories = useMemo(() => {
+    if (multiEntryType === "income") {
+      if (incomeCategoryTree && incomeCategoryTree.length > 0) {
+        return incomeCategoryTree.slice(0, 7);
+      }
+      return DEFAULT_TOP_INCOME_CATEGORIES;
+    }
+    if (expenseCategoryTree && expenseCategoryTree.length > 0) {
+      return expenseCategoryTree.slice(0, 7);
+    }
+    return DEFAULT_TOP_CATEGORIES.slice(0, 7);
+  }, [multiEntryType, incomeCategoryTree, expenseCategoryTree]);
+
   const activeShoppingRow = shoppingRows.find((r) => r.key === shoppingCategoryRowKey) ?? null;
 
   return (
@@ -2271,13 +2477,23 @@ export function AddExpenseSheet({
             <div className="flex items-center justify-between">
               <DrawerTitle className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
                 {entryMode === "shopping" ? (
-                  <>
-                    <ShoppingCart className="h-5 w-5 text-brand-primary" />
-                    <span>Shopping Cart</span>
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
-                      Multi-Item
-                    </span>
-                  </>
+                  multiEntryType === "income" ? (
+                    <>
+                      <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                      <span>Multi-Order / Batch</span>
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        Income
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="h-5 w-5 text-brand-primary" />
+                      <span>Shopping Cart</span>
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
+                        Multi-Item
+                      </span>
+                    </>
+                  )
                 ) : isEditing ? (
                   form.entryType === "income" ? (
                     "Edit Income"
@@ -2321,7 +2537,10 @@ export function AddExpenseSheet({
               <div className="mt-2.5 grid grid-cols-2 p-1 bg-muted/80 rounded-xl border border-border/40">
                 <button
                   type="button"
-                  onClick={() => setEntryMode("single")}
+                  onClick={() => {
+                    setEntryMode("single");
+                    setForm((f) => ({ ...f, entryType: multiEntryType }));
+                  }}
                   className={cn(
                     "flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-semibold transition-all",
                     entryMode === "single"
@@ -2330,11 +2549,18 @@ export function AddExpenseSheet({
                   )}
                 >
                   <Zap className="h-3.5 w-3.5 text-brand-primary" />
-                  <span>Single Expense</span>
+                  <span>{form.entryType === "income" ? "Single Income" : "Single Expense"}</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setEntryMode("shopping")}
+                  onClick={() => {
+                    setEntryMode("shopping");
+                    setMultiEntryType(form.entryType);
+                    if (form.entryType === "income" && !tripMerchant) {
+                      const luxe = merchants.find((m) => m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft");
+                      if (luxe) setTripMerchant(luxe);
+                    }
+                  }}
                   className={cn(
                     "flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-semibold transition-all",
                     entryMode === "shopping"
@@ -2342,8 +2568,16 @@ export function AddExpenseSheet({
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <ShoppingCart className="h-3.5 w-3.5 text-brand-primary" />
-                  <span>Shopping Cart (Multi)</span>
+                  {(form.entryType === "income" && entryMode === "single") || (entryMode === "shopping" && multiEntryType === "income") ? (
+                    <ShoppingBag className="h-3.5 w-3.5 text-brand-primary" />
+                  ) : (
+                    <ShoppingCart className="h-3.5 w-3.5 text-brand-primary" />
+                  )}
+                  <span>
+                    {(form.entryType === "income" && entryMode === "single") || (entryMode === "shopping" && multiEntryType === "income")
+                      ? "Multi-Order / Batch"
+                      : "Shopping Cart (Multi)"}
+                  </span>
                 </button>
               </div>
             )}
@@ -2958,48 +3192,116 @@ export function AddExpenseSheet({
               )}
             </div>
           ) : (
-            /* ENTERPRISE SHOPPING / MULTI-ITEM MODE BODY */
+            /* ENTERPRISE SHOPPING / MULTI-ITEM & MULTI-ORDER MODE BODY */
             <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-3.5 space-y-4 overscroll-contain">
-              {/* Trip Defaults & Store Header Card */}
+              {/* Expense / Income toggle for Multi Mode */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMultiEntryType("expense");
+                    setForm((f) => ({ ...f, entryType: "expense" }));
+                  }}
+                  className={cn(
+                    "min-h-10 rounded-xl border py-2 text-xs font-bold transition-colors",
+                    multiEntryType === "expense"
+                      ? "border-destructive bg-destructive/10 text-destructive shadow-xs font-extrabold"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  Expense Cart
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMultiEntryType("income");
+                    setForm((f) => ({ ...f, entryType: "income" }));
+                    if (!tripMerchant) {
+                      const luxe = merchants.find((m) => m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft");
+                      if (luxe) setTripMerchant(luxe);
+                    }
+                  }}
+                  className={cn(
+                    "min-h-10 rounded-xl border py-2 text-xs font-bold transition-colors",
+                    multiEntryType === "income"
+                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-xs font-extrabold"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  Income (Multi-Order)
+                </button>
+              </div>
+
+              {/* LuxeKraft 1-Tap Quick Add into Order List when in Income Multi Mode */}
+              {multiEntryType === "income" && (
+                <div className="rounded-xl border border-brand-primary/20 bg-brand-mint/40 p-2.5">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[11px] font-bold text-brand-primary uppercase tracking-wider flex items-center gap-1">
+                      <Zap className="h-3 w-3 fill-current" /> LuxeKraft 1-Tap Quick Add to Order
+                    </p>
+                    <span className="text-[10px] font-medium text-muted-foreground">Tap chip to append item</span>
+                  </div>
+                  <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {LUXEKRAFT_INCOME_QUICK_CHIPS.map((chip) => (
+                      <button
+                        key={chip.itemName}
+                        type="button"
+                        onClick={() => handleAddLuxeKraftChipToShopping(chip)}
+                        className="flex shrink-0 items-center gap-1.5 rounded-full border border-brand-primary/20 bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-brand-primary hover:text-white shadow-2xs hover:scale-[1.02] active:scale-[0.98]"
+                      >
+                        <span>{chip.itemName}</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                          {formatINR(chip.amount)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Trip / Order Defaults & Store Header Card */}
               <div className="rounded-2xl border border-border/80 bg-muted/40 p-3.5 space-y-3 shadow-xs">
-                {/* Store / Merchant Selector */}
+                {/* Store / Merchant / Channel Selector */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                       <Store className="h-3.5 w-3.5 text-brand-primary" />
-                      Store / Merchant
+                      {multiEntryType === "income" ? "Channel / Order Source" : "Store / Merchant"}
                     </Label>
                     <button
                       type="button"
                       onClick={() => setShoppingMerchantPickerTarget("trip")}
                       className="text-xs font-semibold text-brand-primary flex items-center gap-0.5 hover:underline"
                     >
-                      {tripMerchant ? "Change store" : "Browse all stores"} <ChevronRight className="h-3 w-3" />
+                      {tripMerchant
+                        ? multiEntryType === "income" ? "Change source" : "Change store"
+                        : multiEntryType === "income" ? "Browse sources" : "Browse all stores"}{" "}
+                      <ChevronRight className="h-3 w-3" />
                     </button>
                   </div>
 
-                  {/* Selected Merchant Active Pill or Quick Store Chips */}
+                  {/* Selected Merchant Active Pill or Quick Store/Source Chips */}
                   {tripMerchant ? (
                     <div className="flex items-center justify-between p-2.5 rounded-xl bg-brand-mint/60 border border-brand-primary/30 text-xs">
                       <div className="flex items-center gap-2 font-bold text-brand-primary">
                         <Store className="h-4 w-4 shrink-0" />
                         <span className="text-sm">{tripMerchant.name}</span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary font-semibold">
-                          Trip Merchant
+                          {multiEntryType === "income" ? "Order Source" : "Trip Merchant"}
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setTripMerchant(null)}
                         className="text-muted-foreground hover:text-destructive p-1 rounded-md transition-colors"
-                        title="Clear merchant"
+                        title="Clear source"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
-                      {COMMON_SHOPPING_MERCHANT_NAMES.map((mName) => (
+                      {(multiEntryType === "income" ? COMMON_INCOME_SOURCE_NAMES : COMMON_SHOPPING_MERCHANT_NAMES).map((mName) => (
                         <button
                           key={mName}
                           type="button"
@@ -3026,7 +3328,7 @@ export function AddExpenseSheet({
                         onClick={() => setShoppingMerchantPickerTarget("trip")}
                         className="px-2.5 py-1 rounded-full text-xs font-semibold border border-dashed border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
                       >
-                        + Other store…
+                        {multiEntryType === "income" ? "+ Other source…" : "+ Other store…"}
                       </button>
                     </div>
                   )}
@@ -3044,7 +3346,7 @@ export function AddExpenseSheet({
                       {tripPaymentMethod || "No payment method"}
                     </span>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-background border border-border/60 font-semibold text-foreground capitalize">
-                      {tripExpenseType} · {tripPaidBy === userId ? "Me" : partner?.displayName || "Partner"}
+                      {tripExpenseType} · {tripPaidBy === userId ? (multiEntryType === "income" ? "Received by Me" : "Me") : (partner?.displayName || "Partner")}
                     </span>
                     {receiptFile && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-mint border border-brand-primary/20 text-brand-primary font-semibold">
@@ -3059,7 +3361,13 @@ export function AddExpenseSheet({
                     className="text-xs font-bold text-brand-primary flex items-center gap-1 hover:underline shrink-0 ml-2"
                   >
                     <SlidersHorizontal className="h-3 w-3" />
-                    <span>{showTripSettings ? "Hide details" : "Trip details"}</span>
+                    <span>
+                      {showTripSettings
+                        ? "Hide details"
+                        : multiEntryType === "income"
+                          ? "Order details"
+                          : "Trip details"}
+                    </span>
                     {showTripSettings ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   </button>
                 </div>
@@ -3121,7 +3429,7 @@ export function AddExpenseSheet({
                     {/* Date Picker */}
                     <div>
                       <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                        Date of Purchase
+                        {multiEntryType === "income" ? "Date of Order" : "Date of Purchase"}
                       </Label>
                       <div className="flex items-center gap-2 flex-wrap">
                         <button
@@ -3180,13 +3488,13 @@ export function AddExpenseSheet({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                          Paid By
+                          {multiEntryType === "income" ? "Received By" : "Paid By"}
                         </Label>
                         <PaidBySelector value={tripPaidBy} onChange={setTripPaidBy} />
                       </div>
                       <div>
                         <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                          Expense Type
+                          {multiEntryType === "income" ? "Entry Scope" : "Expense Type"}
                         </Label>
                         <ExpenseTypeSelector value={tripExpenseType} onChange={setTripExpenseType} />
                       </div>
@@ -3195,13 +3503,17 @@ export function AddExpenseSheet({
                     {/* Trip Notes */}
                     <div>
                       <Label htmlFor="trip-notes" className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                        Trip Notes (Optional)
+                        {multiEntryType === "income" ? "Order / Batch Notes (Optional)" : "Trip Notes (Optional)"}
                       </Label>
                       <Input
                         id="trip-notes"
                         value={tripNotes}
                         onChange={(e) => setTripNotes(e.target.value)}
-                        placeholder="e.g. Monthly grocery restock, DMart haul"
+                        placeholder={
+                          multiEntryType === "income"
+                            ? "e.g. Order #104 · Priya Sharma, or Daily Batch Sep 22"
+                            : "e.g. Monthly grocery restock, DMart haul"
+                        }
                         className="h-9 text-xs bg-background"
                       />
                     </div>
@@ -3307,12 +3619,18 @@ export function AddExpenseSheet({
                     </button>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Paste lines with item name and amount/multiplier. GharKharch auto-detects quantities and assigns categories automatically!
+                    {multiEntryType === "income"
+                      ? "Paste lines with item name and price/quantity. GharKharch auto-assigns LuxeKraft & income categories automatically!"
+                      : "Paste lines with item name and amount/multiplier. GharKharch auto-detects quantities and assigns categories automatically!"}
                   </p>
                   <textarea
                     value={bulkPasteText}
                     onChange={(e) => setBulkPasteText(e.target.value)}
-                    placeholder={"Amul Milk 2L 120\nEggs 12 110\nBread 45\nBananas 60\nSurf Excel 220"}
+                    placeholder={
+                      multiEntryType === "income"
+                        ? "Kashmiri Watch 3 x 499\nOnly Sling Chain 2 x 699\nMacramé Mobile Sling 399"
+                        : "Amul Milk 2L 120\nEggs 12 110\nBread 45\nBananas 60\nSurf Excel 220"
+                    }
                     rows={4}
                     className="w-full text-xs font-mono p-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-brand-primary"
                   />
@@ -3332,7 +3650,8 @@ export function AddExpenseSheet({
                       onClick={handleBulkPasteImport}
                       className="h-8 text-xs font-bold bg-brand-primary text-white hover:bg-brand-primary/90"
                     >
-                      <Sparkles className="h-3.5 w-3.5 mr-1" /> Import to Cart
+                      <Sparkles className="h-3.5 w-3.5 mr-1" />
+                      {multiEntryType === "income" ? "Import to Order" : "Import to Cart"}
                     </Button>
                   </div>
                 </div>
@@ -3368,7 +3687,11 @@ export function AddExpenseSheet({
                                 addShoppingRow(row.category);
                               }
                             }}
-                            placeholder="Item name (e.g. Amul Milk, Eggs, Rice 5kg)"
+                            placeholder={
+                              multiEntryType === "income"
+                                ? "Product / Item (e.g. Kashmiri Watch)"
+                                : "Item name (e.g. Amul Milk, Eggs, Rice 5kg)"
+                            }
                             className="h-9 text-sm bg-background font-medium"
                           />
                         </div>
@@ -3588,7 +3911,7 @@ export function AddExpenseSheet({
                   1-Tap Quick Add By Category:
                 </Label>
                 <div className="flex flex-wrap gap-1.5">
-                  {topCategories.slice(0, 6).map((cat) => {
+                  {multiTopCategories.slice(0, 6).map((cat) => {
                     const swatch = colorSwatch(cat.color);
                     const Icon = getIcon(cat.icon);
                     return (
@@ -3623,18 +3946,38 @@ export function AddExpenseSheet({
           {/* Footer Action */}
           <DrawerFooter className="px-5 py-3.5 border-t border-border/40 bg-card">
             {entryMode === "single" ? (
-              <Button
-                size="lg"
-                className="w-full h-12 text-base font-bold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-md rounded-xl"
-                onClick={handleSubmitSingle}
-                loading={submitting}
-              >
-                {isEditing
-                  ? "Save changes"
-                  : form.entryType === "income"
-                    ? "Save Income"
-                    : "Save Expense"}
-              </Button>
+              isNewExpense ? (
+                <div className="grid grid-cols-2 gap-2 w-full">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="h-12 text-sm font-bold border-brand-primary/30 text-brand-primary hover:bg-brand-mint/40 rounded-xl"
+                    onClick={() => handleSubmitSingle({ keepOpen: true })}
+                    loading={submitting}
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Save & Add Next
+                  </Button>
+                  <Button
+                    size="lg"
+                    className="h-12 text-base font-bold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-md rounded-xl"
+                    onClick={() => handleSubmitSingle({ keepOpen: false })}
+                    loading={submitting}
+                  >
+                    {form.entryType === "income" ? "Save Income" : "Save Expense"}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  size="lg"
+                  className="w-full h-12 text-base font-bold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-md rounded-xl"
+                  onClick={() => handleSubmitSingle({ keepOpen: false })}
+                  loading={submitting}
+                >
+                  Save changes
+                </Button>
+              )
             ) : (
               <div className="flex flex-col gap-2.5 w-full">
                 <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
@@ -3664,7 +4007,9 @@ export function AddExpenseSheet({
                   loading={submitting}
                 >
                   <ShoppingBag className="mr-2 h-4 w-4" />
-                  Save all {validShoppingRows.length > 0 ? `(${validShoppingRows.length} items · ${formatINR(shoppingTotal)})` : ""}
+                  {multiEntryType === "income"
+                    ? `Save all orders ${validShoppingRows.length > 0 ? `(${validShoppingRows.length} items · ${formatINR(shoppingTotal)})` : ""}`
+                    : `Save all ${validShoppingRows.length > 0 ? `(${validShoppingRows.length} items · ${formatINR(shoppingTotal)})` : ""}`}
                 </Button>
               </div>
             )}
@@ -3691,11 +4036,11 @@ export function AddExpenseSheet({
         }}
       />
 
-      {/* Category Picker for Shopping Rows - always expense-scoped */}
+      {/* Category Picker for Shopping Rows - dynamically scoped to multiEntryType */}
       <CategoryPicker
         open={!!shoppingCategoryRowKey}
         onOpenChange={(op) => !op && setShoppingCategoryRowKey(null)}
-        tree={expenseCategoryTree}
+        tree={multiEntryType === "income" ? incomeCategoryTree : expenseCategoryTree}
         onSelect={(selection) => {
           if (activeShoppingRow) {
             updateShoppingRow(activeShoppingRow.key, { category: selection });
