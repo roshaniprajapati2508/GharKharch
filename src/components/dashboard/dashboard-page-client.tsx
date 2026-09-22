@@ -152,6 +152,7 @@ export function DashboardPageClient({
     if (period === "30d") return "છેલ્લા ૩૦ દિવસનો ખર્ચ (30 Days)";
     if (period === "month") return data?.range.label ? `${data.range.label} · આ મહિનો` : "આ મહિનો (This Month)";
     if (period === "lastMonth") return "ગયો મહિનો (Last Month)";
+    if (period === "all") return "કુલ ખર્ચ (All Time)";
     return data?.range.label ?? range.label;
   })();
 
@@ -178,7 +179,7 @@ export function DashboardPageClient({
             className="flex items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition-all hover:bg-brand-primary/90 cursor-pointer active:scale-98"
           >
             <Plus className="h-4 w-4" />
-            <span>+ ખર્ચ ઉમેરો</span>
+            <span>ખર્ચ ઉમેરો</span>
           </button>
         </div>
       </div>

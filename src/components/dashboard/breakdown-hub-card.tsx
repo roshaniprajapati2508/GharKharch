@@ -55,21 +55,41 @@ export function BreakdownHubCard({
 
   return (
     <div className="flex flex-col justify-start rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs transition-all hover:border-border">
-      {/* Header & Tab Selector */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-3.5">
-        <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+      {/* Header: Title & View All */}
+      <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+            <PieChart className="h-4 w-4" />
+          </span>
+          <h2 className="text-sm sm:text-base font-bold text-foreground truncate">
+            ક્યાં ખર્ચ થયો?
+          </h2>
+        </div>
+
+        <Link
+          href="/analytics"
+          className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-brand-primary transition-colors hover:text-brand-primary/80 hover:underline"
+        >
+          <span>બધું જુઓ</span>
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+
+      {/* Tab Filter Pills: Horizontal touch-scroll on mobile, preventing awkward shrinking/wrapping */}
+      <div className="w-full min-w-0 max-w-full overflow-x-auto pt-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="inline-flex items-center gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
           <button
             type="button"
             onClick={() => setActiveTab("categories")}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer",
+              "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
               activeTab === "categories"
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
             <PieChart className="h-3.5 w-3.5 text-brand-primary" />
-            <span>ક્યાં ખર્ચ થયો</span>
+            <span>કેટેગરી (Categories)</span>
           </button>
 
           {merchants.length > 0 && (
@@ -77,7 +97,7 @@ export function BreakdownHubCard({
               type="button"
               onClick={() => setActiveTab("merchants")}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer",
+                "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
                 activeTab === "merchants"
                   ? "bg-card text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -93,7 +113,7 @@ export function BreakdownHubCard({
               type="button"
               onClick={() => setActiveTab("person")}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer",
+                "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
                 activeTab === "person"
                   ? "bg-card text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -109,7 +129,7 @@ export function BreakdownHubCard({
               type="button"
               onClick={() => setActiveTab("frequent")}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer",
+                "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
                 activeTab === "frequent"
                   ? "bg-card text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -120,17 +140,10 @@ export function BreakdownHubCard({
             </button>
           )}
         </div>
-
-        <Link
-          href="/analytics"
-          className="flex items-center text-xs font-medium text-primary hover:underline"
-        >
-          બધું જુઓ <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
       </div>
 
       {/* Tab Panes */}
-      <div className="pt-3">
+      <div className="pt-2">
         {/* Categories Tab */}
         {activeTab === "categories" && (
           <div className="flex flex-col gap-3">

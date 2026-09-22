@@ -37,7 +37,7 @@ import type { ExpenseFilters } from "@/lib/actions/expenses";
 import type { Tables } from "@/types/database";
 
 const QUICK_RANGES = [
-  { key: "all", label: "All time", get: () => ({ start: undefined, end: undefined }) },
+  { key: "all", label: "All time (બધો સમય)", get: () => ({ start: undefined, end: undefined }) },
   { key: "today", label: "Today", get: getTodayRange },
   { key: "7d", label: "Last 7 days", get: getLast7DaysRange },
   { key: "30d", label: "Last 30 days", get: getLast30DaysRange },

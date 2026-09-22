@@ -20,6 +20,7 @@ const QUICK_RANGES = [
   { key: "30d", label: "30D", get: getLast30DaysRange },
   { key: "month", label: "This Month", get: () => getMonthRange(0) },
   { key: "lastMonth", label: "Last Month", get: getPreviousMonthRange },
+  { key: "all", label: "All Time (બધો સમય)", get: () => ({ start: undefined, end: undefined }) },
 ] as const;
 
 export interface AppliedFilters extends ExpenseFilters {

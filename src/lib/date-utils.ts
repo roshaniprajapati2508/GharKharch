@@ -105,6 +105,11 @@ export function getCustomDateRange(start: string, end: string): DateRange {
   return { start, end, label: "Custom range" };
 }
 
+export function getAllTimeRange(): DateRange {
+  const end = getTodayISO();
+  return { start: "2000-01-01", end, label: "All time" };
+}
+
 /** Number of calendar days spanned by an ISO range, inclusive of both ends. */
 export function daysBetweenISO(start: string, end: string): number {
   const ms = parseISODate(end).getTime() - parseISODate(start).getTime();

@@ -9,6 +9,7 @@ import {
   getLast30DaysRange,
   getMonthRange,
   getPreviousMonthRange,
+  getAllTimeRange,
   getCustomDateRange,
   type DateRange,
 } from "@/lib/date-utils";
@@ -22,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-export type QuickPeriod = "today" | "7d" | "30d" | "month" | "lastMonth" | "custom";
+export type QuickPeriod = "today" | "7d" | "30d" | "month" | "lastMonth" | "all" | "custom";
 
 const QUICK_PERIODS: { key: QuickPeriod; label: string; resolve: () => DateRange }[] = [
   { key: "today", label: "આજ (Today)", resolve: getTodayRange },
@@ -30,6 +31,7 @@ const QUICK_PERIODS: { key: QuickPeriod; label: string; resolve: () => DateRange
   { key: "30d", label: "૩૦ દિવસ (30D)", resolve: getLast30DaysRange },
   { key: "month", label: "આ મહિનો (Month)", resolve: () => getMonthRange(0) },
   { key: "lastMonth", label: "ગયો મહિનો (Last)", resolve: getPreviousMonthRange },
+  { key: "all", label: "બધો સમય (All Time)", resolve: getAllTimeRange },
 ];
 
 export function DashboardFilters({

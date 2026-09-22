@@ -18,17 +18,19 @@ import {
   getWeekRange,
   getMonthRange,
   getPreviousMonthRange,
+  getAllTimeRange,
   getCustomDateRange,
   type DateRange,
 } from "@/lib/date-utils";
 
-type ReportPeriod = "today" | "week" | "month" | "lastMonth" | "custom";
+type ReportPeriod = "today" | "week" | "month" | "lastMonth" | "all" | "custom";
 
 const PERIODS: { key: ReportPeriod; label: string; resolve: () => DateRange }[] = [
   { key: "today", label: "Today", resolve: getTodayRange },
   { key: "week", label: "This week", resolve: () => getWeekRange() },
   { key: "month", label: "This month", resolve: () => getMonthRange(0) },
   { key: "lastMonth", label: "Last month", resolve: getPreviousMonthRange },
+  { key: "all", label: "All time (બધો સમય)", resolve: getAllTimeRange },
 ];
 
 import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";

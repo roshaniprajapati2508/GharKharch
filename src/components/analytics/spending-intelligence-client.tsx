@@ -32,6 +32,7 @@ import {
   getLast30DaysRange,
   getMonthRange,
   getPreviousMonthRange,
+  getAllTimeRange,
   type DateRange,
 } from "@/lib/date-utils";
 import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
@@ -42,6 +43,7 @@ const QUICK_RANGES = [
   { key: "30d", label: "30 Days", get: getLast30DaysRange },
   { key: "7d", label: "7 Days", get: getLast7DaysRange },
   { key: "today", label: "Today", get: getTodayRange },
+  { key: "all", label: "All Time (બધો સમય)", get: getAllTimeRange },
 ] as const;
 
 function MetricHeroCard({

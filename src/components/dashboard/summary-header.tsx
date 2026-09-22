@@ -128,18 +128,21 @@ export function SummaryHeader({
     if (period === "30d") return "છેલ્લા ૩૦ દિવસનો ખર્ચ";
     if (period === "month") return "આ મહિનાનો ખર્ચ";
     if (period === "lastMonth") return "ગયા મહિનાનો ખર્ચ";
+    if (period === "all") return "કુલ ખર્ચ (All Time)";
     return "કુલ ખર્ચ (Total Spend)";
   })();
 
   const incomeCardTitle = (() => {
     if (period === "today") return "આજની આવક (Income / કમાણી)";
     if (period === "month") return "આ મહિનાની આવક";
+    if (period === "all") return "કુલ આવક (All Time)";
     return "કુલ આવક (Total Income)";
   })();
 
   const savingsCardTitle = (() => {
     if (period === "today") return "આજની બચત (Net In Hand)";
     if (period === "month") return "આ મહિનાની બચત";
+    if (period === "all") return "કુલ બચત (All Time)";
     return "કુલ બચત (Net Savings)";
   })();
 
@@ -153,7 +156,7 @@ export function SummaryHeader({
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <Receipt className="h-3.5 w-3.5 text-brand-primary" /> {spendCardTitle}
             </span>
-            {change !== null && prevTotal > 0 && (
+            {change !== null && prevTotal > 0 && period !== "all" && (
               <span
                 className={cn(
                   "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold",
@@ -176,6 +179,11 @@ export function SummaryHeader({
                 <>
                   <span>નોંધાયા: <strong className="font-semibold text-foreground">{summary.txn_count} ખર્ચા</strong></span>
                   <span>આખો દિવસ</span>
+                </>
+              ) : period === "all" ? (
+                <>
+                  <span>કુલ વ્યવહારો: <strong className="font-semibold text-foreground">{summary.txn_count}</strong></span>
+                  <span>બધો સમય</span>
                 </>
               ) : (
                 <>
