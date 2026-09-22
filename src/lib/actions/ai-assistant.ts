@@ -110,6 +110,24 @@ async function resolveIntent(
       };
     }
 
+    case "category_income": {
+      const { data, error } = await supabase.rpc("get_income_summary", {
+        p_household_id: householdId,
+        p_start: intent.period.start,
+        p_end: intent.period.end,
+      });
+      if (error) throw new ActionError(error.message);
+      const row = (data ?? []).find((r) => r.category_name.toLowerCase() === intent.categoryName.toLowerCase());
+      const total = row ? Number(row.total) : 0;
+      const count = row ? Number(row.txn_count) : 0;
+      return {
+        deterministicAnswer: row
+          ? `LuxeKraft / your household received ${formatINR(total)} in revenue from ${intent.categoryName} ${intent.periodLabel} across ${count} transaction${count === 1 ? "" : "s"}.`
+          : `No income or sales recorded for ${intent.categoryName} ${intent.periodLabel}.`,
+        facts: { period: intent.periodLabel, categoryName: intent.categoryName, total, txnCount: count },
+      };
+    }
+
     case "merchant_spending": {
       const { data, error } = await supabase.rpc("get_merchant_breakdown", {
         p_household_id: householdId,

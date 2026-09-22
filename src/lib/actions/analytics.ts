@@ -84,7 +84,14 @@ export async function resolveScopedCategoryIds(
     .or(`household_id.eq.${householdId},household_id.is.null`);
   const rows = allCategories ?? [];
 
-  const businessNames = ["Homemade Business", "Business Sales & Payouts"];
+  const businessNames = [
+    "Homemade Business",
+    "Business Sales & Payouts",
+    "Mobile Covers & Sets",
+    "Only Accessories",
+    "Handmade Jewellery, Watches & Collections",
+    "Handmade Crafts & Occasions",
+  ];
   const businessTops = rows.filter((cat) => businessNames.includes(cat.name));
   const businessIds = new Set<string>();
   for (const bTop of businessTops) {

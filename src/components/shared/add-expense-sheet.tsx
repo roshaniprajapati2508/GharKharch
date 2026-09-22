@@ -271,9 +271,94 @@ const DEFAULT_TOP_CATEGORIES: CategoryWithChildren[] = [
 ];
 
 const DEFAULT_TOP_INCOME_CATEGORIES: CategoryWithChildren[] = [
+  {
+    id: "seed-mobile-covers",
+    name: "Mobile Covers & Sets",
+    icon: "smartphone",
+    color: "blue",
+    sort_order: 110,
+    parent_id: null,
+    household_id: null,
+    is_active: true,
+    type: "income",
+    created_at: "",
+    children: [
+      { id: "seed-sub-mobile-cover", name: "Mobile Cover", icon: "smartphone", color: "blue", sort_order: 1, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+    ],
+  },
+  {
+    id: "seed-accessories",
+    name: "Only Accessories",
+    icon: "sparkles",
+    color: "purple",
+    sort_order: 111,
+    parent_id: null,
+    household_id: null,
+    is_active: true,
+    type: "income",
+    created_at: "",
+    children: [
+      { id: "seed-sub-sling-ghugri", name: "Only Sling Chain with Ghugri", icon: "sparkles", color: "purple", sort_order: 1, parent_id: "seed-accessories", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-sling-coins-kodi", name: "Only Sling Chain with Ghugri, Coins & Metal Kodi", icon: "sparkles", color: "purple", sort_order: 2, parent_id: "seed-accessories", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-waist-judo", name: "Only Waist Judo", icon: "sparkles", color: "purple", sort_order: 3, parent_id: "seed-accessories", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-macrame-sling", name: "Macrame Mobile Sling", icon: "package", color: "purple", sort_order: 4, parent_id: "seed-accessories", household_id: null, is_active: true, type: "income", created_at: "" },
+    ],
+  },
+  {
+    id: "seed-jewellery-watches",
+    name: "Handmade Jewellery, Watches & Collections",
+    icon: "gem",
+    color: "pink",
+    sort_order: 112,
+    parent_id: null,
+    household_id: null,
+    is_active: true,
+    type: "income",
+    created_at: "",
+    children: [
+      { id: "seed-sub-haldi-jewellery", name: "Haldi Jewellery", icon: "sun", color: "pink", sort_order: 1, parent_id: "seed-jewellery-watches", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-mehndi-jewellery", name: "Mehndi Jewellery", icon: "sparkles", color: "pink", sort_order: 2, parent_id: "seed-jewellery-watches", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-navratri-collection", name: "Navratri Collection", icon: "flower-2", color: "pink", sort_order: 3, parent_id: "seed-jewellery-watches", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-other-jewellery", name: "Other Handmade Jewellery", icon: "gem", color: "pink", sort_order: 4, parent_id: "seed-jewellery-watches", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-kashmiri-watch", name: "Kashmiri Watch", icon: "watch", color: "pink", sort_order: 5, parent_id: "seed-jewellery-watches", household_id: null, is_active: true, type: "income", created_at: "" },
+    ],
+  },
+  {
+    id: "seed-crafts-occasions",
+    name: "Handmade Crafts & Occasions",
+    icon: "palette",
+    color: "amber",
+    sort_order: 113,
+    parent_id: null,
+    household_id: null,
+    is_active: true,
+    type: "income",
+    created_at: "",
+    children: [
+      { id: "seed-sub-lippon-art", name: "Lippon Art", icon: "palette", color: "amber", sort_order: 1, parent_id: "seed-crafts-occasions", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-return-gift", name: "Return Gift", icon: "gift", color: "amber", sort_order: 2, parent_id: "seed-crafts-occasions", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-baby-shower", name: "Baby Shower", icon: "baby", color: "amber", sort_order: 3, parent_id: "seed-crafts-occasions", household_id: null, is_active: true, type: "income", created_at: "" },
+    ],
+  },
   { id: "seed-business-sales", name: "Business Sales & Payouts", icon: "shopping-bag", color: "indigo", sort_order: 102, parent_id: null, household_id: null, is_active: true, type: "income", created_at: "", children: [] },
   { id: "seed-salary", name: "Salary", icon: "banknote", color: "emerald", sort_order: 100, parent_id: null, household_id: null, is_active: true, type: "income", created_at: "", children: [] },
   { id: "seed-freelance", name: "Freelancing & Consulting", icon: "laptop", color: "blue", sort_order: 101, parent_id: null, household_id: null, is_active: true, type: "income", created_at: "", children: [] },
+];
+
+export const LUXEKRAFT_INCOME_QUICK_CHIPS = [
+  { itemName: "Mobile Cover", categoryName: "Mobile Covers & Sets", subcategoryName: "Mobile Cover", amount: 399 },
+  { itemName: "Only Sling Chain with Ghugri", categoryName: "Only Accessories", subcategoryName: "Only Sling Chain with Ghugri", amount: 299 },
+  { itemName: "Only Sling Chain with Ghugri, Coins & Metal Kodi", categoryName: "Only Accessories", subcategoryName: "Only Sling Chain with Ghugri, Coins & Metal Kodi", amount: 349 },
+  { itemName: "Only Waist Judo", categoryName: "Only Accessories", subcategoryName: "Only Waist Judo", amount: 350 },
+  { itemName: "Macrame Mobile Sling", categoryName: "Only Accessories", subcategoryName: "Macrame Mobile Sling", amount: 450 },
+  { itemName: "Haldi Jewellery", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Haldi Jewellery", amount: 1200 },
+  { itemName: "Mehndi Jewellery", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Mehndi Jewellery", amount: 1500 },
+  { itemName: "Navratri Collection", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Navratri Collection", amount: 850 },
+  { itemName: "Kashmiri Watch", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Kashmiri Watch", amount: 799 },
+  { itemName: "Other Handmade Jewellery", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Other Handmade Jewellery", amount: 500 },
+  { itemName: "Lippon Art", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Lippon Art", amount: 2500 },
+  { itemName: "Return Gift", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Return Gift", amount: 1800 },
+  { itemName: "Baby Shower", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Baby Shower", amount: 2200 },
 ];
 
 const DEFAULT_PRESEEDED_CARDS: EnrichedUserCard[] = DEFAULT_HOUSEHOLD_CARDS.map((c, idx) => ({
@@ -1529,6 +1614,41 @@ export function AddExpenseSheet({
     toast.info(`Loaded "${chip.itemName} ₹${chip.amount}" - tap Save Expense when ready`, { duration: 3000 });
   }
 
+  // Quick Add for LuxeKraft incoming sales
+  function handleLuxeKraftQuickAdd(chip: (typeof LUXEKRAFT_INCOME_QUICK_CHIPS)[number]) {
+    const activeTree = incomeCategoryTree.length > 0 ? incomeCategoryTree : DEFAULT_TOP_INCOME_CATEGORIES;
+    const parentCat = activeTree.find(
+      (c) => c.name.toLowerCase() === chip.categoryName.toLowerCase()
+    );
+    const subCat = parentCat?.children?.find(
+      (s) => s.name.toLowerCase() === chip.subcategoryName.toLowerCase()
+    );
+
+    const luxeKraftMerchant = merchants.find(
+      (m) => m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft"
+    ) ?? null;
+
+    setForm((f) => ({
+      ...f,
+      entryType: "income",
+      itemName: chip.itemName,
+      amount: String(chip.amount),
+      category: parentCat
+        ? {
+            categoryId: parentCat.id,
+            subcategoryId: subCat?.id ?? null,
+            categoryName: parentCat.name,
+            subcategoryName: subCat?.name ?? chip.subcategoryName,
+          }
+        : null,
+      merchant: luxeKraftMerchant,
+      paymentMethod: "UPI",
+    }));
+    setAmountTouched(true);
+    setCategoryTouched(true);
+    toast.info(`Loaded LuxeKraft sale "${chip.itemName} ₹${chip.amount}" - tap Save Income when ready`, { duration: 3000 });
+  }
+
   // Handle Single Expense Submit
   async function handleSubmitSingle() {
     let currentForm = form;
@@ -2229,6 +2349,35 @@ export function AddExpenseSheet({
                   Income
                 </button>
               </div>
+
+              {/* Quick Add Bar: LuxeKraft 1-Tap Quick Add in Income mode, recent chips in Expense mode */}
+              {form.entryType === "income" ? (
+                <div className="rounded-xl border border-brand-primary/20 bg-brand-mint/40 p-2.5">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[11px] font-bold text-brand-primary uppercase tracking-wider flex items-center gap-1">
+                      <Zap className="h-3 w-3 fill-current" /> LuxeKraft 1-Tap Quick Add
+                    </p>
+                    <span className="text-[10px] font-medium text-muted-foreground">Tap to auto-fill sale</span>
+                  </div>
+                  <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {LUXEKRAFT_INCOME_QUICK_CHIPS.map((chip) => (
+                      <button
+                        key={chip.itemName}
+                        type="button"
+                        onClick={() => handleLuxeKraftQuickAdd(chip)}
+                        className="flex shrink-0 items-center gap-1.5 rounded-full border border-brand-primary/20 bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-brand-primary hover:text-white shadow-2xs hover:scale-[1.02] active:scale-[0.98]"
+                      >
+                        <span>{chip.itemName}</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                          {formatINR(chip.amount)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : quickAddChips && quickAddChips.length > 0 ? (
+                <QuickAddBar chips={quickAddChips} onPick={handleQuickAddPick} />
+              ) : null}
 
               {/* Item / Smart Parse Input Section (Front & Center for quick entry) */}
               <div className="relative">

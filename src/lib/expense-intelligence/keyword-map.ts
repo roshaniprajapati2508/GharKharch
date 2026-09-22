@@ -86,6 +86,28 @@ export const KEYWORD_RULES: KeywordRule[] = [
   { keywords: ["decor", "curtain", "lamp", "cushion", "bedsheet"], categoryName: "Household", subcategoryName: "Home Decor" },
   { keywords: ["repair", "plumber", "electrician", "maintenance", "urban company", "urbanclap", "ac service", "carpenter"], categoryName: "Household", subcategoryName: "Maintenance" },
 
+  // LuxeKraft Homemade Business Incoming Categories
+  // 1. Mobile Covers & Sets
+  { keywords: ["mobile cover", "phone cover", "mobile covers", "phone covers", "mobile cover set", "mobile cases"], categoryName: "Mobile Covers & Sets", subcategoryName: "Mobile Cover" },
+
+  // 2. Only Accessories
+  { keywords: ["only sling chain with ghugri, coins & metal kodi", "ghugri coins metal kodi", "sling chain coins", "coins metal kodi", "metal kodi chain", "kodi sling"], categoryName: "Only Accessories", subcategoryName: "Only Sling Chain with Ghugri, Coins & Metal Kodi" },
+  { keywords: ["only sling chain with ghugri", "sling chain with ghugri", "ghugri chain", "sling chain", "ghugri sling"], categoryName: "Only Accessories", subcategoryName: "Only Sling Chain with Ghugri" },
+  { keywords: ["only waist judo", "waist judo", "kamar judo", "judo accessory"], categoryName: "Only Accessories", subcategoryName: "Only Waist Judo" },
+  { keywords: ["macrame mobile sling", "macrame sling", "macrame phone strap", "macrame strap", "macrame cord"], categoryName: "Only Accessories", subcategoryName: "Macrame Mobile Sling" },
+
+  // 3. Handmade Jewellery, Watches & Collections
+  { keywords: ["haldi jewellery", "haldi set", "haldi flower jewellery", "haldi accessories", "haldi ornaments"], categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Haldi Jewellery" },
+  { keywords: ["mehndi jewellery", "mehndi jewellery set", "mehendi jewellery", "mehndi set"], categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Mehndi Jewellery" },
+  { keywords: ["navratri collection", "navratri jewellery", "chaniya choli jewellery", "garba jewellery", "navratri set", "navratri collection order"], categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Navratri Collection" },
+  { keywords: ["kashmiri watch", "kashmiri belt watch", "handmade watch", "kashmiri watch order"], categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Kashmiri Watch" },
+  { keywords: ["other handmade jewellery", "handmade jewellery", "handmade earrings", "handmade necklace", "handmade choker", "handmade bracelet", "custom jewellery"], categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Other Handmade Jewellery" },
+
+  // 4. Handmade Crafts & Occasions
+  { keywords: ["lippon art", "lippan art", "lippon frame", "mud mirror art", "lippan work", "lippon artwork", "lippan frame"], categoryName: "Handmade Crafts & Occasions", subcategoryName: "Lippon Art" },
+  { keywords: ["return gift", "return gifts", "wedding return gift", "bulk return gifts", "favor gifts"], categoryName: "Handmade Crafts & Occasions", subcategoryName: "Return Gift" },
+  { keywords: ["baby shower", "baby shower gifts", "godh bharai", "baby shower hamper", "baby shower props"], categoryName: "Handmade Crafts & Occasions", subcategoryName: "Baby Shower" },
+
   // Income & Marketplace Payouts (High Priority so Payouts & Book Sales match Business Sales / Homemade Business)
   { keywords: ["flipkart seller", "amazon seller", "meesho seller", "seller payout", "payout", "marketplace payout", "website orders", "website order", "book payout", "books payout", "seller payout books", "book sale", "book sales", "bridal mehndi", "mehndi booking", "mehndi client"], categoryName: "Business Sales & Payouts" },
   { keywords: ["salary", "payroll", "monthly salary", "salary credit"], categoryName: "Salary" },
@@ -94,7 +116,7 @@ export const KEYWORD_RULES: KeywordRule[] = [
   // Homemade Business
   { keywords: ["meta ads", "facebook ads", "instagram ads", "fb ads", "google ads", "ad spend", "ads", "advertisement", "advertising", "marketing", "promotion", "ad campaign"], categoryName: "Homemade Business", subcategoryName: "Advertising & Marketing" },
   { keywords: ["packaging", "packaging box", "corrugated box", "bubble wrap", "courier bag", "packing tape", "brown tape", "shipping label", "fragile tape", "packaging material", "parcel box"], categoryName: "Homemade Business", subcategoryName: "Packaging & Shipping Supplies" },
-  { keywords: ["luxekraft", "craft material", "craft raw material", "mobile cover", "phone cover", "mobile case", "blank cover", "blank case", "cover stock", "sublimation case", "acrylic cover", "resin", "epoxy"], categoryName: "Homemade Business", subcategoryName: "LuxeKraft" },
+  { keywords: ["luxekraft stock", "craft raw material", "blank cover", "blank case", "cover stock", "sublimation case", "acrylic cover", "resin", "epoxy"], categoryName: "Homemade Business", subcategoryName: "LuxeKraft" },
   { keywords: ["roshni mehndi", "mehndi art", "mehndi", "mehendi", "henna", "mehndi cone", "mehndi books", "mehndi book", "henna book", "nilgiri", "eucalyptus oil", "cajeput", "acrylic practice hand", "cone sheet", "cello cone"], categoryName: "Homemade Business", subcategoryName: "Roshni's Mehndi Art" },
   { keywords: ["satyam xerox", "yogesh bhai", "xerox", "photocopy", "printout", "printing", "book stock", "book printing", "binding", "spiral binding", "laminating"], categoryName: "Homemade Business", subcategoryName: "Printing & Xerox" },
   { keywords: ["shiprocket", "courier", "shipment", "parcel", "speed post", "shipping charge", "porter", "shree mahavir", "mahavir courier", "shree nandan", "nandan courier", "shree maruti", "maruti courier", "india post", "delhivery", "dtdc", "bluedart"], categoryName: "Homemade Business", subcategoryName: "Courier & Shipping" },

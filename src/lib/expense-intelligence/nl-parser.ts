@@ -49,7 +49,8 @@ const INCOME_TRIGGERS = [
   /\b(salary|payroll|salary credit|monthly salary)\b/i,
   /\b(seller payout|marketplace payout|payout|freelance|consulting|client payment)\b/i,
   /\b(cashback|refund|dividend|interest received|rent received)\b/i,
-  /\b(credited|received|got paid|income)\b/i,
+  /\b(credited|received|got paid|income|sale|order payment|customer payment)\b/i,
+  /\b(luxekraft|mobile cover|sling chain|ghugri|waist judo|macrame|haldi jewellery|mehndi jewellery|navratri collection|kashmiri watch|lippon|lippan|return gift|baby shower)\b/i,
 ];
 
 function resolveWeekdayDate(dayName: string): string {

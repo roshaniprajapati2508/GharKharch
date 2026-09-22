@@ -24,6 +24,7 @@ export type QueryIntent =
   | { type: "business_pnl"; period: DateRange; periodLabel: string }
   | { type: "person_spending"; personName: string; period: DateRange; periodLabel: string }
   | { type: "category_spending"; categoryName: string; period: DateRange; periodLabel: string }
+  | { type: "category_income"; categoryName: string; period: DateRange; periodLabel: string }
   | { type: "merchant_spending"; merchantName: string; period: DateRange; periodLabel: string }
   | { type: "top_category"; period: DateRange; periodLabel: string }
   | { type: "top_merchant"; period: DateRange; periodLabel: string }
@@ -168,8 +169,13 @@ export function detectIntent(question: string, ctx: IntentContext): QueryIntent 
   }
 
   const categoryName = findKnownName(question, ctx.categoryNames);
-  if (categoryName && /spend|spent|spending|cost|order|buy/.test(q)) {
-    return { type: "category_spending", categoryName, period: range, periodLabel: label };
+  if (categoryName) {
+    if (/sale|sales|sell|sold|revenue|income|earn|earned|inflow|make|made|received/.test(q)) {
+      return { type: "category_income", categoryName, period: range, periodLabel: label };
+    }
+    if (/spend|spent|spending|cost|order|buy/.test(q)) {
+      return { type: "category_spending", categoryName, period: range, periodLabel: label };
+    }
   }
 
   const itemName = findKnownName(question, ctx.frequentItemNames);

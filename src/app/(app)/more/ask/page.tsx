@@ -52,13 +52,15 @@ interface ConversationTurn {
 
 const CATEGORIZED_SUGGESTIONS = [
   {
-    category: "Homemade Business",
+    category: "Homemade Business (LuxeKraft)",
     icon: ShoppingBag,
     color: "from-indigo-500/15 to-purple-500/15 border-indigo-500/30 text-indigo-700 dark:text-indigo-300",
     questions: [
+      "What are our LuxeKraft sales this month?",
+      "How much did we make on Mobile Covers?",
       "What's our business profit this month?",
-      "How much did we spend on Meta Ads?",
-      "What are our courier & shipping expenses?",
+      "How much did we make from Navratri Collection?",
+      "How much revenue from Lippon Art & Jewellery?",
     ],
   },
   {
