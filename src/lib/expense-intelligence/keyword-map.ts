@@ -88,7 +88,18 @@ export const KEYWORD_RULES: KeywordRule[] = [
 
   // LuxeKraft Homemade Business Incoming Categories
   // 1. Mobile Covers & Sets
-  { keywords: ["mobile cover", "phone cover", "mobile covers", "phone covers", "mobile cover set", "mobile cases"], categoryName: "Mobile Covers & Sets", subcategoryName: "Mobile Cover" },
+  { keywords: ["full set 2", "full set 2: cover + waist judo + sling chain with ghugri, coins & metal kodi", "bestseller set"], categoryName: "Mobile Covers & Sets", subcategoryName: "Full Set 2: Cover + Waist Judo + Sling Chain with Ghugri, Coins & Metal Kodi" },
+  { keywords: ["full set 1", "full set 1: cover + waist judo + sling chain with ghugri"], categoryName: "Mobile Covers & Sets", subcategoryName: "Full Set 1: Cover + Waist Judo + Sling Chain with Ghugri" },
+  { keywords: ["cover + sling chain with ghugri, coins & metal kodi", "cover with coins and kodi", "cover kodi sling"], categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Sling Chain with Ghugri, Coins & Metal Kodi" },
+  { keywords: ["cover + sling chain with ghugri", "cover with ghugri sling"], categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Sling Chain with Ghugri" },
+  { keywords: ["cover + short chain + waist judo", "short chain waist judo 2 in 1"], categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Short Chain + Waist Judo" },
+  { keywords: ["cover + waist judo + jul", "cover with judo and jul"], categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Waist Judo + Jul" },
+  { keywords: ["cover + waist judo", "cover with waist judo", "cover judo"], categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Waist Judo" },
+  { keywords: ["cover + feather with jul", "feather with jul"], categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Feather With Jul" },
+  { keywords: ["cover + feather", "cover with feather"], categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Feather" },
+  { keywords: ["cover + short chain", "cover with short chain"], categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Short Chain" },
+  { keywords: ["cover + jul", "cover with jul"], categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Jul" },
+  { keywords: ["cover only", "mobile cover", "phone cover", "mobile covers", "phone covers", "mobile cover set", "mobile cases"], categoryName: "Mobile Covers & Sets", subcategoryName: "Mobile Cover" },
 
   // 2. Only Accessories
   { keywords: ["only sling chain with ghugri, coins & metal kodi", "ghugri coins metal kodi", "sling chain coins", "coins metal kodi", "metal kodi chain", "kodi sling"], categoryName: "Only Accessories", subcategoryName: "Only Sling Chain with Ghugri, Coins & Metal Kodi" },

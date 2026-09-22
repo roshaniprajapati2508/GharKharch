@@ -284,6 +284,17 @@ const DEFAULT_TOP_INCOME_CATEGORIES: CategoryWithChildren[] = [
     created_at: "",
     children: [
       { id: "seed-sub-mobile-cover", name: "Mobile Cover", icon: "smartphone", color: "blue", sort_order: 1, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-cover-jul", name: "Cover + Jul", icon: "smartphone", color: "blue", sort_order: 2, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-cover-judo", name: "Cover + Waist Judo", icon: "smartphone", color: "blue", sort_order: 3, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-cover-short-chain", name: "Cover + Short Chain", icon: "smartphone", color: "blue", sort_order: 4, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-cover-feather", name: "Cover + Feather", icon: "smartphone", color: "blue", sort_order: 5, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-cover-judo-jul", name: "Cover + Waist Judo + Jul", icon: "smartphone", color: "blue", sort_order: 6, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-cover-sling-ghugri", name: "Cover + Sling Chain with Ghugri", icon: "smartphone", color: "blue", sort_order: 7, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-cover-sling-coins-kodi", name: "Cover + Sling Chain with Ghugri, Coins & Metal Kodi", icon: "smartphone", color: "blue", sort_order: 8, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-cover-short-judo", name: "Cover + Short Chain + Waist Judo", icon: "smartphone", color: "blue", sort_order: 9, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-cover-feather-jul", name: "Cover + Feather With Jul", icon: "smartphone", color: "blue", sort_order: 10, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-full-set-1", name: "Full Set 1: Cover + Waist Judo + Sling Chain with Ghugri", icon: "smartphone", color: "blue", sort_order: 11, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
+      { id: "seed-sub-full-set-2", name: "Full Set 2: Cover + Waist Judo + Sling Chain with Ghugri, Coins & Metal Kodi", icon: "smartphone", color: "blue", sort_order: 12, parent_id: "seed-mobile-covers", household_id: null, is_active: true, type: "income", created_at: "" },
     ],
   },
   {
@@ -346,14 +357,32 @@ const DEFAULT_TOP_INCOME_CATEGORIES: CategoryWithChildren[] = [
 ];
 
 export const LUXEKRAFT_INCOME_QUICK_CHIPS = [
-  { itemName: "Mobile Cover", categoryName: "Mobile Covers & Sets", subcategoryName: "Mobile Cover", amount: 399 },
-  { itemName: "Only Sling Chain with Ghugri", categoryName: "Only Accessories", subcategoryName: "Only Sling Chain with Ghugri", amount: 299 },
-  { itemName: "Only Sling Chain with Ghugri, Coins & Metal Kodi", categoryName: "Only Accessories", subcategoryName: "Only Sling Chain with Ghugri, Coins & Metal Kodi", amount: 349 },
-  { itemName: "Only Waist Judo", categoryName: "Only Accessories", subcategoryName: "Only Waist Judo", amount: 350 },
-  { itemName: "Macrame Mobile Sling", categoryName: "Only Accessories", subcategoryName: "Macrame Mobile Sling", amount: 450 },
+  // Mobile Covers & Sets (Official Offer Prices)
+  { itemName: "Cover Only", categoryName: "Mobile Covers & Sets", subcategoryName: "Mobile Cover", amount: 999 },
+  { itemName: "Cover + Waist Judo", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Waist Judo", amount: 1299 },
+  { itemName: "Cover + Sling Chain with Ghugri", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Sling Chain with Ghugri", amount: 1499 },
+  { itemName: "Cover + Sling Chain with Ghugri, Coins & Metal Kodi", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Sling Chain with Ghugri, Coins & Metal Kodi", amount: 1599 },
+  { itemName: "Full Set 1 (Cover + Judo + Sling Ghugri)", categoryName: "Mobile Covers & Sets", subcategoryName: "Full Set 1: Cover + Waist Judo + Sling Chain with Ghugri", amount: 1899 },
+  { itemName: "Full Set 2 (Cover + Judo + Coins & Kodi)", categoryName: "Mobile Covers & Sets", subcategoryName: "Full Set 2: Cover + Waist Judo + Sling Chain with Ghugri, Coins & Metal Kodi", amount: 1999 },
+  { itemName: "Cover + Jul", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Jul", amount: 1199 },
+  { itemName: "Cover + Short Chain", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Short Chain", amount: 1399 },
+  { itemName: "Cover + Feather", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Feather", amount: 1399 },
+  { itemName: "Cover + Waist Judo + Jul", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Waist Judo + Jul", amount: 1399 },
+  { itemName: "Cover + Short Chain + Waist Judo", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Short Chain + Waist Judo", amount: 1599 },
+  { itemName: "Cover + Feather With Jul", categoryName: "Mobile Covers & Sets", subcategoryName: "Cover + Feather With Jul", amount: 1599 },
+
+  // Standalone Accessories (Official Offer Prices)
+  { itemName: "Only Sling Chain with Ghugri", categoryName: "Only Accessories", subcategoryName: "Only Sling Chain with Ghugri", amount: 599 },
+  { itemName: "Only Sling Chain with Ghugri, Coins & Metal Kodi", categoryName: "Only Accessories", subcategoryName: "Only Sling Chain with Ghugri, Coins & Metal Kodi", amount: 699 },
+  { itemName: "Only Waist Judo", categoryName: "Only Accessories", subcategoryName: "Only Waist Judo", amount: 599 },
+
+  // Custom Add-on
+  { itemName: "Custom Name on Cover", categoryName: "Mobile Covers & Sets", subcategoryName: "Mobile Cover", amount: 100 },
+
+  // Collections & Crafts
+  { itemName: "Navratri Collection", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Navratri Collection", amount: 850 },
   { itemName: "Haldi Jewellery", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Haldi Jewellery", amount: 1200 },
   { itemName: "Mehndi Jewellery", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Mehndi Jewellery", amount: 1500 },
-  { itemName: "Navratri Collection", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Navratri Collection", amount: 850 },
   { itemName: "Kashmiri Watch", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Kashmiri Watch", amount: 799 },
   { itemName: "Other Handmade Jewellery", categoryName: "Handmade Jewellery, Watches & Collections", subcategoryName: "Other Handmade Jewellery", amount: 500 },
   { itemName: "Lippon Art", categoryName: "Handmade Crafts & Occasions", subcategoryName: "Lippon Art", amount: 2500 },
