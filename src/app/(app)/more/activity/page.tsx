@@ -23,6 +23,7 @@ import {
   type ActivityEventView,
 } from "@/lib/actions/activity-events";
 import { getClientCachedData, setClientCachedData, invalidateClientCache } from "@/lib/cache/client-cache";
+import { scrollActiveIntoCenter, useCenterActiveItem } from "@/lib/scroll-utils";
 
 type FilterKey = "all" | "expenses" | "rules" | "alerts" | "partner";
 
@@ -97,6 +98,7 @@ function formatEventTime(iso: string): string {
  */
 export default function ActivityPage() {
   const [filter, setFilter] = useState<FilterKey>("all");
+  const containerRef = useCenterActiveItem<HTMLDivElement>(filter);
   const [events, setEvents] = useState<ActivityEventView[]>(() => {
     return getClientCachedData<ActivityEventView[]>("activity_events_all") ?? [];
   });
@@ -218,14 +220,21 @@ export default function ActivityPage() {
       </div>
 
       {/* Filter Chips */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={containerRef}
+        className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+      >
         {FILTERS.map((f) => (
           <button
             key={f.key}
             type="button"
-            onClick={() => setFilter(f.key)}
+            data-active={filter === f.key}
+            onClick={(e) => {
+              scrollActiveIntoCenter(e.currentTarget);
+              setFilter(f.key);
+            }}
             className={cn(
-              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
+              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer",
               filter === f.key
                 ? "border-primary bg-primary text-primary-foreground shadow-xs"
                 : "border-border text-muted-foreground hover:bg-muted"

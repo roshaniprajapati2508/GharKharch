@@ -36,6 +36,7 @@ import {
   type DateRange,
 } from "@/lib/date-utils";
 import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
+import { scrollActiveIntoCenter, useCenterActiveItem } from "@/lib/scroll-utils";
 
 const QUICK_RANGES = [
   { key: "month", label: "This Month", get: () => getMonthRange(0) },
@@ -226,6 +227,8 @@ export function SpendingIntelligenceClient() {
     ? Math.max(...data.topMerchantChanges.map((m) => m.current), 1)
     : 1;
 
+  const containerRef = useCenterActiveItem<HTMLDivElement>(rangeKey);
+
   return (
     <div className="flex flex-col gap-5 pb-16">
       {/* Header */}
@@ -245,14 +248,21 @@ export function SpendingIntelligenceClient() {
       </div>
 
       {/* Quick Range Filter Bar */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={containerRef}
+        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+      >
         {QUICK_RANGES.map((r) => (
           <button
             key={r.key}
             type="button"
-            onClick={() => handleRangeChange(r.key, r.get())}
+            data-active={rangeKey === r.key}
+            onClick={(e) => {
+              scrollActiveIntoCenter(e.currentTarget);
+              handleRangeChange(r.key, r.get());
+            }}
             className={cn(
-              "shrink-0 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition-all",
+              "shrink-0 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
               rangeKey === r.key
                 ? "border-primary bg-primary text-primary-foreground shadow-sm"
                 : "border-border/80 bg-surface text-muted-foreground hover:border-primary/50 hover:bg-muted hover:text-foreground"

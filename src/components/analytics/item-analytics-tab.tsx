@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { cn, formatINR } from "@/lib/utils";
 import { dayGroupLabel } from "@/lib/date-utils";
 import { EmptyState } from "@/components/shared/empty-state";
+import { scrollActiveIntoCenter, useCenterActiveItem } from "@/lib/scroll-utils";
 import type { Database } from "@/types/database";
 
 type ItemAnalyticsRow = Database["public"]["Functions"]["get_item_analytics"]["Returns"][number];
@@ -33,6 +34,7 @@ export function ItemAnalyticsTab({
   previousItems: ItemAnalyticsRow[];
 }) {
   const [view, setView] = useState<FrequencyView>("frequent");
+  const containerRef = useCenterActiveItem<HTMLDivElement>(view);
 
   const growing = useMemo<GrowingItem[]>(() => {
     const prevByName = new Map(previousItems.map((i) => [i.item_name, parseFloat(i.total)]));
@@ -60,15 +62,22 @@ export function ItemAnalyticsTab({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={containerRef}
+        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+      >
         {VIEWS.map((v) => (
           <button
             key={v.key}
             type="button"
-            onClick={() => setView(v.key)}
+            data-active={view === v.key}
+            onClick={(e) => {
+              scrollActiveIntoCenter(e.currentTarget);
+              setView(v.key);
+            }}
             className={cn(
-              "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              view === v.key ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground"
+              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors cursor-pointer",
+              view === v.key ? "border-primary bg-primary text-primary-foreground shadow-xs" : "border-border bg-surface text-muted-foreground hover:bg-muted"
             )}
           >
             {v.label}

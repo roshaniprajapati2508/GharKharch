@@ -20,6 +20,7 @@ import { listMerchantsForHousehold } from "@/lib/actions/merchants";
 import { useHousehold } from "@/lib/context/household-context";
 import { getTodayISO } from "@/lib/date-utils";
 import { cn, formatINR } from "@/lib/utils";
+import { scrollActiveIntoCenter, useCenterActiveItem } from "@/lib/scroll-utils";
 import type { Tables } from "@/types/database";
 
 const EXAMPLE = `Rickshaw 40
@@ -45,6 +46,7 @@ export default function ScratchpadPage() {
   const [rows, setRows] = useState<ResolvedScratchpadRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [suggestionTab, setSuggestionTab] = useState<"frequent" | "business" | "household" | "income">("frequent");
+  const suggestionTabRef = useCenterActiveItem<HTMLDivElement>(suggestionTab);
   const [suggestions, setSuggestions] = useState<{
     historySuggestions: ScratchpadSuggestion[];
     businessSuggestions: ScratchpadSuggestion[];
@@ -252,7 +254,10 @@ export default function ScratchpadPage() {
             ⚡ Quick Add Templates:
           </span>
           {/* Category Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div
+            ref={suggestionTabRef}
+            className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+          >
             {[
               { key: "frequent", label: "⚡ Most Used" },
               { key: "business", label: "💼 Homemade Business" },
@@ -262,9 +267,13 @@ export default function ScratchpadPage() {
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setSuggestionTab(tab.key as typeof suggestionTab)}
+                data-active={suggestionTab === tab.key}
+                onClick={(e) => {
+                  scrollActiveIntoCenter(e.currentTarget);
+                  setSuggestionTab(tab.key as typeof suggestionTab);
+                }}
                 className={cn(
-                  "rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all shrink-0",
+                  "rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all shrink-0 cursor-pointer",
                   suggestionTab === tab.key
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"

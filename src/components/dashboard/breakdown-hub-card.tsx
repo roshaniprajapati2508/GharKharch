@@ -6,6 +6,7 @@ import { PieChart, Store, Users, Repeat, ChevronRight } from "lucide-react";
 import { CategoryIcon } from "@/lib/icon-map";
 import { formatINR, cn } from "@/lib/utils";
 import { useHousehold } from "@/lib/context/household-context";
+import { scrollActiveIntoCenter, useCenterActiveItem } from "@/lib/scroll-utils";
 import type { Database } from "@/types/database";
 
 type CategoryBreakdownRow = Database["public"]["Functions"]["get_category_breakdown"]["Returns"][number];
@@ -30,6 +31,7 @@ export function BreakdownHubCard({
 }: BreakdownHubCardProps) {
   const { userId, partner } = useHousehold();
   const [activeTab, setActiveTab] = useState<"categories" | "merchants" | "person" | "frequent">("categories");
+  const containerRef = useCenterActiveItem<HTMLDivElement>(activeTab);
 
   const shownCategories = categories.slice(0, 5);
   const shownMerchants = merchants.slice(0, 5);
@@ -76,11 +78,18 @@ export function BreakdownHubCard({
       </div>
 
       {/* Tab Filter Pills: Horizontal touch-scroll on mobile, preventing awkward shrinking/wrapping */}
-      <div className="w-full min-w-0 max-w-full overflow-x-auto pt-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={containerRef}
+        className="w-full min-w-0 max-w-full overflow-x-auto pt-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+      >
         <div className="inline-flex items-center gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
           <button
             type="button"
-            onClick={() => setActiveTab("categories")}
+            data-active={activeTab === "categories"}
+            onClick={(e) => {
+              scrollActiveIntoCenter(e.currentTarget);
+              setActiveTab("categories");
+            }}
             className={cn(
               "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
               activeTab === "categories"
@@ -95,7 +104,11 @@ export function BreakdownHubCard({
           {merchants.length > 0 && (
             <button
               type="button"
-              onClick={() => setActiveTab("merchants")}
+              data-active={activeTab === "merchants"}
+              onClick={(e) => {
+                scrollActiveIntoCenter(e.currentTarget);
+                setActiveTab("merchants");
+              }}
               className={cn(
                 "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
                 activeTab === "merchants"
@@ -111,7 +124,11 @@ export function BreakdownHubCard({
           {hasPartner && (
             <button
               type="button"
-              onClick={() => setActiveTab("person")}
+              data-active={activeTab === "person"}
+              onClick={(e) => {
+                scrollActiveIntoCenter(e.currentTarget);
+                setActiveTab("person");
+              }}
               className={cn(
                 "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
                 activeTab === "person"
@@ -127,7 +144,11 @@ export function BreakdownHubCard({
           {itemAnalytics.length > 0 && (
             <button
               type="button"
-              onClick={() => setActiveTab("frequent")}
+              data-active={activeTab === "frequent"}
+              onClick={(e) => {
+                scrollActiveIntoCenter(e.currentTarget);
+                setActiveTab("frequent");
+              }}
               className={cn(
                 "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
                 activeTab === "frequent"

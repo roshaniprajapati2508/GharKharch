@@ -23,6 +23,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+import { scrollActiveIntoCenter, useCenterActiveItem } from "@/lib/scroll-utils";
+
 export type QuickPeriod = "today" | "7d" | "30d" | "month" | "lastMonth" | "all" | "custom";
 
 const QUICK_PERIODS: { key: QuickPeriod; label: string; resolve: () => DateRange }[] = [
@@ -43,6 +45,7 @@ export function DashboardFilters({
   onPeriodChange: (period: QuickPeriod, range: DateRange) => void;
   onPersonChange?: (person: PersonFilter) => void;
 }) {
+  const containerRef = useCenterActiveItem<HTMLDivElement>(period);
   const [customOpen, setCustomOpen] = useState(false);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -55,16 +58,23 @@ export function DashboardFilters({
 
   return (
     <div className="flex w-full min-w-0 max-w-full flex-col gap-2.5">
-      <div className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={containerRef}
+        className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+      >
         {QUICK_PERIODS.map((p) => (
           <button
             key={p.key}
             type="button"
-            onClick={() => onPeriodChange(p.key, p.resolve())}
+            data-active={period === p.key}
+            onClick={(e) => {
+              scrollActiveIntoCenter(e.currentTarget);
+              onPeriodChange(p.key, p.resolve());
+            }}
             className={cn(
-              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors cursor-pointer",
               period === p.key
-                ? "border-primary bg-primary text-primary-foreground font-semibold"
+                ? "border-primary bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "border-border bg-surface text-muted-foreground hover:bg-muted"
             )}
           >
@@ -75,10 +85,12 @@ export function DashboardFilters({
           <PopoverTrigger asChild>
             <button
               type="button"
+              data-active={period === "custom"}
+              onClick={(e) => scrollActiveIntoCenter(e.currentTarget)}
               className={cn(
-                "flex shrink-0 items-center gap-1 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                "flex shrink-0 items-center gap-1 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors cursor-pointer",
                 period === "custom"
-                  ? "border-primary bg-primary text-primary-foreground font-semibold"
+                  ? "border-primary bg-primary text-primary-foreground font-semibold shadow-xs"
                   : "border-border bg-surface text-muted-foreground hover:bg-muted"
               )}
             >

@@ -8,6 +8,7 @@ import { MiniPnlCard } from "@/components/analytics/mini-pnl-card";
 import { CashflowWidget } from "@/components/dashboard/cashflow-widget";
 import { SpendingCalendar } from "@/components/analytics/spending-calendar";
 import { cn } from "@/lib/utils";
+import { scrollActiveIntoCenter, useCenterActiveItem } from "@/lib/scroll-utils";
 import type { CashflowSnapshot, ExecutiveCashflow } from "@/lib/actions/insights";
 import type { BusinessPnl } from "@/lib/actions/analytics";
 import type { Database } from "@/types/database";
@@ -28,6 +29,7 @@ export function FinancialHubCard({
   initialBusinessPnl,
 }: FinancialHubCardProps) {
   const [activeTab, setActiveTab] = useState<"trend" | "cashflow" | "calendar">("trend");
+  const containerRef = useCenterActiveItem<HTMLDivElement>(activeTab);
 
   return (
     <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs transition-all hover:border-border">
@@ -47,12 +49,19 @@ export function FinancialHubCard({
         </div>
 
         {/* Tab Controls */}
-        <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+        <div
+          ref={containerRef}
+          className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth max-w-full"
+        >
           <button
             type="button"
-            onClick={() => setActiveTab("trend")}
+            data-active={activeTab === "trend"}
+            onClick={(e) => {
+              scrollActiveIntoCenter(e.currentTarget);
+              setActiveTab("trend");
+            }}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+              "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap",
               activeTab === "trend"
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
@@ -63,9 +72,13 @@ export function FinancialHubCard({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab("cashflow")}
+            data-active={activeTab === "cashflow"}
+            onClick={(e) => {
+              scrollActiveIntoCenter(e.currentTarget);
+              setActiveTab("cashflow");
+            }}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+              "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap",
               activeTab === "cashflow"
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
@@ -76,9 +89,13 @@ export function FinancialHubCard({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab("calendar")}
+            data-active={activeTab === "calendar"}
+            onClick={(e) => {
+              scrollActiveIntoCenter(e.currentTarget);
+              setActiveTab("calendar");
+            }}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+              "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap",
               activeTab === "calendar"
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"

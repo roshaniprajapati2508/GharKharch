@@ -140,7 +140,7 @@ export function AnalyticsPageClient({ initialData }: { initialData?: AnalyticsPa
         />
       ) : (
         <Tabs defaultValue="overview">
-          <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth">
             <TabsList className="w-max">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="categories">Categories</TabsTrigger>

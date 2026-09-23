@@ -23,6 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { scrollActiveIntoCenter } from "@/lib/scroll-utils";
 import { useHousehold } from "@/lib/context/household-context";
 import {
   getTodayRange,
@@ -259,8 +260,9 @@ export function ExpenseTopFilterBar({
         {/* Date Range Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger
+            onClick={(e) => scrollActiveIntoCenter(e.currentTarget)}
             className={cn(
-              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap",
+              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap cursor-pointer",
               filters.rangeKey || filters.start || filters.end
                 ? "border-brand-primary/50 bg-brand-primary/10 text-brand-primary font-semibold"
                 : "border-border/80 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -332,8 +334,9 @@ export function ExpenseTopFilterBar({
         {/* Category Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger
+            onClick={(e) => scrollActiveIntoCenter(e.currentTarget)}
             className={cn(
-              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap",
+              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap cursor-pointer",
               filters.categoryIds && filters.categoryIds.length > 0
                 ? "border-brand-primary/50 bg-brand-primary/10 text-brand-primary font-semibold"
                 : "border-border/80 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -379,8 +382,9 @@ export function ExpenseTopFilterBar({
         {/* Who Paid / Member Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger
+            onClick={(e) => scrollActiveIntoCenter(e.currentTarget)}
             className={cn(
-              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap",
+              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap cursor-pointer",
               filters.paidBy && filters.paidBy !== "all"
                 ? "border-brand-primary/50 bg-brand-primary/10 text-brand-primary font-semibold"
                 : "border-border/80 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -418,8 +422,9 @@ export function ExpenseTopFilterBar({
         {/* Payment Method Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger
+            onClick={(e) => scrollActiveIntoCenter(e.currentTarget)}
             className={cn(
-              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap",
+              "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap cursor-pointer",
               filters.paymentMethod
                 ? "border-brand-primary/50 bg-brand-primary/10 text-brand-primary font-semibold"
                 : "border-border/80 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"

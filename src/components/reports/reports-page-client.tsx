@@ -34,6 +34,7 @@ const PERIODS: { key: ReportPeriod; label: string; resolve: () => DateRange }[] 
 ];
 
 import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";
+import { scrollActiveIntoCenter, useCenterActiveItem } from "@/lib/scroll-utils";
 
 const REPORT_CACHE_KEY = "report_month_data";
 
@@ -41,6 +42,7 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
   const { openAdd } = useAddExpense();
   const { userId, displayName, partner } = useHousehold();
   const [period, setPeriod] = useState<ReportPeriod>("month");
+  const containerRef = useCenterActiveItem<HTMLDivElement>(period);
   const [range, setRange] = useState<DateRange>(getMonthRange(0));
   const [data, setData] = useState<ReportData | null>(() => {
     if (initialData) {
@@ -177,15 +179,22 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
         )}
       </div>
 
-      <div className="no-print -mx-4 sm:mx-0 flex gap-2 overflow-x-auto px-4 sm:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-[calc(100%+2rem)] sm:w-auto max-w-[calc(100%+2rem)] sm:max-w-none">
+      <div
+        ref={containerRef}
+        className="no-print -mx-4 sm:mx-0 flex gap-2 overflow-x-auto px-4 sm:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-[calc(100%+2rem)] sm:w-auto max-w-[calc(100%+2rem)] sm:max-w-none scroll-smooth"
+      >
         {PERIODS.map((p) => (
           <button
             key={p.key}
             type="button"
-            onClick={() => handlePeriodChange(p.key, p.resolve())}
+            data-active={period === p.key}
+            onClick={(e) => {
+              scrollActiveIntoCenter(e.currentTarget);
+              handlePeriodChange(p.key, p.resolve());
+            }}
             className={cn(
-              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
-              period === p.key ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground"
+              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors cursor-pointer",
+              period === p.key ? "border-primary bg-primary text-primary-foreground shadow-xs" : "border-border bg-surface text-muted-foreground hover:bg-muted"
             )}
           >
             {p.label}
@@ -193,10 +202,14 @@ export function ReportsPageClient({ initialData }: { initialData?: ReportData | 
         ))}
         <button
           type="button"
-          onClick={() => setCustomOpen((v) => !v)}
+          data-active={period === "custom"}
+          onClick={(e) => {
+            scrollActiveIntoCenter(e.currentTarget);
+            setCustomOpen((v) => !v);
+          }}
           className={cn(
-            "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
-            period === "custom" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground"
+            "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors cursor-pointer",
+            period === "custom" ? "border-primary bg-primary text-primary-foreground shadow-xs" : "border-border bg-surface text-muted-foreground hover:bg-muted"
           )}
         >
           Custom
