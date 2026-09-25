@@ -98,7 +98,7 @@ export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
       <div className="mobile-menu-overlay" id="mobile-more-menu" aria-modal="true" role="dialog">
         <div className="mobile-menu-sheet">
           <div className="mobile-menu-header">
-            <h3>All CRM Pages</h3>
+            <h3>GharKharch Menu</h3>
             <button
               className="mobile-menu-close"
               id="mobile-menu-close-btn"

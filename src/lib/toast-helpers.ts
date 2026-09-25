@@ -1,28 +1,103 @@
-// Thin, consistent wrappers over sonner's `toast` (spec section 61: "Create a
-// consistent global toast system"). Existing call sites using `toast.success`
-// / `toast.error` directly from "sonner" keep working - these helpers exist
-// for the newer interactions that need an icon-prefixed message, an undo
-// action, or a retry action, so that pattern stays identical everywhere it's
-// used rather than each component inventing its own toast shape.
+"use client";
 
-import { toast } from "sonner";
+import React from "react";
+import { toast as sonnerToast } from "sonner";
+import { Toast, type ToastTone } from "@/components/shared/toast";
 
-export function toastSuccess(message: string, description?: string) {
-  toast.success(message, description ? { description } : undefined);
+export interface ToastHelperOptions {
+  description?: string;
+  duration?: number;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
+  onRetry?: () => void;
 }
 
-export function toastError(message: string, opts?: { description?: string; onRetry?: () => void }) {
-  toast.error(message, {
-    description: opts?.description,
-    action: opts?.onRetry ? { label: "Retry", onClick: opts.onRetry } : undefined,
-  });
+/**
+ * Renders a luxury floating branded toast notification
+ * matching the GharKharch design system and color palette.
+ */
+export function showToast(
+  message: string,
+  tone: ToastTone = "success",
+  options?: ToastHelperOptions
+) {
+  const duration =
+    options?.duration ?? (tone === "error" ? 5000 : tone === "loading" ? Infinity : 3500);
+
+  const action = options?.action
+    ? options.action
+    : options?.onRetry
+    ? { label: "Retry", onClick: options.onRetry }
+    : undefined;
+
+  return sonnerToast.custom(
+    (id) =>
+      React.createElement(Toast, {
+        id,
+        message,
+        description: options?.description,
+        tone,
+        duration,
+        action,
+        onDismiss: () => sonnerToast.dismiss(id),
+      }),
+    { duration }
+  );
 }
 
-/** "Expense deleted [Undo]" pattern (spec section 12). `onUndo` restores the item; the toast auto-dismisses. */
-export function toastUndo(message: string, onUndo: () => void, description?: string) {
-  toast(message, {
+export function toastSuccess(
+  message: string,
+  descriptionOrOpts?: string | ToastHelperOptions
+) {
+  const opts: ToastHelperOptions =
+    typeof descriptionOrOpts === "string"
+      ? { description: descriptionOrOpts }
+      : descriptionOrOpts || {};
+  return showToast(message, "success", opts);
+}
+
+export function toastError(
+  message: string,
+  opts?: { description?: string; onRetry?: () => void; duration?: number }
+) {
+  return showToast(message, "error", opts);
+}
+
+export function toastWarning(message: string, description?: string) {
+  return showToast(message, "warning", { description });
+}
+
+export function toastInfo(message: string, description?: string) {
+  return showToast(message, "info", { description });
+}
+
+export function toastLoading(message: string, description?: string) {
+  return showToast(message, "loading", { description });
+}
+
+/**
+ * "Record updated [Undo]" pattern.
+ * Displays a branded toast with an interactive Undo button and auto-dismiss timer.
+ */
+export function toastUndo(
+  message: string,
+  onUndo: () => void,
+  description?: string
+) {
+  return showToast(message, "info", {
     description,
-    action: { label: "Undo", onClick: onUndo },
-    duration: 5000,
+    duration: 5500,
+    action: {
+      label: "Undo",
+      onClick: onUndo,
+    },
   });
 }
+
+export function toastDismiss(id?: string | number) {
+  sonnerToast.dismiss(id);
+}
+
+export { sonnerToast as toast };
