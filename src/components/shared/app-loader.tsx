@@ -1,7 +1,6 @@
 "use client";
 
 import { BrandLoaderMark } from "./brand-loader-mark";
-import { motion } from "framer-motion";
 
 export interface AppLoaderProps {
   title?: string;
@@ -25,12 +24,7 @@ export function AppLoader({
     <div className={`flex flex-col items-center justify-center gap-4 text-center p-6 ${className}`}>
       <BrandLoaderMark size={84} />
 
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.1 }}
-        className="flex flex-col items-center gap-1"
-      >
+      <div className="flex flex-col items-center gap-1 brand-loader-text">
         <h2 className="text-base font-semibold text-foreground tracking-tight">
           {title}
         </h2>
@@ -39,7 +33,7 @@ export function AppLoader({
             {subtitle}
           </p>
         )}
-      </motion.div>
+      </div>
 
       {/* Thin brand-gradient loading bar */}
       <div className="relative h-1 w-40 overflow-hidden rounded-full bg-brand-primary/10">
