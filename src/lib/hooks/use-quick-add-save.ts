@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 import { useHousehold } from "@/lib/context/household-context";
 import { useOffline } from "@/lib/context/offline-context";
 import { isOffline, isNetworkError, queueExpense } from "@/lib/offline/offline-queue";
 import { createExpense } from "@/lib/actions/expenses";
 import { getTodayISO } from "@/lib/date-utils";
+import { toastSuccess, toastError, toastInfo } from "@/lib/toast-helpers";
 import type { QuickAddChip } from "@/lib/actions/quick-add";
 import type { Tables } from "@/types/database";
 
@@ -18,13 +18,8 @@ interface UseQuickAddSaveOptions {
 }
 
 /**
- * Shared "tap a Quick Add chip, save instantly" logic (spec sections 10, 22,
- * 81): builds the same expense payload a chip has always produced, saves it
- * via the real `createExpense` action, and falls back to the offline queue
- * on a connectivity failure - exactly what the Add Expense sheet's
- * `QuickAddBar` has always done. Both the sheet and the dashboard's Daily
- * Brief card call this instead of each re-implementing the save/queue/retry
- * flow themselves.
+ * Shared "tap a Quick Add chip, save instantly" logic: builds the expense payload,
+ * saves it via the real `createExpense` action, and delivers state-driven toast feedback.
  */
 export function useQuickAddSave({ onSaved, onQueued }: UseQuickAddSaveOptions = {}) {
   const { userId } = useHousehold();
@@ -47,7 +42,7 @@ export function useQuickAddSave({ onSaved, onQueued }: UseQuickAddSaveOptions = 
     if (isOffline()) {
       await queueExpense(payload);
       refreshPendingCount();
-      toast.message(`${chip.itemName} queued - will sync when back online`);
+      toastInfo(`${chip.itemName} queued — will sync when back online`);
       onQueued?.(chip);
       return;
     }
@@ -57,20 +52,20 @@ export function useQuickAddSave({ onSaved, onQueued }: UseQuickAddSaveOptions = 
       const result = await createExpense(payload);
       setSavingChip(null);
       if (result.error !== null) {
-        toast.error(result.error, { action: { label: "Retry", onClick: () => saveChip(chip) } });
+        toastError(result.error, { onRetry: () => saveChip(chip) });
         return;
       }
       onSaved?.(result.data);
-      toast.success(`${chip.itemName} added · ₹${chip.amount}`);
+      toastSuccess(`✨ Added ${chip.itemName} · ₹${chip.amount}`);
     } catch (err) {
       setSavingChip(null);
       if (isNetworkError(err)) {
         await queueExpense(payload);
         refreshPendingCount();
-        toast.message(`${chip.itemName} queued - will sync when back online`);
+        toastInfo(`${chip.itemName} queued — will sync when back online`);
         onQueued?.(chip);
       } else {
-        toast.error("Something went wrong", { action: { label: "Retry", onClick: () => saveChip(chip) } });
+        toastError("Something went wrong while saving", { onRetry: () => saveChip(chip) });
       }
     }
   }

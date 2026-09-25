@@ -24,7 +24,6 @@ import {
   History,
   FileBarChart,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,9 +31,11 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { useHousehold } from "@/lib/context/household-context";
-import { createClient } from "@/lib/supabase/client";
 import { renameHousehold } from "@/lib/actions/household";
 import { exportHouseholdBackup } from "@/lib/actions/reports";
+import { useAuthFlow } from "@/lib/hooks/use-auth-flow";
+import { AuthTransition } from "@/components/shared/auth-transition";
+import { toastSuccess, toastError } from "@/lib/toast-helpers";
 
 function SectionLabel({ icon: Icon, children }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
   return (
@@ -58,18 +59,20 @@ function MenuLink({ href, icon: Icon, label }: { href: string; icon: React.Compo
 export default function MorePage() {
   const router = useRouter();
   const { householdName, inviteCode, displayName, avatarUrl, partner, isOwner } = useHousehold();
-  const [signingOut, setSigningOut] = useState(false);
+  const { signOutStep, authError, signOut, resetAuthFlow } = useAuthFlow();
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState(householdName);
   const [savingName, setSavingName] = useState(false);
   const [backingUp, setBackingUp] = useState(false);
+
+  const isSigningOut = signOutStep !== "idle";
 
   async function downloadBackup() {
     setBackingUp(true);
     const result = await exportHouseholdBackup();
     setBackingUp(false);
     if (result.error !== null) {
-      toast.error(result.error);
+      toastError(result.error);
       return;
     }
     const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: "application/json;charset=utf-8;" });
@@ -79,12 +82,12 @@ export default function MorePage() {
     link.download = `gharkharch-backup-${result.data.exportedAt.slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success("Backup downloaded");
+    toastSuccess("Backup downloaded successfully");
   }
 
   async function copyCode() {
     await navigator.clipboard.writeText(inviteCode);
-    toast.success("Invite code copied");
+    toastSuccess("Invite code copied to clipboard");
   }
 
   function openRename() {
@@ -102,19 +105,11 @@ export default function MorePage() {
     const result = await renameHousehold(cleanDraft);
     setSavingName(false);
     if (result.error !== null) {
-      toast.error(result.error);
+      toastError(result.error);
       return;
     }
-    toast.success("Household renamed");
+    toastSuccess("Household renamed successfully");
     setRenaming(false);
-    router.refresh();
-  }
-
-  async function signOut() {
-    setSigningOut(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.replace("/login");
     router.refresh();
   }
 
@@ -254,13 +249,21 @@ export default function MorePage() {
         <SectionLabel icon={ShieldCheck}>Security</SectionLabel>
         <Card>
           <CardContent className="pt-6">
-            <Button variant="outline" className="w-full text-destructive" onClick={signOut} loading={signingOut}>
+            <Button variant="outline" className="w-full text-destructive" onClick={signOut} loading={isSigningOut}>
               <LogOut className="h-4 w-4" />
               Sign out
             </Button>
           </CardContent>
         </Card>
       </div>
+
+      <AuthTransition
+        mode="sign-out"
+        step={signOutStep}
+        error={authError}
+        onRetry={signOut}
+        onDismiss={resetAuthFlow}
+      />
     </div>
   );
 }

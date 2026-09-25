@@ -244,6 +244,42 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* ---- GharKharch Brand Loader & Polish Animations ---- */
+@keyframes brand-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes brand-pulse-glow {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes brand-bar-sweep {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(25%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes brand-progress-shrink {
+  0% { width: 100%; }
+  100% { width: 0%; }
+}
+
+.brand-loader-spin {
+  animation: brand-spin 1.25s cubic-bezier(0.4, 0.15, 0.2, 0.9) infinite;
+}
+
+.brand-loader-glow {
+  animation: brand-pulse-glow 2.5s ease-in-out infinite;
+}
+
 /* Tailwind's preflight reset sets `button { cursor: default }` to match native
    browser button behavior - correct for a native OS-style button, but on the
    web it means every one of our buttons (filter chips, row actions, tabs,
