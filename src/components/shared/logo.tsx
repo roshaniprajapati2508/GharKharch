@@ -2,7 +2,7 @@ import Image from "next/image";
 
 /** Full approved lockup (icon + wordmark + tagline), the official logo asset - used everywhere the brand mark appears, from compact headers to auth screens and reports, instead of any hand-typed wordmark. */
 export function FullLogo({ className, width = 220 }: { className?: string; width?: number }) {
-  const height = Math.round((width * 930) / 1119);
+  const height = Math.round((width * 767) / 1024);
   return (
     <Image
       src="/brand/logo-full.png"
