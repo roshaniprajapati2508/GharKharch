@@ -49,6 +49,7 @@ export const KEYWORD_RULES: KeywordRule[] = [
   { keywords: ["internet", "wifi", "broadband", "fiber"], categoryName: "Bills & Utilities", subcategoryName: "Internet" },
   { keywords: ["recharge", "mobile bill", "phone bill"], categoryName: "Bills & Utilities", subcategoryName: "Mobile" },
   { keywords: ["dth", "tata play", "dish tv", "d2h"], categoryName: "Bills & Utilities", subcategoryName: "DTH" },
+  { keywords: ["chatgpt", "openai", "claude", "anthropic", "gemini", "cursor", "perplexity", "midjourney", "copilot"], categoryName: "Bills & Utilities", subcategoryName: "AI & Software" },
 
   // Health
   { keywords: ["medicine", "tablet", "syrup"], categoryName: "Health", subcategoryName: "Medicine" },

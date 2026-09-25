@@ -1074,9 +1074,10 @@ export function AddExpenseSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nlText, nlEntryOpen, isEditing, open, merchants, incomeCategoryTree, expenseCategoryTree, cards, upiProfiles, bankAccounts, displayName, partner, userId, automationRules, categoryTree]);
 
-  function applyNaturalLanguageEntry() {
-    if (!nlText || typeof nlText !== "string" || !nlText.trim()) return;
-    const res = resolveNaturalLanguage(nlText);
+  function applyNaturalLanguageEntry(overrideText?: string, showToast = true) {
+    const textToParse = typeof overrideText === "string" ? overrideText : nlText;
+    if (!textToParse || typeof textToParse !== "string" || !textToParse.trim()) return;
+    const res = resolveNaturalLanguage(textToParse);
     if (!res) return;
     const { parsed, matchedMerchant, matchedCategory, resolvedPaymentMethod, resolvedCardId, resolvedUpiId, resolvedBankId, resolvedPaidBy, rule, members } = res;
 
@@ -1104,13 +1105,15 @@ export function AddExpenseSheet({
     if (matchedCategory) setCategoryTouched(true);
     if (parsed.amount !== null) setAmountTouched(true);
 
-    const parts: string[] = [];
-    if (parsed.itemName) parts.push(parsed.itemName);
-    if (parsed.amount !== null) parts.push(`₹${parsed.amount}`);
-    if (matchedCategory) parts.push(matchedCategory.subcategoryName ?? matchedCategory.categoryName);
-    if (matchedMerchant) parts.push(matchedMerchant.name);
+    if (showToast) {
+      const parts: string[] = [];
+      if (parsed.itemName) parts.push(parsed.itemName);
+      if (parsed.amount !== null) parts.push(`₹${parsed.amount}`);
+      if (matchedCategory) parts.push(matchedCategory.subcategoryName ?? matchedCategory.categoryName);
+      if (matchedMerchant) parts.push(matchedMerchant.name);
 
-    toast.success(parts.length > 0 ? `Smart parsed: ${parts.join(" • ")}` : "Smart parsed - review details");
+      toast.success(parts.length > 0 ? `Smart parsed: ${parts.join(" • ")}` : "Smart parsed - review details");
+    }
   }
 
   // Apply a quick-entry string handed in from outside (Cmd+K command palette
@@ -1149,6 +1152,7 @@ export function AddExpenseSheet({
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<{ stop: () => void } | null>(null);
+  const voiceTranscriptRef = useRef<string>("");
 
   useEffect(() => {
     setVoiceSupported(
@@ -1173,6 +1177,7 @@ export function AddExpenseSheet({
     }
 
     setNlEntryOpen(true);
+    voiceTranscriptRef.current = "";
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Web Speech API has no shared TS lib typing across browsers
     const recognition: any = new (SpeechRecognitionCtor as any)();
@@ -1186,13 +1191,20 @@ export function AddExpenseSheet({
       setListening(false);
       toast.error("Didn't catch that - please try again.");
     };
-    recognition.onend = () => setListening(false);
+    recognition.onend = () => {
+      setListening(false);
+      const text = voiceTranscriptRef.current?.trim();
+      if (text) {
+        applyNaturalLanguageEntry(text, true);
+      }
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
       let transcript = "";
       for (let i = 0; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript;
       }
+      voiceTranscriptRef.current = transcript;
       setNlText(transcript);
     };
 
@@ -2701,12 +2713,19 @@ export function AddExpenseSheet({
                     <div className="relative flex-1">
                       <Input
                         autoFocus
+                        enterKeyHint="done"
                         value={nlText}
                         onChange={(e) => setNlText(e.target.value)}
+                        onBlur={() => {
+                          if (nlText.trim()) {
+                            applyNaturalLanguageEntry(nlText, false);
+                          }
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
-                            applyNaturalLanguageEntry();
+                            (e.target as HTMLElement).blur();
+                            applyNaturalLanguageEntry(nlText, true);
                           }
                         }}
                         placeholder='e.g. "Milk 60", "Zudio 1.5k card", "Petrol 500 yesterday"'
@@ -2729,7 +2748,7 @@ export function AddExpenseSheet({
                     <Button
                       type="button"
                       size="sm"
-                      onClick={applyNaturalLanguageEntry}
+                      onClick={() => applyNaturalLanguageEntry(nlText, true)}
                       disabled={!nlText || typeof nlText !== "string" || !nlText.trim()}
                       className="h-11 px-3.5 font-semibold text-xs shrink-0"
                     >
