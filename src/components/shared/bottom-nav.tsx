@@ -2,68 +2,133 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Receipt, PieChart, MoreHorizontal, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const LEFT_NAV_ITEMS = [
-  { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/expenses", label: "Kharche", icon: Receipt },
-] as const;
-
-const RIGHT_NAV_ITEMS = [
-  { href: "/analytics", label: "Analytics", icon: PieChart },
-  { href: "/more", label: "More", icon: MoreHorizontal },
-] as const;
-
-type NavItem = (typeof LEFT_NAV_ITEMS)[number] | (typeof RIGHT_NAV_ITEMS)[number];
-
-function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
-  const Icon = item.icon;
-  const active = pathname === item.href || pathname.startsWith(item.href + "/");
-  return (
-    <Link
-      href={item.href}
-      prefetch={true}
-      className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-lg py-1 text-[11px] font-medium"
-    >
-      <Icon className={cn("h-5 w-5 shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground")} />
-      <span className={cn("whitespace-nowrap transition-colors", active ? "font-semibold text-primary" : "text-muted-foreground")}>
-        {item.label}
-      </span>
-    </Link>
-  );
+interface MobileBottomItem {
+  page: string;
+  href: string;
+  label: string;
+  iconClass: string;
+  exact?: boolean;
 }
+
+const PRIMARY_MOBILE_ITEMS: MobileBottomItem[] = [
+  { page: "dashboard", href: "/dashboard", label: "Home", iconClass: "ri-home-5-line", exact: true },
+  { page: "expenses", href: "/expenses", label: "Kharche", iconClass: "ri-money-dollar-circle-line" },
+  { page: "analytics", href: "/analytics", label: "Analytics", iconClass: "ri-line-chart-line" },
+  { page: "reports", href: "/reports", label: "Reports", iconClass: "ri-file-chart-line" },
+];
+
+const MORE_MENU_ITEMS: MobileBottomItem[] = [
+  { page: "dashboard", href: "/dashboard", label: "Home", iconClass: "ri-home-5-line", exact: true },
+  { page: "expenses", href: "/expenses", label: "Kharche", iconClass: "ri-money-dollar-circle-line" },
+  { page: "analytics", href: "/analytics", label: "Analytics", iconClass: "ri-line-chart-line" },
+  { page: "reports", href: "/reports", label: "Reports", iconClass: "ri-file-chart-line" },
+  { page: "categories", href: "/more/categories", label: "Categories", iconClass: "ri-price-tag-3-line" },
+  { page: "merchants", href: "/more/merchants", label: "Merchants", iconClass: "ri-store-2-line" },
+  { page: "budgets", href: "/more/budgets", label: "Budgets", iconClass: "ri-safe-2-line" },
+  { page: "recurring", href: "/more/recurring", label: "Recurring", iconClass: "ri-repeat-line" },
+  { page: "rules", href: "/more/rules", label: "Smart Rules", iconClass: "ri-flashlight-line" },
+  { page: "scratchpad", href: "/more/scratchpad", label: "Scratchpad", iconClass: "ri-edit-line" },
+  { page: "duplicates", href: "/more/duplicates", label: "Duplicates", iconClass: "ri-git-merge-line" },
+  { page: "payment-methods", href: "/more/payment-methods", label: "Payments", iconClass: "ri-bank-card-line" },
+  { page: "activity", href: "/more/activity", label: "Activity", iconClass: "ri-history-line" },
+  { page: "ask", href: "/more/ask", label: "Ask AI", iconClass: "ri-sparkling-line" },
+  { page: "settings", href: "/more", label: "Settings", iconClass: "ri-settings-4-line", exact: true },
+];
 
 export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
   const pathname = usePathname();
 
+  const isItemActive = (item: MobileBottomItem) => {
+    if (item.exact) {
+      return pathname === item.href;
+    }
+    return pathname === item.href || pathname.startsWith(item.href + "/");
+  };
+
+  const isMoreActive =
+    pathname.startsWith("/more") ||
+    MORE_MENU_ITEMS.slice(4).some((item) => isItemActive(item));
+
   return (
-    <nav
-      className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur-md sm:hidden"
-      aria-label="Primary"
-    >
-      <div className="mx-auto grid max-w-md grid-cols-5 items-center px-2 py-1">
-        {LEFT_NAV_ITEMS.map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} />
-        ))}
+    <>
+      {/* Mobile Bottom Navigation Bar with Apple Liquid Glass styling */}
+      <div id="mobile-bottom-nav">
+        {PRIMARY_MOBILE_ITEMS.map((item) => {
+          const active = isItemActive(item);
+          return (
+            <Link
+              key={item.page}
+              href={item.href}
+              prefetch={true}
+              data-page={item.page}
+              className={cn("mb-nav-btn ni", active && "active")}
+            >
+              <i className={item.iconClass} aria-hidden="true" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
 
-        {/* Center elevated floating Add button */}
-        <div className="flex items-center justify-center">
-          <button
-            type="button"
-            onClick={onAddClick}
-            aria-label="Add expense"
-            className="flex h-12 w-12 -translate-y-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-background transition-transform active:scale-95 hover:bg-primary/90"
-          >
-            <Plus className="h-6 w-6 stroke-[2.5]" />
-          </button>
-        </div>
-
-        {RIGHT_NAV_ITEMS.map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} />
-        ))}
+        {/* Dynamic "More" Drawer Trigger */}
+        <button
+          className={cn("mb-nav-btn", isMoreActive && "active")}
+          id="mobile-more-btn"
+          type="button"
+          aria-label="More navigation options"
+        >
+          <i className="ri-apps-2-line" id="mobile-more-btn-icon" aria-hidden="true" />
+          <span>More</span>
+        </button>
       </div>
-    </nav>
+
+      {/* Mobile Floating Action Button (FAB) */}
+      <button
+        id="mobile-fab"
+        type="button"
+        onClick={onAddClick}
+        aria-label="Create New Record"
+        title="Create New Record"
+      >
+        <i className="ri-add-line" aria-hidden="true" />
+      </button>
+
+      {/* Mobile More Menu Bottom Sheet Overlay (Opens ABOVE the bottom dock) */}
+      <div className="mobile-menu-overlay" id="mobile-more-menu" aria-modal="true" role="dialog">
+        <div className="mobile-menu-sheet">
+          <div className="mobile-menu-header">
+            <h3>All CRM Pages</h3>
+            <button
+              className="mobile-menu-close"
+              id="mobile-menu-close-btn"
+              type="button"
+              aria-label="Close navigation sheet"
+            >
+              &times;
+            </button>
+          </div>
+          <div className="mobile-menu-grid">
+            {MORE_MENU_ITEMS.map((item) => {
+              const active = isItemActive(item);
+              return (
+                <Link
+                  key={`more-${item.page}`}
+                  href={item.href}
+                  prefetch={true}
+                  data-page={item.page}
+                  className={cn("mobile-menu-item ni", active && "active")}
+                >
+                  <div className="menu-icon-wrapper">
+                    <i className={item.iconClass} aria-hidden="true" />
+                  </div>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
-

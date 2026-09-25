@@ -95,7 +95,14 @@ const organizationJsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="gu-IN" className={`${inter.variable} ${plusJakartaSans.variable} ${anekGujarati.variable}`}>
+    <html lang="gu-IN" className={`${inter.variable} ${plusJakartaSans.variable} ${anekGujarati.variable}`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(localStorage.getItem('crm-sidebar-collapsed')==='1'){document.documentElement.classList.add('lk-nav-collapsed');document.documentElement.setAttribute('data-sidebar-collapsed','true');}}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <script
           type="application/ld+json"
