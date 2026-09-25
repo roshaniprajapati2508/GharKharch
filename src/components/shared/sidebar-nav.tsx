@@ -25,7 +25,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Main",
     items: [
       { page: "dashboard", href: "/dashboard", label: "Dashboard", iconClass: "ri-dashboard-line", exact: true },
-      { page: "expenses", href: "/expenses", label: "Expenses & Kharche", iconClass: "ri-money-dollar-circle-line" },
+      { page: "expenses", href: "/expenses", label: "Expenses & Kharcha", iconClass: "ri-money-dollar-circle-line" },
       { page: "analytics", href: "/analytics", label: "Analytics", iconClass: "ri-line-chart-line" },
       { page: "reports", href: "/reports", label: "Reports", iconClass: "ri-file-chart-line" },
     ],
@@ -107,10 +107,9 @@ export function SidebarNav({ onAddClick }: { onAddClick: () => void }) {
       </button>
 
       {/* Dual Logo: Full brand logo collapses into compact mark */}
-      <Link href="/dashboard" className="logo" title="GharKharch CRM Platform">
+      <Link href="/dashboard" className="logo" title="GharKharch">
         <img className="brand-logo-sidebar" src="/brand/logo-full.png" alt="GharKharch Brand Logo" />
         <img className="brand-logo-mark" src="/icons/apple-touch-icon.png" alt="Brand Mark" />
-        <span>CRM Platform</span>
       </Link>
 
       {/* User / Profile Badge */}

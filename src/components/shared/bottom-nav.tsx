@@ -14,14 +14,14 @@ interface MobileBottomItem {
 
 const PRIMARY_MOBILE_ITEMS: MobileBottomItem[] = [
   { page: "dashboard", href: "/dashboard", label: "Home", iconClass: "ri-home-5-line", exact: true },
-  { page: "expenses", href: "/expenses", label: "Kharche", iconClass: "ri-money-dollar-circle-line" },
+  { page: "expenses", href: "/expenses", label: "Kharcha", iconClass: "ri-money-dollar-circle-line" },
   { page: "analytics", href: "/analytics", label: "Analytics", iconClass: "ri-line-chart-line" },
   { page: "reports", href: "/reports", label: "Reports", iconClass: "ri-file-chart-line" },
 ];
 
 const MORE_MENU_ITEMS: MobileBottomItem[] = [
   { page: "dashboard", href: "/dashboard", label: "Home", iconClass: "ri-home-5-line", exact: true },
-  { page: "expenses", href: "/expenses", label: "Kharche", iconClass: "ri-money-dollar-circle-line" },
+  { page: "expenses", href: "/expenses", label: "Kharcha", iconClass: "ri-money-dollar-circle-line" },
   { page: "analytics", href: "/analytics", label: "Analytics", iconClass: "ri-line-chart-line" },
   { page: "reports", href: "/reports", label: "Reports", iconClass: "ri-file-chart-line" },
   { page: "categories", href: "/more/categories", label: "Categories", iconClass: "ri-price-tag-3-line" },
