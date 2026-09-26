@@ -21,9 +21,16 @@ const Drawer = ({
   shouldScaleBackground = true,
   handleOnly = true,
   autoFocus = false,
+  fixed = true,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
-  <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} handleOnly={handleOnly} autoFocus={autoFocus} {...props} />
+  <DrawerPrimitive.Root
+    shouldScaleBackground={shouldScaleBackground}
+    handleOnly={handleOnly}
+    autoFocus={autoFocus}
+    fixed={fixed}
+    {...props}
+  />
 );
 Drawer.displayName = "Drawer";
 
@@ -48,7 +55,7 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "safe-bottom fixed inset-x-0 bottom-0 z-[1200] mx-auto flex h-[94dvh] sm:h-auto max-h-[96dvh] w-full max-w-lg sm:max-w-xl flex-col rounded-t-sheet border-t border-border bg-card outline-none",
+        "safe-bottom fixed inset-x-0 bottom-0 z-[1200] mx-auto flex h-[92vh] h-[92dvh] sm:h-auto max-h-[96vh] max-h-[96dvh] w-full max-w-lg sm:max-w-xl flex-col rounded-t-sheet border-t border-border bg-card outline-none",
         className
       )}
       {...props}

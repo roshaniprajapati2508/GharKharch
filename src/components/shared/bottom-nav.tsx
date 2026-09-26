@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAddExpense } from "@/lib/context/add-expense-context";
 
 interface MobileBottomItem {
   page: string;
@@ -39,6 +40,7 @@ const MORE_MENU_ITEMS: MobileBottomItem[] = [
 
 export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
   const pathname = usePathname();
+  const { isOpen } = useAddExpense();
 
   const isItemActive = (item: MobileBottomItem) => {
     if (item.exact) {
@@ -64,6 +66,10 @@ export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
       }
     }
   }, [pathname]);
+
+  if (isOpen) {
+    return null;
+  }
 
   return (
     <>

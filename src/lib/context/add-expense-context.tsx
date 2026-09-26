@@ -16,6 +16,8 @@ interface AddExpenseContextValue {
   openShopping: () => void;
   /** Registers a callback fired after the global sheet successfully saves a new expense. Returns an unsubscribe function. */
   subscribeSaved: (fn: () => void) => () => void;
+  /** Whether the global Add Expense or Shopping Mode drawer is currently open */
+  isOpen: boolean;
 }
 
 const AddExpenseContext = createContext<AddExpenseContextValue | null>(null);
@@ -75,7 +77,7 @@ export function AddExpenseProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   return (
-    <AddExpenseContext.Provider value={{ openAdd, openShopping, subscribeSaved }}>
+    <AddExpenseContext.Provider value={{ openAdd, openShopping, subscribeSaved, isOpen: open || shoppingOpen }}>
       {children}
       <AddExpenseSheet
         open={open}

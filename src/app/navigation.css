@@ -626,11 +626,13 @@ html[data-theme="dark"] .sidebar-latest-tag,
 
   body:has([data-vaul-drawer][data-state="open"]) #mobile-fab,
   body:has([data-vaul-drawer]) #mobile-fab,
+  body:has([data-vaul-drawer-visible="true"]) #mobile-fab,
   body:has([role="dialog"][data-state="open"]) #mobile-fab,
   body[data-scroll-locked] #mobile-fab {
     pointer-events: none !important;
     opacity: 0 !important;
     visibility: hidden !important;
+    display: none !important;
     transform: translateY(100%) scale(0.8) !important;
   }
 
