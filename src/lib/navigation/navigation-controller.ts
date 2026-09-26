@@ -2,6 +2,7 @@
 
 // --- Navigation & Sidebar Controller ---
 export const MORE_ONLY_PAGES = [
+  "reports",
   "categories",
   "merchants",
   "budgets",
@@ -75,6 +76,8 @@ export function initNavigationSystem({ onNavigate }: NavigationSystemOptions = {
   }
 
   // 4. Mobile "More" Drawer Helpers
+  let isDrawerHistoryPushed = false;
+
   function setMoreBtnIcon(open: boolean) {
     const icon = document.getElementById("mobile-more-btn-icon");
     if (!icon) return;
@@ -82,18 +85,71 @@ export function initNavigationSystem({ onNavigate }: NavigationSystemOptions = {
     icon.classList.toggle("ri-apps-2-line", !open);
   }
 
-  function closeMobileDrawer(activePage?: string) {
+  function openMobileDrawer() {
+    const menu = document.getElementById("mobile-more-menu");
+    if (!menu) return;
+    menu.classList.add("open");
+    const moreBtn = document.getElementById("mobile-more-btn");
+    moreBtn?.classList.add("active");
+    setMoreBtnIcon(true);
+
+    if (!isDrawerHistoryPushed) {
+      isDrawerHistoryPushed = true;
+      try {
+        window.history.pushState({ mobileDrawerOpen: true }, "");
+      } catch (e) {
+        // Ignore pushState errors in sandboxed environments
+      }
+    }
+  }
+
+  function closeMobileDrawer(
+    activePage?: string,
+    options?: { fromPopState?: boolean; isNavigation?: boolean }
+  ) {
     const menu = document.getElementById("mobile-more-menu");
     if (menu) {
       menu.classList.remove("open");
     }
     setMoreBtnIcon(false);
-    if (!activePage || !MORE_ONLY_PAGES.includes(activePage)) {
+
+    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+    const isCurrentlyOnMorePage =
+      currentPath.startsWith("/more") ||
+      currentPath.startsWith("/reports") ||
+      (Boolean(activePage) && MORE_ONLY_PAGES.includes(activePage!));
+
+    if (!isCurrentlyOnMorePage) {
       document.getElementById("mobile-more-btn")?.classList.remove("active");
+    }
+
+    if (isDrawerHistoryPushed) {
+      isDrawerHistoryPushed = false;
+      if (options?.fromPopState) {
+        // Popstate already occurred, history was already popped by browser
+      } else if (options?.isNavigation) {
+        // User clicked a navigation link, replace state so there's no ghost drawer in history
+        try {
+          window.history.replaceState(null, "", window.location.href);
+        } catch (e) {}
+      } else {
+        // Closed manually via back button, close button, backdrop, Escape, etc.
+        try {
+          window.history.back();
+        } catch (e) {}
+      }
     }
   }
 
-  // 5. Global Delegated Click Handler
+  // 5. Browser Back Navigation Handler (Hardware/Browser Back Button & Swipe Back)
+  function handlePopState() {
+    const menu = document.getElementById("mobile-more-menu");
+    if (menu?.classList.contains("open") || isDrawerHistoryPushed) {
+      closeMobileDrawer(undefined, { fromPopState: true });
+    }
+  }
+
+  // 6. Global Delegated Click Handler
   function handleClick(event: MouseEvent) {
     const target = event.target as HTMLElement | null;
     if (!target) return;
@@ -104,20 +160,24 @@ export function initNavigationSystem({ onNavigate }: NavigationSystemOptions = {
       return;
     }
 
-    // Mobile More Button Click
+    // Mobile More Button Click: toggles the drawer
     const moreBtn = target.closest("#mobile-more-btn");
     if (moreBtn) {
       const menu = document.getElementById("mobile-more-menu");
-      const isOpen = menu?.classList.toggle("open") ?? false;
-      moreBtn.classList.toggle("active", isOpen);
-      setMoreBtnIcon(isOpen);
+      const isOpen = menu?.classList.contains("open") ?? false;
+      if (isOpen) {
+        closeMobileDrawer();
+      } else {
+        openMobileDrawer();
+      }
       return;
     }
 
-    // Close Mobile Drawer on Close Button or Backdrop Click
+    // Close Mobile Drawer on Back Button, Close Button, or Backdrop Click
+    const backBtn = target.closest("#mobile-menu-back-btn");
     const closeBtn = target.closest("#mobile-menu-close-btn");
     const overlay = target.closest(".mobile-menu-overlay");
-    if (closeBtn || (overlay && !target.closest(".mobile-menu-sheet"))) {
+    if (backBtn || closeBtn || (overlay && !target.closest(".mobile-menu-sheet"))) {
       closeMobileDrawer();
       return;
     }
@@ -127,7 +187,7 @@ export function initNavigationSystem({ onNavigate }: NavigationSystemOptions = {
     if (pageButton) {
       const page = pageButton.dataset.page;
       if (page) {
-        closeMobileDrawer(page);
+        closeMobileDrawer(page, { isNavigation: true });
 
         // Sync active classes across sidebar, bottom nav, and drawer
         document.querySelectorAll(".ni").forEach((btn) => btn.classList.remove("active"));
@@ -143,10 +203,16 @@ export function initNavigationSystem({ onNavigate }: NavigationSystemOptions = {
           onNavigate(page);
         }
       }
+      return;
+    }
+
+    // Defensive: any link inside drawer should close the drawer with clean history
+    if (target.closest(".mobile-menu-sheet a")) {
+      closeMobileDrawer(undefined, { isNavigation: true });
     }
   }
 
-  // 6. Keyboard Shortcut: Ctrl+\ or Cmd+\ & Escape
+  // 7. Keyboard Shortcut: Ctrl+\ or Cmd+\ & Escape
   function handleKeyDown(event: KeyboardEvent) {
     if ((event.ctrlKey || event.metaKey) && event.key === "\\") {
       event.preventDefault();
@@ -157,7 +223,7 @@ export function initNavigationSystem({ onNavigate }: NavigationSystemOptions = {
     }
   }
 
-  // 7. Window Resize Listener
+  // 8. Window Resize Listener
   function handleResize() {
     syncSidebarCollapseState();
   }
@@ -165,10 +231,12 @@ export function initNavigationSystem({ onNavigate }: NavigationSystemOptions = {
   document.addEventListener("click", handleClick);
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("resize", handleResize, { passive: true });
+  window.addEventListener("popstate", handlePopState);
 
   return () => {
     document.removeEventListener("click", handleClick);
     window.removeEventListener("keydown", handleKeyDown);
     window.removeEventListener("resize", handleResize);
+    window.removeEventListener("popstate", handlePopState);
   };
 }

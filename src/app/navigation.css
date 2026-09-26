@@ -570,13 +570,14 @@ html[data-theme="dark"] .sidebar-latest-tag,
 
   /* Docked Liquid Glass Mobile Bottom Nav */
   #mobile-bottom-nav {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
     height: calc(var(--mobile-dock-height) + env(safe-area-inset-bottom, 0px));
-    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(245, 250, 248, 0.75) 100%);
     backdrop-filter: blur(28px) saturate(200%);
     -webkit-backdrop-filter: blur(28px) saturate(200%);
@@ -584,12 +585,13 @@ html[data-theme="dark"] .sidebar-latest-tag,
     border-bottom: none;
     border-radius: 22px 22px 0 0;
     z-index: 1001; /* HIGHER than overlay so dock stays fully lit and interactive */
-    justify-content: space-around;
     align-items: center;
-    gap: 4px;
+    justify-items: center;
+    gap: 6px;
     box-shadow:
       0 -8px 26px rgba(8, 127, 110, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, visibility 0.2s ease;
   }
 
   /* Specular Sheen (Curved meniscus glass refraction) */
@@ -611,11 +613,32 @@ html[data-theme="dark"] .sidebar-latest-tag,
     box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 
-  /* Navigation Buttons */
+  /* Auto-hide Bottom Dock and FAB when any Drawer or Dialog is open */
+  body:has([data-vaul-drawer][data-state="open"]) #mobile-bottom-nav,
+  body:has([data-vaul-drawer]) #mobile-bottom-nav,
+  body:has([role="dialog"][data-state="open"]) #mobile-bottom-nav,
+  body[data-scroll-locked] #mobile-bottom-nav {
+    pointer-events: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: translateY(100%) !important;
+  }
+
+  body:has([data-vaul-drawer][data-state="open"]) #mobile-fab,
+  body:has([data-vaul-drawer]) #mobile-fab,
+  body:has([role="dialog"][data-state="open"]) #mobile-fab,
+  body[data-scroll-locked] #mobile-fab {
+    pointer-events: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: translateY(100%) scale(0.8) !important;
+  }
+
+  /* Navigation Buttons - 4 Balanced Equal-Width Items */
   .mb-nav-btn {
     display: flex;
-    flex: 1 1 0;
-    max-width: 76px;
+    width: 100%;
+    max-width: 86px;
     height: 52px;
     flex-direction: column;
     align-items: center;
@@ -756,11 +779,35 @@ html[data-theme="dark"] .sidebar-latest-tag,
     border-bottom: 1px solid var(--nav-border);
     padding-bottom: 12px;
   }
+  .mobile-menu-header-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
   .mobile-menu-header h3 {
     font-size: 17px;
     font-weight: 700;
     color: var(--nav-text-active);
     margin: 0;
+  }
+  .mobile-menu-back-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--nav-text-muted);
+    line-height: 1;
+    padding: 4px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .mobile-menu-back-btn:hover,
+  .mobile-menu-back-btn:active {
+    background-color: var(--nav-item-hover-bg);
+    color: var(--nav-text-active);
   }
   .mobile-menu-close {
     background: none;
@@ -770,6 +817,16 @@ html[data-theme="dark"] .sidebar-latest-tag,
     color: var(--nav-text-muted);
     line-height: 1;
     padding: 0 4px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .mobile-menu-close:hover,
+  .mobile-menu-close:active {
+    background-color: var(--nav-item-hover-bg);
+    color: var(--nav-text-active);
   }
 
   .mobile-menu-grid {

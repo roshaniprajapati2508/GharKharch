@@ -183,7 +183,7 @@ const COMMON_SHOPPING_MERCHANT_NAMES = [
 ];
 
 const COMMON_INCOME_SOURCE_NAMES = [
-  "LuxeKraft",
+  "LuxeKraft.Shop",
   "Website Orders",
   "Amazon Seller Payout",
   "Instagram DM",
@@ -1758,7 +1758,7 @@ export function AddExpenseSheet({
     );
 
     const luxeKraftMerchant = merchants.find(
-      (m) => m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft"
+      (m) => m.name.toLowerCase() === "luxekraft.shop" || m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft"
     ) ?? null;
 
     setForm((f) => ({
@@ -1801,7 +1801,7 @@ export function AddExpenseSheet({
       : null;
 
     const luxeMerchant =
-      merchants.find((m) => m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft") ??
+      merchants.find((m) => m.name.toLowerCase() === "luxekraft.shop" || m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft") ??
       tripMerchant;
 
     if (!tripMerchant && luxeMerchant) {
@@ -2569,7 +2569,7 @@ export function AddExpenseSheet({
                     setEntryMode("shopping");
                     setMultiEntryType(form.entryType);
                     if (form.entryType === "income" && !tripMerchant) {
-                      const luxe = merchants.find((m) => m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft");
+                      const luxe = merchants.find((m) => m.name.toLowerCase() === "luxekraft.shop" || m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft");
                       if (luxe) setTripMerchant(luxe);
                     }
                   }}
@@ -3236,7 +3236,7 @@ export function AddExpenseSheet({
                     setMultiEntryType("income");
                     setForm((f) => ({ ...f, entryType: "income" }));
                     if (!tripMerchant) {
-                      const luxe = merchants.find((m) => m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft");
+                      const luxe = merchants.find((m) => m.name.toLowerCase() === "luxekraft.shop" || m.name.toLowerCase() === "luxekraft" || m.normalized_name === "luxekraft");
                       if (luxe) setTripMerchant(luxe);
                     }
                   }}
@@ -3963,7 +3963,7 @@ export function AddExpenseSheet({
           )}
 
           {/* Footer Action */}
-          <DrawerFooter className="px-5 py-3.5 border-t border-border/40 bg-card">
+          <DrawerFooter className="px-5 pt-3.5 pb-[calc(0.875rem+env(safe-area-inset-bottom,0px))] border-t border-border/40 bg-card">
             {entryMode === "single" ? (
               isNewExpense ? (
                 <div className="grid grid-cols-2 gap-2 w-full">

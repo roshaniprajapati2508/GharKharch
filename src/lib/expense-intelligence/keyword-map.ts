@@ -18,17 +18,21 @@ export interface KeywordRule {
 
 export const KEYWORD_RULES: KeywordRule[] = [
   // Food & Grocery
-  { keywords: ["milk", "doodh"], categoryName: "Food & Grocery", subcategoryName: "Milk" },
-  { keywords: ["curd", "dahi", "yogurt"], categoryName: "Food & Grocery", subcategoryName: "Curd" },
-  { keywords: ["buttermilk", "chaas", "chhaas"], categoryName: "Food & Grocery", subcategoryName: "Buttermilk" },
+  { keywords: ["idli", "dosa", "dhosa", "idli sambhar", "sambhar", "uttapam", "uttapa", "medu vada", "mysore masala", "jinny dosa", "cheese dosa", "south indian", "paper dosa", "rava dosa"], categoryName: "Food & Grocery", subcategoryName: "South Indian" },
+  { keywords: ["pav bhaji", "pavbhaji", "pao bhaji", "pau bhaji", "pulav", "pulao", "tawa pulav", "masala pav", "manchurian", "manchuriyan", "chinese bhel", "fried rice", "hakka noodles", "noodles", "chowmein", "dabeli", "vadapav", "vada pav", "pani puri", "panipuri", "sev puri", "dahi puri", "ragda patties", "sev usal", "frankie", "sandwich", "street food", "fast food"], categoryName: "Food & Grocery", subcategoryName: "Street Food & Fast Food" },
+  { keywords: ["paua", "bataka paua", "pauva", "poha", "cholafali", "chora fali", "khaman", "dhokla", "gathiya", "fafda", "locho", "dalvada", "bhajiya", "methi gota", "khandvi", "patra", "khakhra", "thepla", "muthia", "sev khamani", "amiri khaman", "farsan", "nasto", "nashto", "samosa", "kachori", "lilva kachori", "mithai", "mohanthal", "peda"], categoryName: "Food & Grocery", subcategoryName: "Nasto & Farsan" },
+  { keywords: ["milk", "doodh", "dudh", "amul milk", "amul gold", "amul taaza", "amul shakti"], categoryName: "Food & Grocery", subcategoryName: "Milk" },
+  { keywords: ["curd", "dahi", "yogurt", "amul dahi", "masti dahi"], categoryName: "Food & Grocery", subcategoryName: "Curd" },
+  { keywords: ["buttermilk", "chas", "chaas", "chhaas", "masala chas"], categoryName: "Food & Grocery", subcategoryName: "Buttermilk" },
   { keywords: ["paneer", "cottage cheese"], categoryName: "Food & Grocery", subcategoryName: "Paneer" },
-  { keywords: ["vegetable", "veggies", "sabzi", "bhaji", "shaak", "shak"], categoryName: "Food & Grocery", subcategoryName: "Vegetables" },
+  { keywords: ["dairy", "amul parlour", "makhan", "butter", "amul butter", "shrikhand", "matho", "basundi", "lassi", "malai", "ghee"], categoryName: "Food & Grocery", subcategoryName: "Dairy" },
+  { keywords: ["vegetable", "veggies", "sabzi", "sabji", "bhaji", "shaak", "shak", "sakbhaji", "shakbhaji", "bataka", "batata", "dungri", "kanda", "tameta", "tomato", "potato", "onion", "bhinda", "ringna", "dudhi", "karela", "galka", "turiya", "tindora", "guvar", "kothmir", "marcha", "adu", "lasan", "limbu", "palak", "methi", "flower", "kobi", "vatana", "tuver", "papdi", "mandi"], categoryName: "Food & Grocery", subcategoryName: "Vegetables" },
   { keywords: ["fruit", "banana", "apple", "mango", "orange"], categoryName: "Food & Grocery", subcategoryName: "Fruits" },
   { keywords: ["bread", "bun", "bakery", "pav", "khari", "toast"], categoryName: "Food & Grocery", subcategoryName: "Bakery" },
-  { keywords: ["snack", "snacks", "chips", "biscuit", "namkeen", "farsan", "nasto", "nashto", "khaman", "dhokla", "jalebi", "samosa", "kachori", "gathiya", "locho", "bhajiya", "sev", "chaat", "bhel"], categoryName: "Food & Grocery", subcategoryName: "Snacks" },
+  { keywords: ["snack", "snacks", "chips", "biscuit", "namkeen", "sev", "chaat", "bhel"], categoryName: "Food & Grocery", subcategoryName: "Snacks" },
   { keywords: ["tea", "chai", "coffee", "juice", "cold drink", "soda", "sharbat"], categoryName: "Food & Grocery", subcategoryName: "Beverages" },
   { keywords: ["chicken", "mutton", "fish", "egg", "meat"], categoryName: "Food & Grocery", subcategoryName: "Meat" },
-  { keywords: ["grocery", "groceries", "kirana", "kariyana", "ration", "khiru", "batter", "dmart", "d-mart", "local vendor", "local shop"], categoryName: "Food & Grocery", subcategoryName: "Grocery" },
+  { keywords: ["grocery", "groceries", "kirana", "kariyana", "ration", "khiru", "batter", "idli khiru", "dhokla khiru", "dmart", "d-mart", "local vendor", "local shop"], categoryName: "Food & Grocery", subcategoryName: "Grocery" },
   { keywords: ["swiggy", "zomato", "food delivery", "online food", "dominos", "domino's", "domino", "mcdonalds", "mcdonald's", "mcd", "burger king", "la pinoz", "la pino'z", "lapinoz", "la milano", "la milano pizzeria", "lamilano", "pizza hut", "subway", "kfc", "eatclub", "box8", "mojo pizza", "faasos", "behrouz", "ovenstory", "pizza", "burger", "garlic bread", "french fries"], categoryName: "Food & Grocery", subcategoryName: "Food Delivery" },
 
   // Transport

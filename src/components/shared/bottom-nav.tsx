@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,6 @@ const PRIMARY_MOBILE_ITEMS: MobileBottomItem[] = [
   { page: "dashboard", href: "/dashboard", label: "Home", iconClass: "ri-home-5-line", exact: true },
   { page: "expenses", href: "/expenses", label: "Kharcha", iconClass: "ri-money-dollar-circle-line" },
   { page: "analytics", href: "/analytics", label: "Analytics", iconClass: "ri-line-chart-line" },
-  { page: "reports", href: "/reports", label: "Reports", iconClass: "ri-file-chart-line" },
 ];
 
 const MORE_MENU_ITEMS: MobileBottomItem[] = [
@@ -49,7 +49,21 @@ export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
 
   const isMoreActive =
     pathname.startsWith("/more") ||
-    MORE_MENU_ITEMS.slice(4).some((item) => isItemActive(item));
+    pathname.startsWith("/reports") ||
+    MORE_MENU_ITEMS.slice(3).some((item) => isItemActive(item));
+
+  // Automatically close drawer when pathname changes
+  useEffect(() => {
+    const menu = document.getElementById("mobile-more-menu");
+    if (menu?.classList.contains("open")) {
+      menu.classList.remove("open");
+      const icon = document.getElementById("mobile-more-btn-icon");
+      if (icon) {
+        icon.classList.remove("ri-close-line");
+        icon.classList.add("ri-apps-2-line");
+      }
+    }
+  }, [pathname]);
 
   return (
     <>
@@ -98,12 +112,24 @@ export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
       <div className="mobile-menu-overlay" id="mobile-more-menu" aria-modal="true" role="dialog">
         <div className="mobile-menu-sheet">
           <div className="mobile-menu-header">
-            <h3>GharKharch Menu</h3>
+            <div className="mobile-menu-header-title-group">
+              <button
+                className="mobile-menu-back-btn"
+                id="mobile-menu-back-btn"
+                type="button"
+                aria-label="Back and close menu"
+                title="Back"
+              >
+                <i className="ri-arrow-left-line" aria-hidden="true" />
+              </button>
+              <h3>GharKharch Menu</h3>
+            </div>
             <button
               className="mobile-menu-close"
               id="mobile-menu-close-btn"
               type="button"
               aria-label="Close navigation sheet"
+              title="Close"
             >
               &times;
             </button>
