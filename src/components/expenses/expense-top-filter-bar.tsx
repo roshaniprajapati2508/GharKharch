@@ -75,7 +75,9 @@ export function ExpenseTopFilterBar({
 
   const activeCount = Object.keys(filters).filter((k) => {
     const val = filters[k as keyof AppliedFilters];
-    if (k === "rangeKey" && val === "all") return false;
+    if (k === "rangeKey" && (val === "month" || !val)) return false;
+    if (k === "start" && filters.rangeKey === "month") return false;
+    if (k === "end" && filters.rangeKey === "month") return false;
     if (k === "entryType" && (val === "all" || !val)) return false;
     if (k === "paidBy" && (val === "all" || !val)) return false;
     if (Array.isArray(val) && val.length === 0) return false;
@@ -97,7 +99,7 @@ export function ExpenseTopFilterBar({
     if (!found) return;
     const next = { ...filters };
     if (rangeKey === "all") {
-      delete next.rangeKey;
+      next.rangeKey = "all";
       delete next.start;
       delete next.end;
     } else {
@@ -122,16 +124,24 @@ export function ExpenseTopFilterBar({
   }
 
   function clearAllFilters() {
-    onApply({});
+    const monthDates = getMonthRange(0);
+    onApply({
+      rangeKey: "month",
+      start: monthDates.start,
+      end: monthDates.end,
+    });
   }
 
   // Label for date range button
   const dateRangeLabel = (() => {
-    if (filters.rangeKey === "custom" || (filters.start && filters.end)) {
+    if (filters.rangeKey === "custom" || (filters.start && filters.end && filters.rangeKey !== "month")) {
       return `${filters.start ?? "Start"} → ${filters.end ?? "End"}`;
     }
+    if (filters.rangeKey === "all") {
+      return "All time";
+    }
     const match = QUICK_RANGES.find((r) => r.key === filters.rangeKey);
-    return match ? match.label : "Period";
+    return match ? match.label : "This month";
   })();
 
   // Label for category button
@@ -263,12 +273,12 @@ export function ExpenseTopFilterBar({
             onClick={(e) => scrollActiveIntoCenter(e.currentTarget)}
             className={cn(
               "inline-flex shrink-0 h-7 sm:h-7.5 items-center gap-1 rounded-full border px-2.5 text-[11px] sm:text-xs font-medium transition-colors focus-visible:outline-none whitespace-nowrap cursor-pointer",
-              filters.rangeKey || filters.start || filters.end
+              filters.rangeKey && filters.rangeKey !== "month"
                 ? "border-brand-primary/50 bg-brand-primary/10 text-brand-primary font-semibold"
-                : "border-border/80 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                : "border-border/80 bg-background text-foreground hover:bg-muted/60"
             )}
           >
-            <CalendarIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            <CalendarIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-brand-primary" />
             <span>{dateRangeLabel}</span>
             <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-60" />
           </DropdownMenuTrigger>
@@ -279,9 +289,9 @@ export function ExpenseTopFilterBar({
                 key={r.key}
                 onClick={() => handleRangeSelect(r.key)}
                 className={cn(
-                  "text-xs",
-                  (filters.rangeKey === r.key || (!filters.rangeKey && r.key === "all")) &&
-                    "font-semibold text-brand-primary"
+                  "text-xs cursor-pointer",
+                  (filters.rangeKey === r.key || (!filters.rangeKey && r.key === "month")) &&
+                    "font-semibold text-brand-primary bg-brand-primary/10"
                 )}
               >
                 {r.label}

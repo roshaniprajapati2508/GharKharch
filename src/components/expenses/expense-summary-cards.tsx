@@ -33,9 +33,8 @@ export function ExpenseSummaryCards({ kpi, expenses, filters }: ExpenseSummaryCa
 
   // Check if any filter is actively applied
   const hasActiveFilters = Boolean(
-    filters.rangeKey ||
-    filters.start ||
-    filters.end ||
+    (filters.rangeKey && filters.rangeKey !== "month") ||
+    (filters.start && filters.rangeKey !== "month") ||
     (filters.categoryIds && filters.categoryIds.length > 0) ||
     (filters.merchantIds && filters.merchantIds.length > 0) ||
     (filters.paidBy && filters.paidBy !== "all") ||
@@ -205,7 +204,7 @@ export function ExpenseSummaryCards({ kpi, expenses, filters }: ExpenseSummaryCa
                 )}
               >
                 <Filter className="h-3 w-3 text-brand-primary" />
-                Filtered Slice ({filteredMetrics.totalCount})
+                {filters.rangeKey === "all" ? "All Time" : "Filtered Slice"} ({filteredMetrics.totalCount})
               </button>
               <button
                 type="button"

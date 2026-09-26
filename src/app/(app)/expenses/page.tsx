@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { getExpenses, getExpensesKpiSummary } from "@/lib/actions/expenses";
 import { listCategoriesForHousehold } from "@/lib/actions/categories";
 import { ExpensesPageClient } from "@/components/expenses/expenses-page-client";
+import { getMonthRange } from "@/lib/date-utils";
 
 import type { Metadata } from "next";
 
@@ -11,8 +12,9 @@ export const metadata: Metadata = {
 };
 
 export default async function ExpensesPage() {
+  const monthRange = getMonthRange(0);
   const [expensesResult, categoriesResult, kpiResult] = await Promise.all([
-    getExpenses(),
+    getExpenses({ start: monthRange.start, end: monthRange.end, limit: 50, offset: 0 }),
     listCategoriesForHousehold(),
     getExpensesKpiSummary(),
   ]);

@@ -564,6 +564,7 @@ export interface ExpenseFilters {
   entryType?: "all" | "expense" | "income";
   sort?: "newest" | "oldest" | "highest" | "lowest";
   limit?: number;
+  offset?: number;
 }
 
 /** Enriched shape the UI actually renders - joined in JS, never via PostgREST embeds (see database.ts header). */
@@ -609,7 +610,13 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
         query = query.order("expense_date", { ascending: false }).order("created_at", { ascending: false });
     }
 
-    query = query.limit(filters.limit ?? 30);
+    if (typeof filters.offset === "number" && typeof filters.limit === "number") {
+      query = query.range(filters.offset, filters.offset + filters.limit - 1);
+    } else if (typeof filters.limit === "number") {
+      query = query.limit(filters.limit);
+    } else {
+      query = query.limit(50);
+    }
 
     const { data: expenses, error } = await query;
     if (error) throw new ActionError(error.message);

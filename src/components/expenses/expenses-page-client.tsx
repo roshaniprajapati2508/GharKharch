@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { SlidersHorizontal, X, ListChecks } from "lucide-react";
+import { SlidersHorizontal, X, ListChecks, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ExpenseList } from "@/components/expenses/expense-list";
@@ -32,7 +32,10 @@ import { formatINR } from "@/lib/utils";
 import { toastUndo } from "@/lib/toast-helpers";
 import { useOnExpenseSaved } from "@/lib/context/add-expense-context";
 import { getClientCachedData, setClientCachedData } from "@/lib/cache/client-cache";
+import { getMonthRange } from "@/lib/date-utils";
 import type { Tables } from "@/types/database";
+
+const PAGE_SIZE = 50;
 
 export function ExpensesPageClient({
   initialExpenses,
@@ -48,7 +51,16 @@ export function ExpensesPageClient({
 
   const [expenses, setExpenses] = useState(initialExpenses);
   const [kpi, setKpi] = useState<ExpensesKpiSummary | null>(initialKpi ?? null);
-  const [filters, setFilters] = useState<AppliedFilters>({});
+  const [filters, setFilters] = useState<AppliedFilters>(() => {
+    const monthRange = getMonthRange(0);
+    return {
+      rangeKey: "month",
+      start: monthRange.start,
+      end: monthRange.end,
+    };
+  });
+  const [hasMore, setHasMore] = useState(initialExpenses.length >= PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(searchParams.get("focus") === "search");
   const [editTarget, setEditTarget] = useState<EnrichedExpense | null>(null);
@@ -100,7 +112,7 @@ export function ExpensesPageClient({
 
   const refetch = useCallback(async (nextFilters: AppliedFilters) => {
     setLoading(true);
-    const result = await getExpenses(nextFilters);
+    const result = await getExpenses({ ...nextFilters, limit: PAGE_SIZE, offset: 0 });
     setLoading(false);
     if (result.error !== null) {
       toast.error(result.error);
@@ -110,7 +122,32 @@ export function ExpensesPageClient({
       poolRef.set(exp.id, exp);
     }
     setExpenses(result.data);
+    setHasMore(result.data.length >= PAGE_SIZE);
   }, [poolRef]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const result = await getExpenses({
+      ...filters,
+      limit: PAGE_SIZE,
+      offset: expenses.length,
+    });
+    setLoadingMore(false);
+    if (result.error !== null) {
+      toast.error(result.error);
+      return;
+    }
+    if (result.data.length === 0) {
+      setHasMore(false);
+      return;
+    }
+    for (const exp of result.data) {
+      poolRef.set(exp.id, exp);
+    }
+    setExpenses((prev) => [...prev, ...result.data]);
+    setHasMore(result.data.length >= PAGE_SIZE);
+  }, [loadingMore, hasMore, filters, expenses.length, poolRef]);
 
   const refreshKpi = useCallback(() => {
     getExpensesKpiSummary().then((res) => {
@@ -138,8 +175,10 @@ export function ExpensesPageClient({
     const next = { ...filters };
     delete next[key];
     if (key === "rangeKey") {
-      delete next.start;
-      delete next.end;
+      const monthRange = getMonthRange(0);
+      next.rangeKey = "month";
+      next.start = monthRange.start;
+      next.end = monthRange.end;
     }
     applyFilters(next);
   }
@@ -324,10 +363,10 @@ export function ExpensesPageClient({
   }
 
   const activeChips: { key: keyof AppliedFilters; label: string }[] = [];
-  if (filters.rangeKey && filters.rangeKey !== "custom") {
-    const rangeLabels: Record<string, string> = { today: "Today", "7d": "7D", "30d": "30D", month: "This Month", lastMonth: "Last Month" };
+  if (filters.rangeKey && filters.rangeKey !== "month" && filters.rangeKey !== "custom") {
+    const rangeLabels: Record<string, string> = { all: "All Time", today: "Today", "7d": "7D", "30d": "30D", lastMonth: "Last Month" };
     activeChips.push({ key: "rangeKey", label: rangeLabels[filters.rangeKey] ?? filters.rangeKey });
-  } else if (filters.start || filters.end) {
+  } else if (filters.rangeKey !== "month" && (filters.start || filters.end)) {
     activeChips.push({ key: "rangeKey", label: "Custom range" });
   }
   if (filters.categoryIds?.length) {
@@ -404,6 +443,35 @@ export function ExpensesPageClient({
               paymentMethods={paymentMethods}
               onPaidByChange={handlePaidByChange}
             />
+
+            {hasMore && (
+              <div className="flex flex-col items-center justify-center pt-4 pb-8">
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="h-10 px-6 rounded-xl border-brand-primary/30 text-brand-primary hover:bg-brand-mint/50 font-semibold gap-2 shadow-2xs transition-all active:scale-[0.98]"
+                >
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-brand-primary" />
+                      <span>વધુ લોડ થઈ રહ્યું છે… (Loading more…)</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4 text-brand-primary" />
+                      <span>વધુ જુઓ · Load more ({expenses.length} loaded)</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+            {!hasMore && expenses.length >= PAGE_SIZE && (
+              <p className="text-center text-xs text-muted-foreground pt-4 pb-8">
+                બધા ખર્ચા લોડ થઈ ગયા છે · All {expenses.length} expenses loaded
+              </p>
+            )}
           </div>
         )}
       </div>
