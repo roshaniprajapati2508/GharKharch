@@ -658,6 +658,13 @@ export function AddExpenseSheet({
       if (merch.data) {
         setMerchants(merch.data);
         setClientCachedData("merchants_list", merch.data);
+        const incomingMerchId = (editExpense ?? duplicateFrom)?.merchant_id;
+        if (incomingMerchId) {
+          const found = merch.data.find((m) => m.id === incomingMerchId);
+          if (found) {
+            setForm((f) => (f.merchant ? f : { ...f, merchant: found }));
+          }
+        }
       }
     }).catch(() => {
       setMerchantsLoading(false);
@@ -715,15 +722,26 @@ export function AddExpenseSheet({
     const source = editExpense ?? duplicateFrom;
     if (source) {
       const cat = categoryFlat.find((c) => c.id === source.category_id);
+      const matchedMerch = source.merchant_id
+        ? (merchants.find((m) => m.id === source.merchant_id) || (source.merchant_name ? ({
+            id: source.merchant_id,
+            name: source.merchant_name,
+            household_id: source.household_id,
+            subcategory_id: source.subcategory_id ?? null,
+            created_at: source.created_at,
+            deleted_at: null,
+          } as unknown as Tables<"merchants">) : null))
+        : null;
+
       setForm({
         amount: source.amount,
         itemName: source.item_name,
-        merchant: null,
+        merchant: matchedMerch,
         category: {
           categoryId: source.category_id,
           subcategoryId: source.subcategory_id,
           categoryName: cat?.name ?? source.category_name ?? "Category",
-          subcategoryName: null,
+          subcategoryName: source.subcategory_name ?? null,
         },
         paidBy: source.paid_by,
         expenseType: source.expense_type,
@@ -736,12 +754,13 @@ export function AddExpenseSheet({
         notes: source.notes ?? "",
         entryType: source.entry_type,
       });
-      setCategoryTouched(true);
+      setCategoryTouched(false);
       setAmountTouched(true);
       setEntryMode("single");
       setMultiEntryType(source.entry_type === "income" ? "income" : "expense");
       setNlEntryOpen(false);
-      setNlText("");
+      setNlText(source.item_name || "");
+      lastRuleCheckedText.current = (source.item_name || "").trim();
     } else {
       setForm(emptySingleState(userId));
       setCategoryTouched(false);
@@ -814,11 +833,22 @@ export function AddExpenseSheet({
     const merchantId = form.merchant?.id ?? null;
     const timer = setTimeout(() => {
       getCategorySuggestion(itemName, merchantId).then((result) => {
-        if (result.error === null) setSuggestion(result.data);
+        if (result.error === null) {
+          if (
+            result.data &&
+            form.category &&
+            result.data.categoryId === form.category.categoryId &&
+            (!result.data.subcategoryId || result.data.subcategoryId === form.category.subcategoryId)
+          ) {
+            setSuggestion(null);
+          } else {
+            setSuggestion(result.data);
+          }
+        }
       });
     }, 400);
     return () => clearTimeout(timer);
-  }, [form.itemName, form.merchant, categoryTouched, open]);
+  }, [form.itemName, form.merchant, form.category, categoryTouched, open]);
 
   function applySuggestion() {
     if (!suggestion) return;
@@ -844,7 +874,7 @@ export function AddExpenseSheet({
   // choice, and only once per distinct item text (lastRuleCheckedText)
   // so retyping the same text doesn't keep re-triggering it.
   useEffect(() => {
-    if (!open || isEditing) return;
+    if (!open) return;
     const text = typeof form.itemName === "string" ? form.itemName.trim() : "";
     if (!text) {
       setAppliedRule(null);
@@ -868,7 +898,7 @@ export function AddExpenseSheet({
     const resolved = resolveRuleActions(rule, categoryTree, merchants, members);
     applyMatchedRule(rule, resolved);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.itemName, form.amount, form.entryType, categoryTouched, form.merchant, open, isEditing, automationRules, categoryTree, merchants]);
+  }, [form.itemName, form.amount, form.entryType, categoryTouched, form.merchant, open, automationRules, categoryTree, merchants]);
 
   function applyMatchedRule(
     rule: AutomationRule,
@@ -1043,7 +1073,7 @@ export function AddExpenseSheet({
 
   // Automatic real-time parsing as the user types or speaks (debounced 120ms)
   useEffect(() => {
-    if (!nlEntryOpen || isEditing || !open) return;
+    if (!nlEntryOpen || !open) return;
     const raw = (typeof nlText === "string" ? nlText : "").trim();
     if (!raw) return;
 
@@ -1079,7 +1109,7 @@ export function AddExpenseSheet({
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nlText, nlEntryOpen, isEditing, open, merchants, incomeCategoryTree, expenseCategoryTree, cards, upiProfiles, bankAccounts, displayName, partner, userId, automationRules, categoryTree]);
+  }, [nlText, nlEntryOpen, open, merchants, incomeCategoryTree, expenseCategoryTree, cards, upiProfiles, bankAccounts, displayName, partner, userId, automationRules, categoryTree]);
 
   function applyNaturalLanguageEntry(overrideText?: string, showToast = true) {
     const textToParse = typeof overrideText === "string" ? overrideText : nlText;
@@ -1220,7 +1250,11 @@ export function AddExpenseSheet({
   }
 
   function applyMerchant(merchant: Tables<"merchants">) {
-    setForm((f) => ({ ...f, merchant, itemName: merchant.name }));
+    setForm((f) => ({
+      ...f,
+      merchant,
+      itemName: f.itemName && f.itemName.trim() ? f.itemName : merchant.name,
+    }));
     if (!categoryTouched && merchant.subcategory_id) {
       const sub = categoryFlat.find((c) => c.id === merchant.subcategory_id);
       const parent = sub ? categoryFlat.find((c) => c.id === sub.parent_id) : null;
@@ -1251,7 +1285,7 @@ export function AddExpenseSheet({
     const rawParsed = nlEntryOpen && nlText.trim() ? parseQuickEntry(nlText) : null;
     const effectiveName = (rawParsed?.itemName || (nlEntryOpen && nlText.trim() ? nlText.trim() : form.itemName)) || "";
     const q = (typeof effectiveName === "string" ? effectiveName : "").trim().toLowerCase();
-    if (isEditing || predictionDismissed) return [];
+    if (predictionDismissed) return [];
 
     interface PredictiveCandidate {
       key: string;
@@ -1523,7 +1557,7 @@ export function AddExpenseSheet({
     }
 
     return results.slice(0, 4);
-  }, [form.itemName, form.amount, amountTouched, isEditing, predictionDismissed, pastPredictions, merchants, categoryFlat, userId, partner, nlEntryOpen, nlText]);
+  }, [form.itemName, form.amount, amountTouched, predictionDismissed, pastPredictions, merchants, categoryFlat, userId, partner, nlEntryOpen, nlText]);
 
   interface PredictiveMatchItem {
     itemName: string;
@@ -2671,48 +2705,49 @@ export function AddExpenseSheet({
                     {nlEntryOpen && <Sparkles className="h-3.5 w-3.5 text-brand-primary animate-pulse" />}
                     {nlEntryOpen ? "Smart Parse (Auto-Detect)" : "Item / Description"}
                   </Label>
-                  {!isEditing && (
-                    <div className="flex items-center gap-2.5">
-                      {voiceSupported && (
-                        <button
-                          type="button"
-                          onClick={startVoiceInput}
-                          title={listening ? "Stop listening" : "Speak your expense (Gujarati / English)"}
-                          aria-label={listening ? "Stop listening" : "Speak your expense"}
-                          className={cn(
-                            "flex min-h-8 items-center justify-center gap-1 px-1.5 text-xs font-semibold hover:underline",
-                            listening ? "text-destructive" : "text-brand-primary"
-                          )}
-                        >
-                          {listening ? (
-                            <>
-                              <MicOff className="h-3 w-3 animate-pulse" /> Listening…
-                            </>
-                          ) : (
-                            <>
-                              <Mic className="h-3 w-3" /> Speak
-                            </>
-                          )}
-                        </button>
-                      )}
+                  <div className="flex items-center gap-2.5">
+                    {voiceSupported && (
                       <button
                         type="button"
-                        onClick={() => {
-                          if (nlEntryOpen) {
-                            if (nlText.trim()) applyNaturalLanguageEntry();
-                            setNlEntryOpen(false);
-                          } else {
-                            if (form.itemName && !nlText) setNlText(form.itemName);
-                            setNlEntryOpen(true);
-                          }
-                        }}
-                        className="text-xs text-brand-primary flex items-center gap-1 hover:underline font-semibold"
+                        onClick={startVoiceInput}
+                        title={listening ? "Stop listening" : "Speak your expense (Gujarati / English)"}
+                        aria-label={listening ? "Stop listening" : "Speak your expense"}
+                        className={cn(
+                          "flex min-h-8 items-center justify-center gap-1 px-1.5 text-xs font-semibold hover:underline",
+                          listening ? "text-destructive" : "text-brand-primary"
+                        )}
                       >
-                        <Sparkles className="h-3 w-3" />
-                        {nlEntryOpen ? "Manual mode" : "Smart parse"}
+                        {listening ? (
+                          <>
+                            <MicOff className="h-3 w-3 animate-pulse" /> Listening…
+                          </>
+                        ) : (
+                          <>
+                            <Mic className="h-3 w-3" /> Speak
+                          </>
+                        )}
                       </button>
-                    </div>
-                  )}
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (nlEntryOpen) {
+                          if (nlText.trim()) applyNaturalLanguageEntry();
+                          setNlEntryOpen(false);
+                        } else {
+                          const prefill = form.itemName
+                            ? (form.amount ? `${form.itemName} ${form.amount}` : form.itemName)
+                            : nlText;
+                          setNlText(prefill);
+                          setNlEntryOpen(true);
+                        }
+                      }}
+                      className="text-xs text-brand-primary flex items-center gap-1 hover:underline font-semibold"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      {nlEntryOpen ? "Manual mode" : "Smart parse"}
+                    </button>
+                  </div>
                 </div>
 
                 {nlEntryOpen ? (
@@ -2763,29 +2798,51 @@ export function AddExpenseSheet({
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      id="item-name"
-                      value={form.itemName}
-                      onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value, merchant: null }))}
-                      placeholder="e.g. Milk, Groceries, Petrol, Dinner"
-                      className="flex-1 text-base sm:text-sm h-11 bg-background"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-11 w-11 shrink-0"
-                      onClick={() => setMerchantPickerOpen(true)}
-                      title="Pick merchant"
-                    >
-                      <Store className="h-4 w-4" />
-                    </Button>
+                  <div className="space-y-1.5">
+                    <div className="flex gap-2">
+                      <Input
+                        id="item-name"
+                        value={form.itemName}
+                        onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value }))}
+                        placeholder="e.g. Milk, Groceries, Petrol, Dinner"
+                        className="flex-1 text-base sm:text-sm h-11 bg-background"
+                      />
+                      <Button
+                        type="button"
+                        variant={form.merchant ? "secondary" : "outline"}
+                        size="icon"
+                        className={cn(
+                          "h-11 w-11 shrink-0 transition-colors",
+                          form.merchant && "bg-brand-mint/70 border-brand-primary/30 text-brand-primary hover:bg-brand-mint"
+                        )}
+                        onClick={() => setMerchantPickerOpen(true)}
+                        title={form.merchant ? `Merchant: ${form.merchant.name} (Click to change)` : "Pick merchant"}
+                      >
+                        <Store className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {form.merchant && (
+                      <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-mint/70 border border-brand-primary/25 text-xs font-semibold text-brand-primary">
+                          <Store className="h-3.5 w-3.5 shrink-0" />
+                          <span>Merchant: <strong>{form.merchant.name}</strong></span>
+                          <button
+                            type="button"
+                            onClick={() => setForm((f) => ({ ...f, merchant: null }))}
+                            className="ml-1 rounded p-0.5 hover:bg-brand-primary/10 text-muted-foreground hover:text-foreground transition-colors"
+                            title="Remove merchant"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* Live Auto-Detected Feedback Pills */}
-                {nlEntryOpen && nlText.trim() && (form.itemName || form.amount || form.category) && (
+                {nlEntryOpen && nlText.trim() && (form.itemName || form.merchant || form.amount || form.category) && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-brand-mint/40 border border-brand-primary/15 text-xs animate-in fade-in duration-150">
                     <span className="text-[11px] font-bold text-brand-primary flex items-center gap-1 shrink-0">
                       <Sparkles className="h-3 w-3" /> Auto-detected:
@@ -2793,6 +2850,12 @@ export function AddExpenseSheet({
                     {form.itemName && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-background border border-border/60 font-semibold text-foreground">
                         {form.itemName}
+                      </span>
+                    )}
+                    {form.merchant && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-background border border-border/60 font-semibold text-foreground">
+                        <Store className="h-3 w-3 text-brand-primary" />
+                        {form.merchant.name}
                       </span>
                     )}
                     {form.amount && (
@@ -2819,7 +2882,7 @@ export function AddExpenseSheet({
                 )}
 
                 {/* Real-time Predictive Autocomplete Suggestions (Live as you type) */}
-                {predictiveMatches.length > 0 && !isEditing && (
+                {predictiveMatches.length > 0 && (
                   <div className="mt-2.5 rounded-2xl border border-brand-primary/20 bg-card p-2 shadow-lg space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150 ring-1 ring-black/5">
                     <div className="flex items-center justify-between px-2 pt-0.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40">
                       <span className="flex items-center gap-1 text-brand-primary font-bold">
